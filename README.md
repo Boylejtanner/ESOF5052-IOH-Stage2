@@ -59,9 +59,6 @@ docs/                     Code guide, reproduction, results, and submission guid
 
 Raw archives, clinical reference files, patient linkage, waveform/beat stores, patient-level predictions, trained weights, logs, machine settings, and development backups are deliberately excluded. The same dataset-relative directory layout is used when authorized data are provisioned locally.
 
-## Report compilation
-
-Upload [report/main.tex](report/main.tex) to Overleaf as `main.tex`, choose it as the main document, and use **Recompile from scratch**. All figures are embedded vector drawing instructions; no PNG, PDF figure, or external bibliography file is required. The source has been optimized to avoid expensive heatmap calculations during compilation. The submitted PDF is compiled separately by the author.
 
 ## Scientific and access boundaries
 
