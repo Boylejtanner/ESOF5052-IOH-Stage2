@@ -44,21 +44,6 @@ The eight engineered parameters are:
 
 Five MAP-baseline values plus these eight values and eight availability indicators form the planned 21-value context. The selected optimizer is AdamW with beta2 0.95, peak learning rate 0.0011, weight decay 0.01, batch size 128, and cosine decay with one warm-up epoch.
 
-## Quick review without clinical data
-
-The following commands run from this repository's root. Python 3.12 is the reference runtime.
-
-```powershell
-py -3.12 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r environment\requirements-training.txt
-.\.venv\Scripts\python.exe scripts\review_results.py
-$env:PYTHONPATH = "$PWD\notebooks"
-$env:OMP_NUM_THREADS = "4"
-.\.venv\Scripts\python.exe scripts\run_submission_checks.py
-```
-
-The result viewer uses only the Python standard library and saved aggregate CSVs. The checks use synthetic signals, mocked acquisition, and small local fixtures. No patient data, network downloads, GPU, or Spark cluster is needed for this quick review. The complete collection of unit tests is also included; see [reproduction instructions](docs/REPRODUCING.md).
-
 ## Repository structure
 
 ```text
