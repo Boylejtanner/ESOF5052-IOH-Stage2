@@ -1,0 +1,91 @@
+bin,mean_predicted,observed_rate,windows,setting,rung,learner
+0,0.00014,0.00695,11375,pooled_test,G0,lr
+1,0.00076,0.00422,11374,pooled_test,G0,lr
+2,0.00204,0.00343,11374,pooled_test,G0,lr
+3,0.00425,0.00598,11375,pooled_test,G0,lr
+4,0.00789,0.00668,11374,pooled_test,G0,lr
+5,0.01385,0.01011,11374,pooled_test,G0,lr
+6,0.0237,0.01407,11375,pooled_test,G0,lr
+7,0.03929,0.02005,11374,pooled_test,G0,lr
+8,0.06754,0.05346,11374,pooled_test,G0,lr
+9,0.15218,0.18101,11375,pooled_test,G0,lr
+0,0.00116,0.00325,11375,pooled_test,G0,hgb
+1,0.0019,0.00176,11374,pooled_test,G0,hgb
+2,0.00282,0.00396,11374,pooled_test,G0,hgb
+3,0.00424,0.00536,11375,pooled_test,G0,hgb
+4,0.00656,0.00598,11374,pooled_test,G0,hgb
+5,0.00975,0.00967,11374,pooled_test,G0,hgb
+6,0.01571,0.01319,11375,pooled_test,G0,hgb
+7,0.02837,0.02479,11374,pooled_test,G0,hgb
+8,0.05588,0.05513,11374,pooled_test,G0,hgb
+9,0.18616,0.18286,11375,pooled_test,G0,hgb
+0,0.00084,0.00211,11375,pooled_test,G4,hgb
+1,0.00152,0.00123,11374,pooled_test,G4,hgb
+2,0.00228,0.0022,11374,pooled_test,G4,hgb
+3,0.00333,0.00378,11375,pooled_test,G4,hgb
+4,0.00494,0.00607,11374,pooled_test,G4,hgb
+5,0.00762,0.00923,11374,pooled_test,G4,hgb
+6,0.0128,0.01424,11375,pooled_test,G4,hgb
+7,0.02403,0.02471,11374,pooled_test,G4,hgb
+8,0.05276,0.05047,11374,pooled_test,G4,hgb
+9,0.20678,0.19191,11375,pooled_test,G4,hgb
+0,0.00041,0.00438,3200,E3x vitaldb_train->all_mover,G0,lr
+1,0.00191,0.00219,3199,E3x vitaldb_train->all_mover,G0,lr
+2,0.00441,0.00625,3200,E3x vitaldb_train->all_mover,G0,lr
+3,0.00819,0.0075,3199,E3x vitaldb_train->all_mover,G0,lr
+4,0.01367,0.01281,3200,E3x vitaldb_train->all_mover,G0,lr
+5,0.02167,0.01751,3199,E3x vitaldb_train->all_mover,G0,lr
+6,0.03362,0.02376,3199,E3x vitaldb_train->all_mover,G0,lr
+7,0.05099,0.03844,3200,E3x vitaldb_train->all_mover,G0,lr
+8,0.07885,0.06877,3199,E3x vitaldb_train->all_mover,G0,lr
+9,0.15223,0.19531,3200,E3x vitaldb_train->all_mover,G0,lr
+0,0.00187,0.00281,3200,E3x vitaldb_train->all_mover,G0,hgb
+1,0.00253,0.00156,3199,E3x vitaldb_train->all_mover,G0,hgb
+2,0.0034,0.00469,3200,E3x vitaldb_train->all_mover,G0,hgb
+3,0.00545,0.0075,3199,E3x vitaldb_train->all_mover,G0,hgb
+4,0.00867,0.015,3200,E3x vitaldb_train->all_mover,G0,hgb
+5,0.01409,0.01344,3199,E3x vitaldb_train->all_mover,G0,hgb
+6,0.02146,0.02282,3199,E3x vitaldb_train->all_mover,G0,hgb
+7,0.03278,0.03938,3200,E3x vitaldb_train->all_mover,G0,hgb
+8,0.06627,0.07096,3199,E3x vitaldb_train->all_mover,G0,hgb
+9,0.18675,0.19875,3200,E3x vitaldb_train->all_mover,G0,hgb
+0,0.00146,0.00125,3200,E3x vitaldb_train->all_mover,G4,hgb
+1,0.0023,0.00406,3199,E3x vitaldb_train->all_mover,G4,hgb
+2,0.00333,0.00469,3200,E3x vitaldb_train->all_mover,G4,hgb
+3,0.00483,0.00719,3199,E3x vitaldb_train->all_mover,G4,hgb
+4,0.00738,0.01031,3200,E3x vitaldb_train->all_mover,G4,hgb
+5,0.01198,0.01751,3199,E3x vitaldb_train->all_mover,G4,hgb
+6,0.01963,0.02626,3199,E3x vitaldb_train->all_mover,G4,hgb
+7,0.03303,0.04406,3200,E3x vitaldb_train->all_mover,G4,hgb
+8,0.06554,0.07534,3199,E3x vitaldb_train->all_mover,G4,hgb
+9,0.21042,0.18625,3200,E3x vitaldb_train->all_mover,G4,hgb
+0,0.00016,0.00482,11615,reverse mover_train->vitaldb_test,G0,lr
+1,0.00078,0.00344,11615,reverse mover_train->vitaldb_test,G0,lr
+2,0.00202,0.00362,11614,reverse mover_train->vitaldb_test,G0,lr
+3,0.0042,0.00542,11615,reverse mover_train->vitaldb_test,G0,lr
+4,0.00776,0.00672,11614,reverse mover_train->vitaldb_test,G0,lr
+5,0.01376,0.01059,11615,reverse mover_train->vitaldb_test,G0,lr
+6,0.02411,0.01627,11614,reverse mover_train->vitaldb_test,G0,lr
+7,0.04135,0.03013,11615,reverse mover_train->vitaldb_test,G0,lr
+8,0.07305,0.05304,11614,reverse mover_train->vitaldb_test,G0,lr
+9,0.15974,0.18536,11615,reverse mover_train->vitaldb_test,G0,lr
+0,0.0021,0.00095,11615,reverse mover_train->vitaldb_test,G0,hgb
+1,0.00245,0.00232,11615,reverse mover_train->vitaldb_test,G0,hgb
+2,0.00306,0.00327,11614,reverse mover_train->vitaldb_test,G0,hgb
+3,0.00442,0.00456,11615,reverse mover_train->vitaldb_test,G0,hgb
+4,0.00682,0.0087,11614,reverse mover_train->vitaldb_test,G0,hgb
+5,0.0114,0.01266,11615,reverse mover_train->vitaldb_test,G0,hgb
+6,0.01847,0.02213,11614,reverse mover_train->vitaldb_test,G0,hgb
+7,0.03106,0.02944,11615,reverse mover_train->vitaldb_test,G0,hgb
+8,0.06242,0.05407,11614,reverse mover_train->vitaldb_test,G0,hgb
+9,0.21133,0.18132,11615,reverse mover_train->vitaldb_test,G0,hgb
+0,0.00032,0.00112,11615,reverse mover_train->vitaldb_test,G4,hgb
+1,0.00052,0.00379,11615,reverse mover_train->vitaldb_test,G4,hgb
+2,0.00074,0.00525,11614,reverse mover_train->vitaldb_test,G4,hgb
+3,0.00104,0.00852,11615,reverse mover_train->vitaldb_test,G4,hgb
+4,0.00153,0.0087,11614,reverse mover_train->vitaldb_test,G4,hgb
+5,0.00246,0.01283,11615,reverse mover_train->vitaldb_test,G4,hgb
+6,0.00455,0.01645,11614,reverse mover_train->vitaldb_test,G4,hgb
+7,0.00978,0.03392,11615,reverse mover_train->vitaldb_test,G4,hgb
+8,0.0252,0.06294,11614,reverse mover_train->vitaldb_test,G4,hgb
+9,0.13453,0.16591,11615,reverse mover_train->vitaldb_test,G4,hgb

@@ -1,0 +1,37 @@
+{
+  "seed": 5052,
+  "test_evaluated": false,
+  "exploratory": true,
+  "bootstrap_reps": 200,
+  "patient_disjoint_assertions_passed": true,
+  "inner_train_step": 3,
+  "validation_all_windows": true,
+  "standard_learner": "HGB 150 iterations, lr .1, 31 leaves, min leaf 200, l2 1, early_stopping False",
+  "candidate_feature_sets": 15,
+  "additional_strategy_checks": 4,
+  "shortlisted_models": [
+    "g0",
+    "ind3",
+    "ind3_all_eap_low_domain",
+    "ind3_multiscale",
+    "ind3_all_eap_low_domain__smoother"
+  ],
+  "script_sha256": "8d80e0b01c6aebab438bd6174b0931ee818231c960274c064c5d71a5bdfdcef1",
+  "frozen_v5_config_sha256": "3982fccd96da5d32d0534cf64eb7dfd2fb05910b812e7eea25bd5b84efb1d5d1",
+  "runtime_seconds": 410.7,
+  "caveats": [
+    "Not a CNN experiment; tabular proxies only",
+    "Validation previously examined during v5; no new confirmatory claim",
+    "Nominal cluster-bootstrap intervals are not corrected for feature search",
+    "No window IDs, hospital identity, future values or test outcomes used as predictors",
+    "Positive-window counts are not unique clinical events",
+    "Missing parameters remain NaN; HGB learns missing-value routing without dropping windows"
+  ],
+  "post_run_correction": "Single-hospital hospital_balanced weights corrected to neutral; its inner source-only metrics equal the identical standard model. No selected model or validation result changed.",
+  "focused_checks": [
+    "single-hospital balancing equals unweighted prediction",
+    "subsampling retains every case",
+    "frozen configuration hash unchanged",
+    "figure rendering from saved results"
+  ]
+}

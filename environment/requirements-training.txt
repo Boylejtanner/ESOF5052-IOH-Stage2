@@ -1,0 +1,4 @@
+# Install the base environment first. CPU training tests use the same API.
+-r requirements.txt
+torch==2.14.1
+torchvision==0.29.1

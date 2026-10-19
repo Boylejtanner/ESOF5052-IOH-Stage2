@@ -1,0 +1,4 @@
+split_pooled,patients,cases,patient_share_pct,mover_patient_share_pct
+test,524,535,15.01,12.6
+train,2442,2529,69.97,11.22
+validation,524,541,15.01,12.4

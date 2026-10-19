@@ -1,0 +1,131 @@
+{
+  "version": "v5-independence",
+  "frozen_utc": "2026-10-09T19:22:04Z",
+  "plan_sha256": "3af08bd8f199c82f7bd57a49482f1f391b21d869ce7e8d6d0791d8ee64b96b66",
+  "window_params": "window_params_v1.parquet",
+  "feature_code_version": "if1",
+  "seed": 5052,
+  "screen": {
+    "training_window_step": 3,
+    "lr_folds": 5,
+    "hgb_folds": 3,
+    "bootstrap": 200,
+    "bh_q": 0.05,
+    "f1_coverage": [
+      0.9,
+      0.85
+    ],
+    "f4_min_d_auroc": -0.002,
+    "f5_max_domain_auroc": 0.7,
+    "f6_max_abs_rho_map": 0.5,
+    "redundancy_abs_rho": 0.8
+  },
+  "selection": {
+    "learner": "hgb",
+    "folds": 3,
+    "max_params": 12,
+    "stop_d_auroc": 0.001,
+    "stop_d_auprc": 0.002,
+    "pool_cap": 20
+  },
+  "sets": {
+    "IND-A": [
+      "a_map_slope_l60",
+      "a_dpdt_min_l60",
+      "a_pp_slope_l60"
+    ],
+    "IND-E": [
+      "e_sdnn_l300"
+    ],
+    "IND-P": [
+      "p_int_sdnn_l300"
+    ],
+    "IND-EA": [
+      "e_sdnn_l300",
+      "a_map_slope_l60",
+      "a_dpdt_min_l60"
+    ],
+    "IND-EAP": [
+      "e_sdnn_l300",
+      "a_map_slope_l60",
+      "a_dpdt_min_l60"
+    ]
+  },
+  "window_sets": {
+    "IND-A": "core",
+    "IND-E": "core",
+    "IND-P": "full",
+    "IND-EA": "core",
+    "IND-EAP": "full"
+  },
+  "noninvasive": {
+    "params": [
+      "e_sdnn_l60",
+      "e_rmssd_l60",
+      "e_pnn50_l60",
+      "e_sd1sd2_l60",
+      "e_ectopy_l60",
+      "e_rsa_l60",
+      "e_edr_rate_l60",
+      "e_hr_slope_l60",
+      "e_rr_ac1_l60",
+      "e_sdnn_l300",
+      "e_rmssd_l300",
+      "e_pnn50_l300",
+      "e_sd1sd2_l300",
+      "e_ectopy_l300",
+      "e_rsa_l300",
+      "e_edr_rate_l300",
+      "e_hr_slope_l300",
+      "e_rr_ac1_l300",
+      "e_hr_d60_300",
+      "e_rr_rsd_l300",
+      "e_rr_rskew_l300",
+      "e_rr_dfa_l300",
+      "e_rr_ktau_ac1_l300",
+      "e_rr_ktau_var_l300",
+      "e_rr_sampen_l300",
+      "e_rr_lfhf_l300",
+      "p_rise_l60",
+      "p_hr_slope_l60",
+      "p_int_amp_corr_l60",
+      "p_amp_cv_l60",
+      "p_pvi_l60",
+      "p_int_sdnn_l60",
+      "p_int_rmssd_l60",
+      "p_amp_rslope_l60",
+      "p_amp_ac1_l60",
+      "p_amp_cv_l300",
+      "p_pvi_l300",
+      "p_int_sdnn_l300",
+      "p_int_rmssd_l300",
+      "p_amp_rslope_l300",
+      "p_amp_ac1_l300",
+      "p_amp_d60_300",
+      "p_int_ac1_l300",
+      "p_amp_dfa_l300",
+      "p_amp_ktau_var_l300",
+      "e_hr_l60_sn",
+      "e_sdnn_l60_sn",
+      "e_rmssd_l60_sn",
+      "p_amp_l60_sn",
+      "p_acdc_l60_sn",
+      "p_rise_l60_sn",
+      "p_width_l60_sn",
+      "p_hr_l60_sn"
+    ],
+    "source": "all E and P candidates passing F1 and F5 (unselected; IND-E + IND-P had < 3 parameters)"
+  },
+  "learners": {
+    "hgb": {
+      "l2_regularization": 1.0,
+      "learning_rate": 0.1,
+      "max_iter": 150,
+      "max_leaf_nodes": 31,
+      "min_samples_leaf": 200
+    },
+    "lr": "SimpleImputer(median) + StandardScaler + LogisticRegression(max_iter=300)"
+  },
+  "fit_subsample": 3,
+  "ppg_rule_validation": "remove PPG from the main model (secondary noninvasive study only)"
+}

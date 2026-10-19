@@ -1,0 +1,12 @@
+reason,surgeries
+no_art_ecg_ppg_member_in_surgery_window,56867
+invalid_or_ambiguous_surgery_time,6489
+(selected),420
+duration_below_minimum,233
+ready_span_below_chosen_rung,199
+no_arterial_map_numerics,109
+patient_linkage_unavailable,27
+patient_linkage_unavailable;invalid_or_ambiguous_surgery_time,4
+ambiguous_patient_or_surgery_window;patient_linkage_unavailable,4
+ambiguous_patient_or_surgery_window;invalid_or_ambiguous_surgery_time,1
+assessment_failed,1

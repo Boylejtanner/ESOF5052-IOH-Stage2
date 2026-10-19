@@ -1,0 +1,4 @@
+signal,parameters,pairs,structure_spearman_vitaldb_vs_mover,clusters_at_0.8,pairs_abs_rho_ge_0.8_vitaldb,pairs_abs_rho_ge_0.8_mover
+A,88,3828,0.9074347947191278,62,35,35
+E,32,496,0.9447317335095616,25,9,16
+P,27,351,0.7044733044733045,22,7,4

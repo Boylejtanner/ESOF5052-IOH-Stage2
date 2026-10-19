@@ -1,0 +1,39 @@
+{
+  "stage": "Stage 2 selected training design",
+  "integration_status": "Selected by EDA; not yet integrated into or trained with the submitted BSHI network.",
+  "baseline": [
+    "map_current",
+    "map_mean_60",
+    "map_min_60",
+    "map_std_60",
+    "map_slope_60"
+  ],
+  "engineered": [
+    "e_sdnn_l300",
+    "a_map_slope_l60",
+    "a_dpdt_min_l60",
+    "a_map_sd_l300",
+    "a_map_sd_l60",
+    "a_pp_cv_l300",
+    "a_map_d60_300",
+    "a_map_slope_l300"
+  ],
+  "availability_flags": 8,
+  "planned_context_values": 21,
+  "primary_waveforms": [
+    "ECG",
+    "ART"
+  ],
+  "optional_waveform_ablation": "PPG",
+  "optimizer": {
+    "name": "AdamW",
+    "beta2": 0.95,
+    "learning_rate": 0.0011,
+    "weight_decay": 0.01,
+    "batch_size": 128,
+    "schedule": "cosine",
+    "warmup_epochs": 1
+  },
+  "recorded_neural_trials": "results/train/trials_20261009_111433.csv",
+  "parameter_selection_evidence": "results/bshi_input_eda/validation_comparisons.csv"
+}

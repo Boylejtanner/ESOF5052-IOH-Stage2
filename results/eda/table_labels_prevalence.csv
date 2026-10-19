@@ -1,0 +1,13 @@
+dataset,split,windows,event_windows,prevalence_pct,patients,patients_with_event
+mover,test,12555,825,6.57,61,45
+mover,train,62537,3492,5.58,283,201
+mover,validation,13865,793,5.72,61,44
+vitaldb,test,164136,5334,3.25,464,309
+vitaldb,train,748873,22767,3.04,2159,1436
+vitaldb,validation,161312,5040,3.12,462,287
+all,test,169771,5718,3.37,524,338
+all,train,819834,26755,3.26,2442,1630
+all,validation,173673,5778,3.33,524,354
+mover,all,88957,5110,5.74,405,290
+vitaldb,all,1074321,33141,3.08,3085,2032
+all,all,1163278,38251,3.29,3490,2322

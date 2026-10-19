@@ -1,0 +1,7 @@
+scope,stage,rule
+VitalDB,case,"ART, ECG-II, PLETH and an ART-derived numeric MAP present; duration >= 30 min; waveform missing <= 20%; >= 300 valid MAP values; >= 10 MAP values/min; MAP span coverage >= 80%; median MAP gap <= 10 s"
+MOVER,case,GE S5 members with a PLETH group and a verified arterial INVP1 channel; surgery time and patient linkage valid; duration >= 30 min; window-level ladder (not whole-surgery missingness): R1 needs >= 30 ready minutes of windows with >= 75% valid samples; MAP kept in 20-200 mmHg
+both,window,90 s observation window every 30 s; ready when the valid-sample fraction >= 0.5 (labels use >= 0.7); numeric MAP no older than 10 s; at least 50% of the horizon covered by MAP
+both,label,"event = MAP < 65 mmHg for >= 60 s (gaps <= 10 s bridged) starting in the next 300 s; windows already hypotensive (any MAP < 65 in the last 60 s) are excluded; 65-75 mmHg windows are tagged (gray zone), not dropped; windows whose horizon has > 60 s of missing MAP are ambiguous and excluded"
+both,BSHI window,60 most recent beats whose whole cycle ends by t0; beat usable when the ECG SQI >= 0.5; core = >= 54 beats with a valid ART pulse; full = >= 54 beats with ART and PPG (ECG->PPG delay <= 0.9 s); dead-ECG cases excluded
+both,split,patient-level 70/15/15 (seed 5052) frozen before windowing; no patient appears in two splits; two views: pooled and within-dataset

@@ -1,0 +1,26 @@
+check,value,threshold,status,note
+dataset v1 guard (unified index matches the tag),v1,index hash equal,PASS,
+zero patient leakage and index integrity (check_index),0 patients in two splits,0,PASS,
+pooled train patient share within 3 points of 70%,69.97,70 +- 3,PASS,
+pooled validation patient share within 3 points of 15%,15.01,15 +- 3,PASS,
+pooled test patient share within 3 points of 15%,15.01,15 +- 3,PASS,
+mover within-dataset split shares within 3 points of 70/15/15,"{'test': 15.1, 'train': 69.9, 'validation': 15.1}",70/15/15 +- 3,PASS,
+vitaldb within-dataset split shares within 3 points of 70/15/15,"{'test': 15.0, 'train': 70.0, 'validation': 15.0}",70/15/15 +- 3,PASS,
+"event power, core set, pooled test",4062 events / 310 patients with an event,>= 300 events and >= 50 patients,PASS,
+"event power, core set, VitalDB test",4092 events / 277 patients with an event,>= 300 events and >= 50 patients,PASS,
+"event power, core set, MOVER test only (within-dataset test split)",369 events / 37 patients with an event,>= 300 events and >= 50 patients,FAIL,MOVER-only test is underpowered: use all-MOVER (E3x) as the external test
+"event power, core set, all MOVER patients (E3x external test)",2381 events / 234 patients with an event,>= 300 events and >= 50 patients,PASS,
+"event power, full set, pooled test",3480 events / 285 patients with an event,>= 300 events and >= 50 patients,PASS,
+"event power, full set, VitalDB test",3710 events / 270 patients with an event,>= 300 events and >= 50 patients,PASS,
+"event power, full set, MOVER test only (within-dataset test split)",132 events / 17 patients with an event,>= 300 events and >= 50 patients,FAIL,MOVER-only test is underpowered: use all-MOVER (E3x) as the external test
+"event power, full set, all MOVER patients (E3x external test)",1206 events / 150 patients with an event,>= 300 events and >= 50 patients,PASS,
+"mask coverage, mover: core windows / eligible windows",56.3,>= 50%,PASS,
+"mask coverage, mover: full windows / eligible windows",36.0,>= 30%,PASS,
+"mask coverage, vitaldb: core windows / eligible windows",79.6,>= 50%,PASS,
+"mask coverage, vitaldb: full windows / eligible windows",71.1,>= 30%,PASS,
+dead-ECG cases excluded from BSHI sets,0,0,PASS,
+"tensor sanity on real windows (NaN, constant planes, clip, PPG-free variant)","{'no_nan_or_inf': True, 'no_constant_plane': True, 'ecg_ppg_within_clip': True, 'ea_ppg_plane_is_zero': True, 'full_eap_masks_ppg_more_than_art_not_less': True}",all True,PASS,
+window index signature current,988af99b3f38,equals index_signature(),PASS,
+loader throughput at 16 workers,3165.3,>= 3000 windows/s,PASS,torch DataLoader steady state 2619.0 windows/s
+storage budget (data/derived/bshi) and free disk,"1.47 GB used, 281 GB free","<= 8 GB new output, >= 150 GB free",PASS,
+"reproducibility record (seeds, config hashes, package versions)",recorded in dataset_readiness.json,present,PASS,

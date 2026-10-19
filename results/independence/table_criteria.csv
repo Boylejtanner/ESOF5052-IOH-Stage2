@@ -1,0 +1,11 @@
+criterion,pass,detail
+S1 beats current MAP (pre-registered),True,"pooled test dAUROC +0.0105 [+0.0053, +0.0158], dAUPRC +0.0080; VitalDB->all MOVER dAUROC +0.0068"
+S1 clean-transfer variant,True,clean VitalDB->MOVER test dAUROC +0.0064
+"S2 better than old (pre-registered, point non-inferiority)",False,pooled test dAUROC vs G4 -0.0032 (CI lo -0.0077); domain AUROC 0.810 vs G4 1.000; VitalDB->all MOVER AUROC 0.855 vs G4 0.843
+S2 strict (CI lower bound >= -0.003) and clean transfer,False,clean VitalDB->MOVER test AUROC 0.897 vs G4 0.884
+S3 IND-EA without G0 vs G0 (descriptive),descriptive,"pooled test AUROC 0.687, AUPRC 0.073, dAUROC vs G0 -0.1798"
+H1 ART single-signal parameters predict beyond G0 in both datasets,False,feasible A 3; validation pooled dAUROC CI lo +0.0022; VitalDB->MOVER validation dAUROC -0.0045
+H2 ECG-only HRV/temporal add beyond G0 and self-normalization lowers hospital specificity,True,E passing F2+F3+F4: 3; median domain AUROC e_*_sn 0.510 vs raw 0.633
+H3 critical slowing down before IOH,supported,a_map_ac1_l300 vitaldb: yes; a_map_ac1_l300 mover: no; a_map_rsd_l300 vitaldb: yes; a_map_rsd_l300 mover: yes
+H4 PPG adds nothing beyond E+A and stays hospital-specific,False,"PPG rule: remove PPG from the main model (secondary noninvasive study only); median domain AUROC P raw 0.555, P self-normalized 0.588"
+"H5 G0 + IND-EA beats G0, non-inferior to G4, transfers",False,S1 and S2

@@ -1,0 +1,1801 @@
+setting,rung,learner,fpr,tpr
+pooled_test,G0,lr,1e-05,0.0
+pooled_test,G0,lr,0.00352,0.05287
+pooled_test,G0,lr,0.0068,0.11322
+pooled_test,G0,lr,0.01045,0.16178
+pooled_test,G0,lr,0.01413,0.20948
+pooled_test,G0,lr,0.01811,0.24741
+pooled_test,G0,lr,0.02203,0.28764
+pooled_test,G0,lr,0.02616,0.32098
+pooled_test,G0,lr,0.03037,0.35172
+pooled_test,G0,lr,0.03464,0.38103
+pooled_test,G0,lr,0.03891,0.40977
+pooled_test,G0,lr,0.04334,0.43362
+pooled_test,G0,lr,0.04776,0.45776
+pooled_test,G0,lr,0.05238,0.47557
+pooled_test,G0,lr,0.05688,0.49741
+pooled_test,G0,lr,0.06139,0.51868
+pooled_test,G0,lr,0.06594,0.53879
+pooled_test,G0,lr,0.07062,0.5546
+pooled_test,G0,lr,0.07536,0.56868
+pooled_test,G0,lr,0.08013,0.5819
+pooled_test,G0,lr,0.08494,0.59368
+pooled_test,G0,lr,0.0897,0.60718
+pooled_test,G0,lr,0.09447,0.62011
+pooled_test,G0,lr,0.09927,0.63247
+pooled_test,G0,lr,0.10407,0.64454
+pooled_test,G0,lr,0.1089,0.65575
+pooled_test,G0,lr,0.1138,0.66466
+pooled_test,G0,lr,0.1186,0.67701
+pooled_test,G0,lr,0.12349,0.68649
+pooled_test,G0,lr,0.12841,0.69454
+pooled_test,G0,lr,0.13336,0.70201
+pooled_test,G0,lr,0.13831,0.7092
+pooled_test,G0,lr,0.14321,0.71839
+pooled_test,G0,lr,0.14816,0.72557
+pooled_test,G0,lr,0.15321,0.72989
+pooled_test,G0,lr,0.15816,0.73764
+pooled_test,G0,lr,0.16314,0.74397
+pooled_test,G0,lr,0.16815,0.74943
+pooled_test,G0,lr,0.17316,0.75489
+pooled_test,G0,lr,0.17813,0.76178
+pooled_test,G0,lr,0.1831,0.76839
+pooled_test,G0,lr,0.18816,0.77241
+pooled_test,G0,lr,0.1932,0.77701
+pooled_test,G0,lr,0.19822,0.7819
+pooled_test,G0,lr,0.20335,0.78391
+pooled_test,G0,lr,0.20839,0.78822
+pooled_test,G0,lr,0.21346,0.79195
+pooled_test,G0,lr,0.21855,0.79483
+pooled_test,G0,lr,0.22365,0.79741
+pooled_test,G0,lr,0.22872,0.80115
+pooled_test,G0,lr,0.23379,0.8046
+pooled_test,G0,lr,0.2389,0.80718
+pooled_test,G0,lr,0.244,0.80977
+pooled_test,G0,lr,0.2491,0.81236
+pooled_test,G0,lr,0.25421,0.81466
+pooled_test,G0,lr,0.25927,0.81868
+pooled_test,G0,lr,0.26435,0.82213
+pooled_test,G0,lr,0.26944,0.825
+pooled_test,G0,lr,0.27457,0.82672
+pooled_test,G0,lr,0.27965,0.82989
+pooled_test,G0,lr,0.28476,0.83218
+pooled_test,G0,lr,0.28985,0.83506
+pooled_test,G0,lr,0.29498,0.83678
+pooled_test,G0,lr,0.3001,0.83908
+pooled_test,G0,lr,0.30521,0.84109
+pooled_test,G0,lr,0.31036,0.84253
+pooled_test,G0,lr,0.31545,0.84511
+pooled_test,G0,lr,0.32056,0.8477
+pooled_test,G0,lr,0.32568,0.84943
+pooled_test,G0,lr,0.33079,0.85201
+pooled_test,G0,lr,0.33592,0.85374
+pooled_test,G0,lr,0.34098,0.85747
+pooled_test,G0,lr,0.34611,0.85948
+pooled_test,G0,lr,0.35121,0.86178
+pooled_test,G0,lr,0.3563,0.86494
+pooled_test,G0,lr,0.3614,0.86753
+pooled_test,G0,lr,0.36656,0.86839
+pooled_test,G0,lr,0.37169,0.87011
+pooled_test,G0,lr,0.37679,0.8727
+pooled_test,G0,lr,0.38188,0.87557
+pooled_test,G0,lr,0.38694,0.87931
+pooled_test,G0,lr,0.39206,0.88161
+pooled_test,G0,lr,0.39718,0.88333
+pooled_test,G0,lr,0.40232,0.88506
+pooled_test,G0,lr,0.40744,0.88707
+pooled_test,G0,lr,0.41257,0.88851
+pooled_test,G0,lr,0.41769,0.8908
+pooled_test,G0,lr,0.4228,0.89282
+pooled_test,G0,lr,0.42794,0.89454
+pooled_test,G0,lr,0.43304,0.89684
+pooled_test,G0,lr,0.4382,0.8977
+pooled_test,G0,lr,0.44335,0.89885
+pooled_test,G0,lr,0.4485,0.9
+pooled_test,G0,lr,0.4536,0.90259
+pooled_test,G0,lr,0.45875,0.90345
+pooled_test,G0,lr,0.46392,0.90402
+pooled_test,G0,lr,0.46907,0.90489
+pooled_test,G0,lr,0.47421,0.90661
+pooled_test,G0,lr,0.47935,0.90805
+pooled_test,G0,lr,0.48446,0.91034
+pooled_test,G0,lr,0.48962,0.91121
+pooled_test,G0,lr,0.49478,0.91178
+pooled_test,G0,lr,0.49991,0.91351
+pooled_test,G0,lr,0.50506,0.91466
+pooled_test,G0,lr,0.51019,0.91609
+pooled_test,G0,lr,0.51534,0.91724
+pooled_test,G0,lr,0.52047,0.91897
+pooled_test,G0,lr,0.52563,0.91983
+pooled_test,G0,lr,0.53075,0.92155
+pooled_test,G0,lr,0.53587,0.92385
+pooled_test,G0,lr,0.54105,0.92414
+pooled_test,G0,lr,0.5462,0.925
+pooled_test,G0,lr,0.55137,0.92557
+pooled_test,G0,lr,0.55653,0.92615
+pooled_test,G0,lr,0.5617,0.92672
+pooled_test,G0,lr,0.56684,0.92787
+pooled_test,G0,lr,0.57199,0.92902
+pooled_test,G0,lr,0.57714,0.93017
+pooled_test,G0,lr,0.58229,0.93103
+pooled_test,G0,lr,0.58745,0.9319
+pooled_test,G0,lr,0.59258,0.93362
+pooled_test,G0,lr,0.59775,0.9342
+pooled_test,G0,lr,0.6029,0.93506
+pooled_test,G0,lr,0.60806,0.93592
+pooled_test,G0,lr,0.61321,0.93707
+pooled_test,G0,lr,0.61835,0.93822
+pooled_test,G0,lr,0.62351,0.93908
+pooled_test,G0,lr,0.62865,0.94052
+pooled_test,G0,lr,0.6338,0.94167
+pooled_test,G0,lr,0.63893,0.9431
+pooled_test,G0,lr,0.64408,0.94425
+pooled_test,G0,lr,0.64926,0.94454
+pooled_test,G0,lr,0.6544,0.94569
+pooled_test,G0,lr,0.65957,0.94626
+pooled_test,G0,lr,0.66472,0.94713
+pooled_test,G0,lr,0.66986,0.94885
+pooled_test,G0,lr,0.675,0.95
+pooled_test,G0,lr,0.68017,0.95057
+pooled_test,G0,lr,0.68532,0.95172
+pooled_test,G0,lr,0.69049,0.95201
+pooled_test,G0,lr,0.69564,0.95316
+pooled_test,G0,lr,0.7008,0.95374
+pooled_test,G0,lr,0.70597,0.95431
+pooled_test,G0,lr,0.71115,0.95431
+pooled_test,G0,lr,0.71633,0.9546
+pooled_test,G0,lr,0.72149,0.95546
+pooled_test,G0,lr,0.72664,0.95632
+pooled_test,G0,lr,0.73181,0.9569
+pooled_test,G0,lr,0.73697,0.95747
+pooled_test,G0,lr,0.74215,0.95776
+pooled_test,G0,lr,0.74731,0.95833
+pooled_test,G0,lr,0.75248,0.95891
+pooled_test,G0,lr,0.75765,0.9592
+pooled_test,G0,lr,0.76281,0.95977
+pooled_test,G0,lr,0.76798,0.96034
+pooled_test,G0,lr,0.77315,0.96063
+pooled_test,G0,lr,0.77833,0.96092
+pooled_test,G0,lr,0.78348,0.96178
+pooled_test,G0,lr,0.78865,0.96236
+pooled_test,G0,lr,0.7938,0.96351
+pooled_test,G0,lr,0.79898,0.96351
+pooled_test,G0,lr,0.80415,0.96408
+pooled_test,G0,lr,0.80929,0.96523
+pooled_test,G0,lr,0.81448,0.96523
+pooled_test,G0,lr,0.81964,0.9658
+pooled_test,G0,lr,0.8248,0.96667
+pooled_test,G0,lr,0.82996,0.96753
+pooled_test,G0,lr,0.83514,0.96753
+pooled_test,G0,lr,0.84031,0.9681
+pooled_test,G0,lr,0.84544,0.96954
+pooled_test,G0,lr,0.85061,0.97011
+pooled_test,G0,lr,0.85576,0.97098
+pooled_test,G0,lr,0.86093,0.97155
+pooled_test,G0,lr,0.86612,0.97155
+pooled_test,G0,lr,0.87126,0.9727
+pooled_test,G0,lr,0.87641,0.97414
+pooled_test,G0,lr,0.88156,0.975
+pooled_test,G0,lr,0.88673,0.97557
+pooled_test,G0,lr,0.89188,0.97644
+pooled_test,G0,lr,0.89706,0.97672
+pooled_test,G0,lr,0.90221,0.97787
+pooled_test,G0,lr,0.90739,0.97787
+pooled_test,G0,lr,0.91256,0.97845
+pooled_test,G0,lr,0.91771,0.97931
+pooled_test,G0,lr,0.92288,0.97989
+pooled_test,G0,lr,0.92805,0.98017
+pooled_test,G0,lr,0.93319,0.98161
+pooled_test,G0,lr,0.93834,0.98276
+pooled_test,G0,lr,0.94351,0.98305
+pooled_test,G0,lr,0.94864,0.98477
+pooled_test,G0,lr,0.95377,0.98621
+pooled_test,G0,lr,0.95893,0.98736
+pooled_test,G0,lr,0.96407,0.98851
+pooled_test,G0,lr,0.96921,0.98994
+pooled_test,G0,lr,0.97433,0.99195
+pooled_test,G0,lr,0.97944,0.99425
+pooled_test,G0,lr,0.98458,0.99569
+pooled_test,G0,lr,0.98973,0.99655
+pooled_test,G0,lr,0.99487,0.99828
+pooled_test,G0,lr,1.0,1.0
+pooled_test,G0,hgb,0.0,0.00029
+pooled_test,G0,hgb,0.00261,0.08161
+pooled_test,G0,hgb,0.00589,0.14224
+pooled_test,G0,hgb,0.00942,0.19425
+pooled_test,G0,hgb,0.01332,0.23506
+pooled_test,G0,hgb,0.01733,0.27213
+pooled_test,G0,hgb,0.02153,0.30345
+pooled_test,G0,hgb,0.02571,0.33534
+pooled_test,G0,hgb,0.02997,0.36437
+pooled_test,G0,hgb,0.03442,0.38793
+pooled_test,G0,hgb,0.03877,0.41408
+pooled_test,G0,hgb,0.04315,0.43966
+pooled_test,G0,hgb,0.04776,0.45776
+pooled_test,G0,hgb,0.05219,0.48161
+pooled_test,G0,hgb,0.05675,0.50144
+pooled_test,G0,hgb,0.06133,0.5204
+pooled_test,G0,hgb,0.0659,0.54023
+pooled_test,G0,hgb,0.07058,0.55603
+pooled_test,G0,hgb,0.07525,0.57241
+pooled_test,G0,hgb,0.07992,0.58851
+pooled_test,G0,hgb,0.08476,0.59943
+pooled_test,G0,hgb,0.08954,0.61236
+pooled_test,G0,hgb,0.09436,0.62356
+pooled_test,G0,hgb,0.09921,0.63448
+pooled_test,G0,hgb,0.10398,0.64741
+pooled_test,G0,hgb,0.10878,0.65977
+pooled_test,G0,hgb,0.11361,0.67069
+pooled_test,G0,hgb,0.11849,0.68046
+pooled_test,G0,hgb,0.12339,0.68937
+pooled_test,G0,hgb,0.12835,0.69655
+pooled_test,G0,hgb,0.13327,0.70489
+pooled_test,G0,hgb,0.1382,0.71264
+pooled_test,G0,hgb,0.14317,0.71983
+pooled_test,G0,hgb,0.14807,0.72845
+pooled_test,G0,hgb,0.15295,0.73822
+pooled_test,G0,hgb,0.15794,0.74454
+pooled_test,G0,hgb,0.16282,0.75402
+pooled_test,G0,hgb,0.16781,0.76034
+pooled_test,G0,hgb,0.17281,0.7658
+pooled_test,G0,hgb,0.17776,0.77356
+pooled_test,G0,hgb,0.18277,0.77874
+pooled_test,G0,hgb,0.18775,0.78534
+pooled_test,G0,hgb,0.19275,0.79138
+pooled_test,G0,hgb,0.1978,0.7954
+pooled_test,G0,hgb,0.2028,0.80115
+pooled_test,G0,hgb,0.20787,0.8046
+pooled_test,G0,hgb,0.21292,0.8092
+pooled_test,G0,hgb,0.21796,0.81351
+pooled_test,G0,hgb,0.22303,0.81724
+pooled_test,G0,hgb,0.22808,0.82155
+pooled_test,G0,hgb,0.23309,0.82701
+pooled_test,G0,hgb,0.23817,0.83017
+pooled_test,G0,hgb,0.24328,0.83247
+pooled_test,G0,hgb,0.24834,0.83649
+pooled_test,G0,hgb,0.25338,0.8408
+pooled_test,G0,hgb,0.25847,0.84397
+pooled_test,G0,hgb,0.26356,0.84713
+pooled_test,G0,hgb,0.26865,0.85
+pooled_test,G0,hgb,0.27373,0.85316
+pooled_test,G0,hgb,0.27883,0.85575
+pooled_test,G0,hgb,0.2839,0.85948
+pooled_test,G0,hgb,0.28898,0.86264
+pooled_test,G0,hgb,0.29409,0.86494
+pooled_test,G0,hgb,0.2992,0.86753
+pooled_test,G0,hgb,0.3043,0.87011
+pooled_test,G0,hgb,0.30941,0.87241
+pooled_test,G0,hgb,0.31452,0.87471
+pooled_test,G0,hgb,0.31962,0.8773
+pooled_test,G0,hgb,0.32472,0.87989
+pooled_test,G0,hgb,0.32983,0.88247
+pooled_test,G0,hgb,0.33498,0.88362
+pooled_test,G0,hgb,0.34011,0.88506
+pooled_test,G0,hgb,0.34524,0.88678
+pooled_test,G0,hgb,0.35038,0.88822
+pooled_test,G0,hgb,0.35549,0.89052
+pooled_test,G0,hgb,0.36058,0.89339
+pooled_test,G0,hgb,0.36567,0.89655
+pooled_test,G0,hgb,0.37083,0.89741
+pooled_test,G0,hgb,0.37594,0.89943
+pooled_test,G0,hgb,0.38107,0.90144
+pooled_test,G0,hgb,0.38617,0.90374
+pooled_test,G0,hgb,0.39129,0.90603
+pooled_test,G0,hgb,0.39641,0.90776
+pooled_test,G0,hgb,0.40155,0.9092
+pooled_test,G0,hgb,0.4067,0.91063
+pooled_test,G0,hgb,0.41182,0.91236
+pooled_test,G0,hgb,0.41696,0.91379
+pooled_test,G0,hgb,0.4221,0.91523
+pooled_test,G0,hgb,0.42724,0.91667
+pooled_test,G0,hgb,0.43236,0.91839
+pooled_test,G0,hgb,0.43752,0.91925
+pooled_test,G0,hgb,0.44266,0.92098
+pooled_test,G0,hgb,0.44776,0.92328
+pooled_test,G0,hgb,0.45288,0.92557
+pooled_test,G0,hgb,0.458,0.9273
+pooled_test,G0,hgb,0.46316,0.92816
+pooled_test,G0,hgb,0.4683,0.92931
+pooled_test,G0,hgb,0.47344,0.93103
+pooled_test,G0,hgb,0.47859,0.93218
+pooled_test,G0,hgb,0.48372,0.93362
+pooled_test,G0,hgb,0.48889,0.9342
+pooled_test,G0,hgb,0.49402,0.93563
+pooled_test,G0,hgb,0.49917,0.93707
+pooled_test,G0,hgb,0.50428,0.93937
+pooled_test,G0,hgb,0.50943,0.94023
+pooled_test,G0,hgb,0.51457,0.94167
+pooled_test,G0,hgb,0.51969,0.94368
+pooled_test,G0,hgb,0.52488,0.94368
+pooled_test,G0,hgb,0.53003,0.94454
+pooled_test,G0,hgb,0.53518,0.94569
+pooled_test,G0,hgb,0.54035,0.94626
+pooled_test,G0,hgb,0.5455,0.94713
+pooled_test,G0,hgb,0.55066,0.94799
+pooled_test,G0,hgb,0.55582,0.94856
+pooled_test,G0,hgb,0.56098,0.94943
+pooled_test,G0,hgb,0.56613,0.95029
+pooled_test,G0,hgb,0.57129,0.95115
+pooled_test,G0,hgb,0.57646,0.95172
+pooled_test,G0,hgb,0.58161,0.95259
+pooled_test,G0,hgb,0.58678,0.95316
+pooled_test,G0,hgb,0.59196,0.95316
+pooled_test,G0,hgb,0.59712,0.95402
+pooled_test,G0,hgb,0.60226,0.95517
+pooled_test,G0,hgb,0.60743,0.95575
+pooled_test,G0,hgb,0.61255,0.95805
+pooled_test,G0,hgb,0.61771,0.95862
+pooled_test,G0,hgb,0.62287,0.95948
+pooled_test,G0,hgb,0.62803,0.96006
+pooled_test,G0,hgb,0.63318,0.96121
+pooled_test,G0,hgb,0.63836,0.96121
+pooled_test,G0,hgb,0.64349,0.96293
+pooled_test,G0,hgb,0.64864,0.96408
+pooled_test,G0,hgb,0.6538,0.96466
+pooled_test,G0,hgb,0.65897,0.96523
+pooled_test,G0,hgb,0.6641,0.96695
+pooled_test,G0,hgb,0.66927,0.96753
+pooled_test,G0,hgb,0.67443,0.9681
+pooled_test,G0,hgb,0.67961,0.96839
+pooled_test,G0,hgb,0.68477,0.96897
+pooled_test,G0,hgb,0.68993,0.96983
+pooled_test,G0,hgb,0.69507,0.97126
+pooled_test,G0,hgb,0.70021,0.97241
+pooled_test,G0,hgb,0.70537,0.97328
+pooled_test,G0,hgb,0.71054,0.97356
+pooled_test,G0,hgb,0.7157,0.97443
+pooled_test,G0,hgb,0.72089,0.97443
+pooled_test,G0,hgb,0.72602,0.97586
+pooled_test,G0,hgb,0.7312,0.97615
+pooled_test,G0,hgb,0.73637,0.97644
+pooled_test,G0,hgb,0.74154,0.97701
+pooled_test,G0,hgb,0.7467,0.97759
+pooled_test,G0,hgb,0.75185,0.97874
+pooled_test,G0,hgb,0.75702,0.97931
+pooled_test,G0,hgb,0.76219,0.9796
+pooled_test,G0,hgb,0.76736,0.98017
+pooled_test,G0,hgb,0.7725,0.98132
+pooled_test,G0,hgb,0.77765,0.98247
+pooled_test,G0,hgb,0.78283,0.98247
+pooled_test,G0,hgb,0.78802,0.98247
+pooled_test,G0,hgb,0.79317,0.98362
+pooled_test,G0,hgb,0.79835,0.98362
+pooled_test,G0,hgb,0.80354,0.98362
+pooled_test,G0,hgb,0.8087,0.9842
+pooled_test,G0,hgb,0.81386,0.98477
+pooled_test,G0,hgb,0.81903,0.98506
+pooled_test,G0,hgb,0.82422,0.98506
+pooled_test,G0,hgb,0.8294,0.98534
+pooled_test,G0,hgb,0.83457,0.98563
+pooled_test,G0,hgb,0.83975,0.98592
+pooled_test,G0,hgb,0.84491,0.98649
+pooled_test,G0,hgb,0.85008,0.98707
+pooled_test,G0,hgb,0.85525,0.98736
+pooled_test,G0,hgb,0.86043,0.98736
+pooled_test,G0,hgb,0.86561,0.98764
+pooled_test,G0,hgb,0.87079,0.98764
+pooled_test,G0,hgb,0.87597,0.98793
+pooled_test,G0,hgb,0.88115,0.98793
+pooled_test,G0,hgb,0.88633,0.98822
+pooled_test,G0,hgb,0.89147,0.98937
+pooled_test,G0,hgb,0.89666,0.98937
+pooled_test,G0,hgb,0.90183,0.98994
+pooled_test,G0,hgb,0.90699,0.99052
+pooled_test,G0,hgb,0.91217,0.9908
+pooled_test,G0,hgb,0.91733,0.99138
+pooled_test,G0,hgb,0.9225,0.99167
+pooled_test,G0,hgb,0.92767,0.99195
+pooled_test,G0,hgb,0.93282,0.99339
+pooled_test,G0,hgb,0.93799,0.99368
+pooled_test,G0,hgb,0.94316,0.99397
+pooled_test,G0,hgb,0.94835,0.99397
+pooled_test,G0,hgb,0.95352,0.99425
+pooled_test,G0,hgb,0.95869,0.99483
+pooled_test,G0,hgb,0.96387,0.99483
+pooled_test,G0,hgb,0.96903,0.99569
+pooled_test,G0,hgb,0.97418,0.99684
+pooled_test,G0,hgb,0.97935,0.99713
+pooled_test,G0,hgb,0.98454,0.99713
+pooled_test,G0,hgb,0.98969,0.99799
+pooled_test,G0,hgb,0.99485,0.99885
+pooled_test,G0,hgb,1.0,1.0
+pooled_test,G4,hgb,0.0,0.00029
+pooled_test,G4,hgb,0.0024,0.08822
+pooled_test,G4,hgb,0.00575,0.14655
+pooled_test,G4,hgb,0.00911,0.20402
+pooled_test,G4,hgb,0.01289,0.24885
+pooled_test,G4,hgb,0.01676,0.29023
+pooled_test,G4,hgb,0.02083,0.32557
+pooled_test,G4,hgb,0.02498,0.35862
+pooled_test,G4,hgb,0.02914,0.3908
+pooled_test,G4,hgb,0.03342,0.41954
+pooled_test,G4,hgb,0.03779,0.44511
+pooled_test,G4,hgb,0.04225,0.4681
+pooled_test,G4,hgb,0.04669,0.49167
+pooled_test,G4,hgb,0.05122,0.51236
+pooled_test,G4,hgb,0.05584,0.53046
+pooled_test,G4,hgb,0.06043,0.54914
+pooled_test,G4,hgb,0.06513,0.56437
+pooled_test,G4,hgb,0.06967,0.58477
+pooled_test,G4,hgb,0.07442,0.59856
+pooled_test,G4,hgb,0.07908,0.61494
+pooled_test,G4,hgb,0.08385,0.62816
+pooled_test,G4,hgb,0.08869,0.63937
+pooled_test,G4,hgb,0.09349,0.65115
+pooled_test,G4,hgb,0.09835,0.66178
+pooled_test,G4,hgb,0.10322,0.67155
+pooled_test,G4,hgb,0.10809,0.68161
+pooled_test,G4,hgb,0.11292,0.69253
+pooled_test,G4,hgb,0.11783,0.70144
+pooled_test,G4,hgb,0.12274,0.71006
+pooled_test,G4,hgb,0.12773,0.71609
+pooled_test,G4,hgb,0.13265,0.72443
+pooled_test,G4,hgb,0.13759,0.73218
+pooled_test,G4,hgb,0.14258,0.73851
+pooled_test,G4,hgb,0.14757,0.74425
+pooled_test,G4,hgb,0.15251,0.7523
+pooled_test,G4,hgb,0.15748,0.7592
+pooled_test,G4,hgb,0.16244,0.76609
+pooled_test,G4,hgb,0.16742,0.7727
+pooled_test,G4,hgb,0.17234,0.78075
+pooled_test,G4,hgb,0.17736,0.78621
+pooled_test,G4,hgb,0.18228,0.79425
+pooled_test,G4,hgb,0.18731,0.79943
+pooled_test,G4,hgb,0.19227,0.80632
+pooled_test,G4,hgb,0.19726,0.81236
+pooled_test,G4,hgb,0.20231,0.81695
+pooled_test,G4,hgb,0.20732,0.82213
+pooled_test,G4,hgb,0.21239,0.82586
+pooled_test,G4,hgb,0.21746,0.82931
+pooled_test,G4,hgb,0.22248,0.83477
+pooled_test,G4,hgb,0.22749,0.84023
+pooled_test,G4,hgb,0.23258,0.8431
+pooled_test,G4,hgb,0.23765,0.84684
+pooled_test,G4,hgb,0.24267,0.85172
+pooled_test,G4,hgb,0.24773,0.85575
+pooled_test,G4,hgb,0.25283,0.85833
+pooled_test,G4,hgb,0.2579,0.86207
+pooled_test,G4,hgb,0.26303,0.86379
+pooled_test,G4,hgb,0.26816,0.86552
+pooled_test,G4,hgb,0.27328,0.86753
+pooled_test,G4,hgb,0.27833,0.87155
+pooled_test,G4,hgb,0.28342,0.87471
+pooled_test,G4,hgb,0.28852,0.8773
+pooled_test,G4,hgb,0.2936,0.88075
+pooled_test,G4,hgb,0.29871,0.88305
+pooled_test,G4,hgb,0.30373,0.88793
+pooled_test,G4,hgb,0.30887,0.88966
+pooled_test,G4,hgb,0.31393,0.89339
+pooled_test,G4,hgb,0.31907,0.89483
+pooled_test,G4,hgb,0.32411,0.89914
+pooled_test,G4,hgb,0.32927,0.9
+pooled_test,G4,hgb,0.33438,0.90259
+pooled_test,G4,hgb,0.33951,0.90402
+pooled_test,G4,hgb,0.34464,0.90603
+pooled_test,G4,hgb,0.34975,0.90805
+pooled_test,G4,hgb,0.35488,0.91006
+pooled_test,G4,hgb,0.36002,0.91121
+pooled_test,G4,hgb,0.36514,0.91322
+pooled_test,G4,hgb,0.37027,0.91494
+pooled_test,G4,hgb,0.37539,0.91695
+pooled_test,G4,hgb,0.38051,0.91897
+pooled_test,G4,hgb,0.38567,0.91983
+pooled_test,G4,hgb,0.39082,0.92098
+pooled_test,G4,hgb,0.39595,0.92241
+pooled_test,G4,hgb,0.40108,0.92414
+pooled_test,G4,hgb,0.40619,0.92672
+pooled_test,G4,hgb,0.41131,0.92845
+pooled_test,G4,hgb,0.41645,0.93017
+pooled_test,G4,hgb,0.42159,0.93132
+pooled_test,G4,hgb,0.42673,0.93276
+pooled_test,G4,hgb,0.43185,0.93448
+pooled_test,G4,hgb,0.43701,0.93563
+pooled_test,G4,hgb,0.44215,0.93707
+pooled_test,G4,hgb,0.44725,0.93937
+pooled_test,G4,hgb,0.45237,0.94167
+pooled_test,G4,hgb,0.45751,0.94282
+pooled_test,G4,hgb,0.46263,0.94511
+pooled_test,G4,hgb,0.46773,0.94741
+pooled_test,G4,hgb,0.47288,0.94856
+pooled_test,G4,hgb,0.47806,0.94885
+pooled_test,G4,hgb,0.48323,0.94914
+pooled_test,G4,hgb,0.48836,0.95086
+pooled_test,G4,hgb,0.49351,0.95201
+pooled_test,G4,hgb,0.49865,0.95345
+pooled_test,G4,hgb,0.50379,0.95489
+pooled_test,G4,hgb,0.50896,0.95517
+pooled_test,G4,hgb,0.5141,0.95661
+pooled_test,G4,hgb,0.51925,0.95747
+pooled_test,G4,hgb,0.52442,0.95805
+pooled_test,G4,hgb,0.52957,0.95891
+pooled_test,G4,hgb,0.53473,0.96006
+pooled_test,G4,hgb,0.53991,0.96006
+pooled_test,G4,hgb,0.54508,0.96034
+pooled_test,G4,hgb,0.55023,0.96149
+pooled_test,G4,hgb,0.55537,0.96293
+pooled_test,G4,hgb,0.56052,0.96408
+pooled_test,G4,hgb,0.56568,0.96466
+pooled_test,G4,hgb,0.57087,0.96466
+pooled_test,G4,hgb,0.576,0.96638
+pooled_test,G4,hgb,0.58114,0.96753
+pooled_test,G4,hgb,0.58627,0.96954
+pooled_test,G4,hgb,0.59143,0.97011
+pooled_test,G4,hgb,0.5966,0.9704
+pooled_test,G4,hgb,0.60176,0.97126
+pooled_test,G4,hgb,0.60693,0.97184
+pooled_test,G4,hgb,0.61209,0.97241
+pooled_test,G4,hgb,0.61724,0.97356
+pooled_test,G4,hgb,0.62239,0.97471
+pooled_test,G4,hgb,0.62756,0.975
+pooled_test,G4,hgb,0.63273,0.97557
+pooled_test,G4,hgb,0.6379,0.97586
+pooled_test,G4,hgb,0.64307,0.97615
+pooled_test,G4,hgb,0.64824,0.97701
+pooled_test,G4,hgb,0.6534,0.9773
+pooled_test,G4,hgb,0.65856,0.97816
+pooled_test,G4,hgb,0.66372,0.97902
+pooled_test,G4,hgb,0.66887,0.98017
+pooled_test,G4,hgb,0.67404,0.98046
+pooled_test,G4,hgb,0.6792,0.98132
+pooled_test,G4,hgb,0.68438,0.98132
+pooled_test,G4,hgb,0.68955,0.9819
+pooled_test,G4,hgb,0.69471,0.98276
+pooled_test,G4,hgb,0.69987,0.98305
+pooled_test,G4,hgb,0.70504,0.98362
+pooled_test,G4,hgb,0.71021,0.98391
+pooled_test,G4,hgb,0.71539,0.9842
+pooled_test,G4,hgb,0.72056,0.98477
+pooled_test,G4,hgb,0.72574,0.98477
+pooled_test,G4,hgb,0.73091,0.98534
+pooled_test,G4,hgb,0.73608,0.98563
+pooled_test,G4,hgb,0.74125,0.98621
+pooled_test,G4,hgb,0.74641,0.98678
+pooled_test,G4,hgb,0.75159,0.98707
+pooled_test,G4,hgb,0.75677,0.98736
+pooled_test,G4,hgb,0.76194,0.98736
+pooled_test,G4,hgb,0.76713,0.98736
+pooled_test,G4,hgb,0.7723,0.98764
+pooled_test,G4,hgb,0.77749,0.98764
+pooled_test,G4,hgb,0.78265,0.98822
+pooled_test,G4,hgb,0.78782,0.98879
+pooled_test,G4,hgb,0.793,0.98908
+pooled_test,G4,hgb,0.79817,0.98937
+pooled_test,G4,hgb,0.80334,0.98994
+pooled_test,G4,hgb,0.80851,0.99023
+pooled_test,G4,hgb,0.81367,0.9908
+pooled_test,G4,hgb,0.81885,0.9908
+pooled_test,G4,hgb,0.82403,0.99109
+pooled_test,G4,hgb,0.82922,0.99109
+pooled_test,G4,hgb,0.83439,0.99138
+pooled_test,G4,hgb,0.83958,0.99138
+pooled_test,G4,hgb,0.84475,0.99138
+pooled_test,G4,hgb,0.84992,0.99195
+pooled_test,G4,hgb,0.85509,0.99224
+pooled_test,G4,hgb,0.86028,0.99224
+pooled_test,G4,hgb,0.86546,0.99253
+pooled_test,G4,hgb,0.87064,0.99253
+pooled_test,G4,hgb,0.87583,0.99253
+pooled_test,G4,hgb,0.881,0.99253
+pooled_test,G4,hgb,0.88619,0.99253
+pooled_test,G4,hgb,0.89137,0.99253
+pooled_test,G4,hgb,0.89654,0.9931
+pooled_test,G4,hgb,0.90172,0.99339
+pooled_test,G4,hgb,0.9069,0.99339
+pooled_test,G4,hgb,0.91205,0.99454
+pooled_test,G4,hgb,0.91723,0.99454
+pooled_test,G4,hgb,0.9224,0.99483
+pooled_test,G4,hgb,0.92757,0.99511
+pooled_test,G4,hgb,0.93276,0.99511
+pooled_test,G4,hgb,0.93792,0.99598
+pooled_test,G4,hgb,0.94308,0.99655
+pooled_test,G4,hgb,0.94827,0.99655
+pooled_test,G4,hgb,0.95344,0.99684
+pooled_test,G4,hgb,0.95862,0.99713
+pooled_test,G4,hgb,0.96379,0.99741
+pooled_test,G4,hgb,0.96897,0.99741
+pooled_test,G4,hgb,0.97413,0.99828
+pooled_test,G4,hgb,0.9793,0.99856
+pooled_test,G4,hgb,0.98449,0.99856
+pooled_test,G4,hgb,0.98964,0.99943
+pooled_test,G4,hgb,0.99481,1.0
+pooled_test,G4,hgb,1.0,1.0
+E3x vitaldb_train->all_mover,G0,lr,0.0,0.00083
+E3x vitaldb_train->all_mover,G0,lr,0.00367,0.0398
+E3x vitaldb_train->all_mover,G0,lr,0.00711,0.08541
+E3x vitaldb_train->all_mover,G0,lr,0.01065,0.12852
+E3x vitaldb_train->all_mover,G0,lr,0.014,0.17662
+E3x vitaldb_train->all_mover,G0,lr,0.0178,0.21227
+E3x vitaldb_train->all_mover,G0,lr,0.02179,0.24378
+E3x vitaldb_train->all_mover,G0,lr,0.02621,0.26451
+E3x vitaldb_train->all_mover,G0,lr,0.03004,0.30017
+E3x vitaldb_train->all_mover,G0,lr,0.03433,0.32338
+E3x vitaldb_train->all_mover,G0,lr,0.03875,0.34411
+E3x vitaldb_train->all_mover,G0,lr,0.0431,0.3665
+E3x vitaldb_train->all_mover,G0,lr,0.04768,0.38308
+E3x vitaldb_train->all_mover,G0,lr,0.0519,0.40879
+E3x vitaldb_train->all_mover,G0,lr,0.05642,0.4262
+E3x vitaldb_train->all_mover,G0,lr,0.061,0.44279
+E3x vitaldb_train->all_mover,G0,lr,0.06528,0.46683
+E3x vitaldb_train->all_mover,G0,lr,0.07009,0.47761
+E3x vitaldb_train->all_mover,G0,lr,0.07483,0.48922
+E3x vitaldb_train->all_mover,G0,lr,0.07961,0.50083
+E3x vitaldb_train->all_mover,G0,lr,0.08406,0.52073
+E3x vitaldb_train->all_mover,G0,lr,0.08886,0.53151
+E3x vitaldb_train->all_mover,G0,lr,0.09367,0.54229
+E3x vitaldb_train->all_mover,G0,lr,0.09854,0.55058
+E3x vitaldb_train->all_mover,G0,lr,0.10328,0.56302
+E3x vitaldb_train->all_mover,G0,lr,0.10816,0.57214
+E3x vitaldb_train->all_mover,G0,lr,0.11309,0.5796
+E3x vitaldb_train->all_mover,G0,lr,0.11793,0.58872
+E3x vitaldb_train->all_mover,G0,lr,0.12277,0.59867
+E3x vitaldb_train->all_mover,G0,lr,0.12764,0.60779
+E3x vitaldb_train->all_mover,G0,lr,0.13251,0.61692
+E3x vitaldb_train->all_mover,G0,lr,0.13729,0.62769
+E3x vitaldb_train->all_mover,G0,lr,0.1421,0.63847
+E3x vitaldb_train->all_mover,G0,lr,0.14697,0.6476
+E3x vitaldb_train->all_mover,G0,lr,0.15194,0.65423
+E3x vitaldb_train->all_mover,G0,lr,0.15687,0.66169
+E3x vitaldb_train->all_mover,G0,lr,0.16168,0.67164
+E3x vitaldb_train->all_mover,G0,lr,0.16665,0.67828
+E3x vitaldb_train->all_mover,G0,lr,0.17149,0.68823
+E3x vitaldb_train->all_mover,G0,lr,0.17656,0.69237
+E3x vitaldb_train->all_mover,G0,lr,0.18136,0.70232
+E3x vitaldb_train->all_mover,G0,lr,0.18653,0.70398
+E3x vitaldb_train->all_mover,G0,lr,0.19143,0.71227
+E3x vitaldb_train->all_mover,G0,lr,0.19637,0.71973
+E3x vitaldb_train->all_mover,G0,lr,0.20137,0.72554
+E3x vitaldb_train->all_mover,G0,lr,0.20615,0.73632
+E3x vitaldb_train->all_mover,G0,lr,0.21118,0.74129
+E3x vitaldb_train->all_mover,G0,lr,0.21628,0.74461
+E3x vitaldb_train->all_mover,G0,lr,0.22144,0.74627
+E3x vitaldb_train->all_mover,G0,lr,0.22644,0.75124
+E3x vitaldb_train->all_mover,G0,lr,0.23148,0.75622
+E3x vitaldb_train->all_mover,G0,lr,0.23655,0.76036
+E3x vitaldb_train->all_mover,G0,lr,0.24158,0.76534
+E3x vitaldb_train->all_mover,G0,lr,0.24674,0.767
+E3x vitaldb_train->all_mover,G0,lr,0.25171,0.7728
+E3x vitaldb_train->all_mover,G0,lr,0.25675,0.77778
+E3x vitaldb_train->all_mover,G0,lr,0.26185,0.78109
+E3x vitaldb_train->all_mover,G0,lr,0.26682,0.78773
+E3x vitaldb_train->all_mover,G0,lr,0.27188,0.79104
+E3x vitaldb_train->all_mover,G0,lr,0.27692,0.79602
+E3x vitaldb_train->all_mover,G0,lr,0.28179,0.80514
+E3x vitaldb_train->all_mover,G0,lr,0.28689,0.80846
+E3x vitaldb_train->all_mover,G0,lr,0.29192,0.8126
+E3x vitaldb_train->all_mover,G0,lr,0.29699,0.81675
+E3x vitaldb_train->all_mover,G0,lr,0.30206,0.8209
+E3x vitaldb_train->all_mover,G0,lr,0.30716,0.82421
+E3x vitaldb_train->all_mover,G0,lr,0.31225,0.82753
+E3x vitaldb_train->all_mover,G0,lr,0.31732,0.83085
+E3x vitaldb_train->all_mover,G0,lr,0.32245,0.83333
+E3x vitaldb_train->all_mover,G0,lr,0.32745,0.83914
+E3x vitaldb_train->all_mover,G0,lr,0.33262,0.8408
+E3x vitaldb_train->all_mover,G0,lr,0.33765,0.84494
+E3x vitaldb_train->all_mover,G0,lr,0.34272,0.84909
+E3x vitaldb_train->all_mover,G0,lr,0.34782,0.8524
+E3x vitaldb_train->all_mover,G0,lr,0.35295,0.85489
+E3x vitaldb_train->all_mover,G0,lr,0.35815,0.85572
+E3x vitaldb_train->all_mover,G0,lr,0.36331,0.85655
+E3x vitaldb_train->all_mover,G0,lr,0.36851,0.85738
+E3x vitaldb_train->all_mover,G0,lr,0.37364,0.85987
+E3x vitaldb_train->all_mover,G0,lr,0.37874,0.86318
+E3x vitaldb_train->all_mover,G0,lr,0.38384,0.86567
+E3x vitaldb_train->all_mover,G0,lr,0.38897,0.86816
+E3x vitaldb_train->all_mover,G0,lr,0.39407,0.87148
+E3x vitaldb_train->all_mover,G0,lr,0.39923,0.87313
+E3x vitaldb_train->all_mover,G0,lr,0.40437,0.87562
+E3x vitaldb_train->all_mover,G0,lr,0.40946,0.87811
+E3x vitaldb_train->all_mover,G0,lr,0.41463,0.87977
+E3x vitaldb_train->all_mover,G0,lr,0.41979,0.88143
+E3x vitaldb_train->all_mover,G0,lr,0.42499,0.88226
+E3x vitaldb_train->all_mover,G0,lr,0.42999,0.88723
+E3x vitaldb_train->all_mover,G0,lr,0.43509,0.89055
+E3x vitaldb_train->all_mover,G0,lr,0.44016,0.89469
+E3x vitaldb_train->all_mover,G0,lr,0.44526,0.89801
+E3x vitaldb_train->all_mover,G0,lr,0.45039,0.89967
+E3x vitaldb_train->all_mover,G0,lr,0.45549,0.90299
+E3x vitaldb_train->all_mover,G0,lr,0.46072,0.90299
+E3x vitaldb_train->all_mover,G0,lr,0.46578,0.90713
+E3x vitaldb_train->all_mover,G0,lr,0.47095,0.90879
+E3x vitaldb_train->all_mover,G0,lr,0.47605,0.91128
+E3x vitaldb_train->all_mover,G0,lr,0.48128,0.91128
+E3x vitaldb_train->all_mover,G0,lr,0.48641,0.91376
+E3x vitaldb_train->all_mover,G0,lr,0.4916,0.91459
+E3x vitaldb_train->all_mover,G0,lr,0.49664,0.91874
+E3x vitaldb_train->all_mover,G0,lr,0.50171,0.92289
+E3x vitaldb_train->all_mover,G0,lr,0.50687,0.92454
+E3x vitaldb_train->all_mover,G0,lr,0.512,0.92703
+E3x vitaldb_train->all_mover,G0,lr,0.51717,0.92869
+E3x vitaldb_train->all_mover,G0,lr,0.5223,0.93035
+E3x vitaldb_train->all_mover,G0,lr,0.52746,0.93201
+E3x vitaldb_train->all_mover,G0,lr,0.53263,0.93367
+E3x vitaldb_train->all_mover,G0,lr,0.53779,0.93532
+E3x vitaldb_train->all_mover,G0,lr,0.54292,0.93698
+E3x vitaldb_train->all_mover,G0,lr,0.54809,0.93864
+E3x vitaldb_train->all_mover,G0,lr,0.55328,0.93947
+E3x vitaldb_train->all_mover,G0,lr,0.55851,0.93947
+E3x vitaldb_train->all_mover,G0,lr,0.56364,0.94113
+E3x vitaldb_train->all_mover,G0,lr,0.56881,0.94279
+E3x vitaldb_train->all_mover,G0,lr,0.57404,0.94279
+E3x vitaldb_train->all_mover,G0,lr,0.57923,0.94362
+E3x vitaldb_train->all_mover,G0,lr,0.58443,0.94444
+E3x vitaldb_train->all_mover,G0,lr,0.58956,0.9461
+E3x vitaldb_train->all_mover,G0,lr,0.59463,0.95025
+E3x vitaldb_train->all_mover,G0,lr,0.59986,0.95025
+E3x vitaldb_train->all_mover,G0,lr,0.60509,0.95025
+E3x vitaldb_train->all_mover,G0,lr,0.61022,0.95191
+E3x vitaldb_train->all_mover,G0,lr,0.61538,0.95357
+E3x vitaldb_train->all_mover,G0,lr,0.62055,0.95522
+E3x vitaldb_train->all_mover,G0,lr,0.62578,0.95522
+E3x vitaldb_train->all_mover,G0,lr,0.63097,0.95605
+E3x vitaldb_train->all_mover,G0,lr,0.63614,0.95688
+E3x vitaldb_train->all_mover,G0,lr,0.64127,0.95937
+E3x vitaldb_train->all_mover,G0,lr,0.64646,0.9602
+E3x vitaldb_train->all_mover,G0,lr,0.65166,0.96103
+E3x vitaldb_train->all_mover,G0,lr,0.65679,0.96269
+E3x vitaldb_train->all_mover,G0,lr,0.66196,0.96434
+E3x vitaldb_train->all_mover,G0,lr,0.66715,0.96517
+E3x vitaldb_train->all_mover,G0,lr,0.67238,0.96517
+E3x vitaldb_train->all_mover,G0,lr,0.67761,0.96517
+E3x vitaldb_train->all_mover,G0,lr,0.68278,0.966
+E3x vitaldb_train->all_mover,G0,lr,0.68801,0.966
+E3x vitaldb_train->all_mover,G0,lr,0.6932,0.96683
+E3x vitaldb_train->all_mover,G0,lr,0.6984,0.96766
+E3x vitaldb_train->all_mover,G0,lr,0.70356,0.96849
+E3x vitaldb_train->all_mover,G0,lr,0.70873,0.97015
+E3x vitaldb_train->all_mover,G0,lr,0.71396,0.97015
+E3x vitaldb_train->all_mover,G0,lr,0.71919,0.97015
+E3x vitaldb_train->all_mover,G0,lr,0.72438,0.97015
+E3x vitaldb_train->all_mover,G0,lr,0.72961,0.97015
+E3x vitaldb_train->all_mover,G0,lr,0.73481,0.97098
+E3x vitaldb_train->all_mover,G0,lr,0.73994,0.97347
+E3x vitaldb_train->all_mover,G0,lr,0.74514,0.9743
+E3x vitaldb_train->all_mover,G0,lr,0.7503,0.97512
+E3x vitaldb_train->all_mover,G0,lr,0.75546,0.97678
+E3x vitaldb_train->all_mover,G0,lr,0.76069,0.97678
+E3x vitaldb_train->all_mover,G0,lr,0.76589,0.97761
+E3x vitaldb_train->all_mover,G0,lr,0.77102,0.97927
+E3x vitaldb_train->all_mover,G0,lr,0.77625,0.97927
+E3x vitaldb_train->all_mover,G0,lr,0.78145,0.9801
+E3x vitaldb_train->all_mover,G0,lr,0.78661,0.98176
+E3x vitaldb_train->all_mover,G0,lr,0.79181,0.98259
+E3x vitaldb_train->all_mover,G0,lr,0.79701,0.98259
+E3x vitaldb_train->all_mover,G0,lr,0.8022,0.98342
+E3x vitaldb_train->all_mover,G0,lr,0.8074,0.98425
+E3x vitaldb_train->all_mover,G0,lr,0.81263,0.98425
+E3x vitaldb_train->all_mover,G0,lr,0.81782,0.98425
+E3x vitaldb_train->all_mover,G0,lr,0.82305,0.98425
+E3x vitaldb_train->all_mover,G0,lr,0.82822,0.9859
+E3x vitaldb_train->all_mover,G0,lr,0.83341,0.98673
+E3x vitaldb_train->all_mover,G0,lr,0.83861,0.98756
+E3x vitaldb_train->all_mover,G0,lr,0.84381,0.98756
+E3x vitaldb_train->all_mover,G0,lr,0.849,0.98839
+E3x vitaldb_train->all_mover,G0,lr,0.85423,0.98839
+E3x vitaldb_train->all_mover,G0,lr,0.85946,0.98839
+E3x vitaldb_train->all_mover,G0,lr,0.86466,0.98839
+E3x vitaldb_train->all_mover,G0,lr,0.86989,0.98839
+E3x vitaldb_train->all_mover,G0,lr,0.87512,0.98839
+E3x vitaldb_train->all_mover,G0,lr,0.88035,0.98839
+E3x vitaldb_train->all_mover,G0,lr,0.88554,0.98839
+E3x vitaldb_train->all_mover,G0,lr,0.89077,0.98839
+E3x vitaldb_train->all_mover,G0,lr,0.896,0.98839
+E3x vitaldb_train->all_mover,G0,lr,0.90123,0.98839
+E3x vitaldb_train->all_mover,G0,lr,0.90646,0.98839
+E3x vitaldb_train->all_mover,G0,lr,0.91166,0.98839
+E3x vitaldb_train->all_mover,G0,lr,0.91689,0.98839
+E3x vitaldb_train->all_mover,G0,lr,0.92205,0.99005
+E3x vitaldb_train->all_mover,G0,lr,0.92725,0.99088
+E3x vitaldb_train->all_mover,G0,lr,0.93244,0.99088
+E3x vitaldb_train->all_mover,G0,lr,0.93764,0.99171
+E3x vitaldb_train->all_mover,G0,lr,0.9428,0.99337
+E3x vitaldb_train->all_mover,G0,lr,0.94803,0.99337
+E3x vitaldb_train->all_mover,G0,lr,0.95326,0.99337
+E3x vitaldb_train->all_mover,G0,lr,0.95846,0.99337
+E3x vitaldb_train->all_mover,G0,lr,0.96366,0.9942
+E3x vitaldb_train->all_mover,G0,lr,0.96882,0.99585
+E3x vitaldb_train->all_mover,G0,lr,0.97405,0.99585
+E3x vitaldb_train->all_mover,G0,lr,0.97925,0.99585
+E3x vitaldb_train->all_mover,G0,lr,0.98447,0.99585
+E3x vitaldb_train->all_mover,G0,lr,0.98964,0.99751
+E3x vitaldb_train->all_mover,G0,lr,0.9948,0.99917
+E3x vitaldb_train->all_mover,G0,lr,1.0,1.0
+E3x vitaldb_train->all_mover,G0,hgb,3e-05,0.0
+E3x vitaldb_train->all_mover,G0,hgb,0.00247,0.07048
+E3x vitaldb_train->all_mover,G0,hgb,0.00575,0.12023
+E3x vitaldb_train->all_mover,G0,hgb,0.00942,0.16003
+E3x vitaldb_train->all_mover,G0,hgb,0.01273,0.20896
+E3x vitaldb_train->all_mover,G0,hgb,0.01679,0.23798
+E3x vitaldb_train->all_mover,G0,hgb,0.02092,0.26617
+E3x vitaldb_train->all_mover,G0,hgb,0.02501,0.29519
+E3x vitaldb_train->all_mover,G0,hgb,0.0293,0.31924
+E3x vitaldb_train->all_mover,G0,hgb,0.03365,0.3408
+E3x vitaldb_train->all_mover,G0,hgb,0.0379,0.36567
+E3x vitaldb_train->all_mover,G0,hgb,0.04229,0.38723
+E3x vitaldb_train->all_mover,G0,hgb,0.04683,0.40464
+E3x vitaldb_train->all_mover,G0,hgb,0.05125,0.42537
+E3x vitaldb_train->all_mover,G0,hgb,0.05596,0.43781
+E3x vitaldb_train->all_mover,G0,hgb,0.06044,0.45688
+E3x vitaldb_train->all_mover,G0,hgb,0.06512,0.47098
+E3x vitaldb_train->all_mover,G0,hgb,0.06973,0.48673
+E3x vitaldb_train->all_mover,G0,hgb,0.07434,0.50166
+E3x vitaldb_train->all_mover,G0,hgb,0.07896,0.51741
+E3x vitaldb_train->all_mover,G0,hgb,0.08376,0.52819
+E3x vitaldb_train->all_mover,G0,hgb,0.08873,0.53483
+E3x vitaldb_train->all_mover,G0,hgb,0.09354,0.54561
+E3x vitaldb_train->all_mover,G0,hgb,0.09831,0.55638
+E3x vitaldb_train->all_mover,G0,hgb,0.10306,0.56882
+E3x vitaldb_train->all_mover,G0,hgb,0.10783,0.58043
+E3x vitaldb_train->all_mover,G0,hgb,0.11261,0.59204
+E3x vitaldb_train->all_mover,G0,hgb,0.11744,0.60116
+E3x vitaldb_train->all_mover,G0,hgb,0.12235,0.60945
+E3x vitaldb_train->all_mover,G0,hgb,0.12709,0.62189
+E3x vitaldb_train->all_mover,G0,hgb,0.13193,0.63184
+E3x vitaldb_train->all_mover,G0,hgb,0.13687,0.63847
+E3x vitaldb_train->all_mover,G0,hgb,0.1418,0.64594
+E3x vitaldb_train->all_mover,G0,hgb,0.14668,0.65506
+E3x vitaldb_train->all_mover,G0,hgb,0.15155,0.66418
+E3x vitaldb_train->all_mover,G0,hgb,0.15639,0.67413
+E3x vitaldb_train->all_mover,G0,hgb,0.16126,0.68242
+E3x vitaldb_train->all_mover,G0,hgb,0.16613,0.69154
+E3x vitaldb_train->all_mover,G0,hgb,0.171,0.70066
+E3x vitaldb_train->all_mover,G0,hgb,0.17597,0.7073
+E3x vitaldb_train->all_mover,G0,hgb,0.18084,0.71559
+E3x vitaldb_train->all_mover,G0,hgb,0.18591,0.71973
+E3x vitaldb_train->all_mover,G0,hgb,0.19098,0.72388
+E3x vitaldb_train->all_mover,G0,hgb,0.19598,0.72968
+E3x vitaldb_train->all_mover,G0,hgb,0.20101,0.73466
+E3x vitaldb_train->all_mover,G0,hgb,0.20595,0.74129
+E3x vitaldb_train->all_mover,G0,hgb,0.21092,0.74793
+E3x vitaldb_train->all_mover,G0,hgb,0.21579,0.75705
+E3x vitaldb_train->all_mover,G0,hgb,0.22076,0.76368
+E3x vitaldb_train->all_mover,G0,hgb,0.22557,0.77363
+E3x vitaldb_train->all_mover,G0,hgb,0.23057,0.77944
+E3x vitaldb_train->all_mover,G0,hgb,0.2357,0.78192
+E3x vitaldb_train->all_mover,G0,hgb,0.24074,0.7869
+E3x vitaldb_train->all_mover,G0,hgb,0.2458,0.79104
+E3x vitaldb_train->all_mover,G0,hgb,0.25087,0.79436
+E3x vitaldb_train->all_mover,G0,hgb,0.25584,0.801
+E3x vitaldb_train->all_mover,G0,hgb,0.26097,0.80348
+E3x vitaldb_train->all_mover,G0,hgb,0.26604,0.80763
+E3x vitaldb_train->all_mover,G0,hgb,0.27104,0.8126
+E3x vitaldb_train->all_mover,G0,hgb,0.27607,0.81758
+E3x vitaldb_train->all_mover,G0,hgb,0.28117,0.8209
+E3x vitaldb_train->all_mover,G0,hgb,0.28634,0.82255
+E3x vitaldb_train->all_mover,G0,hgb,0.29131,0.82836
+E3x vitaldb_train->all_mover,G0,hgb,0.29637,0.8325
+E3x vitaldb_train->all_mover,G0,hgb,0.3015,0.83499
+E3x vitaldb_train->all_mover,G0,hgb,0.30667,0.83665
+E3x vitaldb_train->all_mover,G0,hgb,0.31183,0.83831
+E3x vitaldb_train->all_mover,G0,hgb,0.31693,0.8408
+E3x vitaldb_train->all_mover,G0,hgb,0.322,0.84494
+E3x vitaldb_train->all_mover,G0,hgb,0.3271,0.84826
+E3x vitaldb_train->all_mover,G0,hgb,0.33216,0.8524
+E3x vitaldb_train->all_mover,G0,hgb,0.33726,0.85489
+E3x vitaldb_train->all_mover,G0,hgb,0.3423,0.85987
+E3x vitaldb_train->all_mover,G0,hgb,0.34733,0.86484
+E3x vitaldb_train->all_mover,G0,hgb,0.3525,0.8665
+E3x vitaldb_train->all_mover,G0,hgb,0.3575,0.87231
+E3x vitaldb_train->all_mover,G0,hgb,0.36263,0.87396
+E3x vitaldb_train->all_mover,G0,hgb,0.36773,0.87728
+E3x vitaldb_train->all_mover,G0,hgb,0.37289,0.87894
+E3x vitaldb_train->all_mover,G0,hgb,0.37809,0.87977
+E3x vitaldb_train->all_mover,G0,hgb,0.38325,0.8806
+E3x vitaldb_train->all_mover,G0,hgb,0.38845,0.88143
+E3x vitaldb_train->all_mover,G0,hgb,0.39358,0.88391
+E3x vitaldb_train->all_mover,G0,hgb,0.39862,0.88889
+E3x vitaldb_train->all_mover,G0,hgb,0.40378,0.89055
+E3x vitaldb_train->all_mover,G0,hgb,0.40881,0.89469
+E3x vitaldb_train->all_mover,G0,hgb,0.41398,0.89635
+E3x vitaldb_train->all_mover,G0,hgb,0.41921,0.89635
+E3x vitaldb_train->all_mover,G0,hgb,0.42434,0.89884
+E3x vitaldb_train->all_mover,G0,hgb,0.4295,0.89967
+E3x vitaldb_train->all_mover,G0,hgb,0.43473,0.89967
+E3x vitaldb_train->all_mover,G0,hgb,0.43993,0.9005
+E3x vitaldb_train->all_mover,G0,hgb,0.44513,0.90133
+E3x vitaldb_train->all_mover,G0,hgb,0.45016,0.90547
+E3x vitaldb_train->all_mover,G0,hgb,0.45536,0.9063
+E3x vitaldb_train->all_mover,G0,hgb,0.46055,0.90713
+E3x vitaldb_train->all_mover,G0,hgb,0.46569,0.90962
+E3x vitaldb_train->all_mover,G0,hgb,0.47082,0.91211
+E3x vitaldb_train->all_mover,G0,hgb,0.47595,0.91376
+E3x vitaldb_train->all_mover,G0,hgb,0.48115,0.91459
+E3x vitaldb_train->all_mover,G0,hgb,0.48631,0.91625
+E3x vitaldb_train->all_mover,G0,hgb,0.49138,0.9204
+E3x vitaldb_train->all_mover,G0,hgb,0.49641,0.92454
+E3x vitaldb_train->all_mover,G0,hgb,0.50161,0.92537
+E3x vitaldb_train->all_mover,G0,hgb,0.50677,0.92703
+E3x vitaldb_train->all_mover,G0,hgb,0.51194,0.92869
+E3x vitaldb_train->all_mover,G0,hgb,0.5171,0.93035
+E3x vitaldb_train->all_mover,G0,hgb,0.52226,0.93118
+E3x vitaldb_train->all_mover,G0,hgb,0.52743,0.93284
+E3x vitaldb_train->all_mover,G0,hgb,0.53259,0.93449
+E3x vitaldb_train->all_mover,G0,hgb,0.53772,0.93698
+E3x vitaldb_train->all_mover,G0,hgb,0.54292,0.93698
+E3x vitaldb_train->all_mover,G0,hgb,0.54805,0.93947
+E3x vitaldb_train->all_mover,G0,hgb,0.55315,0.94279
+E3x vitaldb_train->all_mover,G0,hgb,0.55822,0.94693
+E3x vitaldb_train->all_mover,G0,hgb,0.56332,0.94942
+E3x vitaldb_train->all_mover,G0,hgb,0.56851,0.95025
+E3x vitaldb_train->all_mover,G0,hgb,0.57361,0.95357
+E3x vitaldb_train->all_mover,G0,hgb,0.57881,0.95439
+E3x vitaldb_train->all_mover,G0,hgb,0.58401,0.95522
+E3x vitaldb_train->all_mover,G0,hgb,0.58911,0.95771
+E3x vitaldb_train->all_mover,G0,hgb,0.59427,0.95937
+E3x vitaldb_train->all_mover,G0,hgb,0.5995,0.95937
+E3x vitaldb_train->all_mover,G0,hgb,0.60466,0.96103
+E3x vitaldb_train->all_mover,G0,hgb,0.60983,0.96186
+E3x vitaldb_train->all_mover,G0,hgb,0.61506,0.96186
+E3x vitaldb_train->all_mover,G0,hgb,0.62025,0.96269
+E3x vitaldb_train->all_mover,G0,hgb,0.62548,0.96269
+E3x vitaldb_train->all_mover,G0,hgb,0.63071,0.96269
+E3x vitaldb_train->all_mover,G0,hgb,0.63584,0.96434
+E3x vitaldb_train->all_mover,G0,hgb,0.64104,0.96517
+E3x vitaldb_train->all_mover,G0,hgb,0.64624,0.966
+E3x vitaldb_train->all_mover,G0,hgb,0.65143,0.96683
+E3x vitaldb_train->all_mover,G0,hgb,0.6566,0.96766
+E3x vitaldb_train->all_mover,G0,hgb,0.66176,0.96932
+E3x vitaldb_train->all_mover,G0,hgb,0.66693,0.97098
+E3x vitaldb_train->all_mover,G0,hgb,0.67209,0.97264
+E3x vitaldb_train->all_mover,G0,hgb,0.67725,0.9743
+E3x vitaldb_train->all_mover,G0,hgb,0.68242,0.97512
+E3x vitaldb_train->all_mover,G0,hgb,0.68762,0.97595
+E3x vitaldb_train->all_mover,G0,hgb,0.69284,0.97595
+E3x vitaldb_train->all_mover,G0,hgb,0.69807,0.97595
+E3x vitaldb_train->all_mover,G0,hgb,0.70324,0.97678
+E3x vitaldb_train->all_mover,G0,hgb,0.7084,0.97844
+E3x vitaldb_train->all_mover,G0,hgb,0.71363,0.97844
+E3x vitaldb_train->all_mover,G0,hgb,0.7188,0.9801
+E3x vitaldb_train->all_mover,G0,hgb,0.72396,0.98093
+E3x vitaldb_train->all_mover,G0,hgb,0.72919,0.98093
+E3x vitaldb_train->all_mover,G0,hgb,0.73442,0.98093
+E3x vitaldb_train->all_mover,G0,hgb,0.73958,0.98259
+E3x vitaldb_train->all_mover,G0,hgb,0.74478,0.98342
+E3x vitaldb_train->all_mover,G0,hgb,0.74991,0.98507
+E3x vitaldb_train->all_mover,G0,hgb,0.75507,0.98673
+E3x vitaldb_train->all_mover,G0,hgb,0.7603,0.98673
+E3x vitaldb_train->all_mover,G0,hgb,0.76553,0.98673
+E3x vitaldb_train->all_mover,G0,hgb,0.77073,0.98673
+E3x vitaldb_train->all_mover,G0,hgb,0.77593,0.98756
+E3x vitaldb_train->all_mover,G0,hgb,0.78116,0.98756
+E3x vitaldb_train->all_mover,G0,hgb,0.78635,0.98839
+E3x vitaldb_train->all_mover,G0,hgb,0.79158,0.98839
+E3x vitaldb_train->all_mover,G0,hgb,0.79678,0.98839
+E3x vitaldb_train->all_mover,G0,hgb,0.80201,0.98839
+E3x vitaldb_train->all_mover,G0,hgb,0.80724,0.98839
+E3x vitaldb_train->all_mover,G0,hgb,0.81247,0.98839
+E3x vitaldb_train->all_mover,G0,hgb,0.81766,0.98839
+E3x vitaldb_train->all_mover,G0,hgb,0.82289,0.98839
+E3x vitaldb_train->all_mover,G0,hgb,0.82809,0.98922
+E3x vitaldb_train->all_mover,G0,hgb,0.83328,0.99005
+E3x vitaldb_train->all_mover,G0,hgb,0.83851,0.99005
+E3x vitaldb_train->all_mover,G0,hgb,0.84371,0.99005
+E3x vitaldb_train->all_mover,G0,hgb,0.84894,0.99005
+E3x vitaldb_train->all_mover,G0,hgb,0.85417,0.99005
+E3x vitaldb_train->all_mover,G0,hgb,0.8594,0.99005
+E3x vitaldb_train->all_mover,G0,hgb,0.86459,0.99005
+E3x vitaldb_train->all_mover,G0,hgb,0.86982,0.99005
+E3x vitaldb_train->all_mover,G0,hgb,0.87502,0.99088
+E3x vitaldb_train->all_mover,G0,hgb,0.88022,0.99171
+E3x vitaldb_train->all_mover,G0,hgb,0.88541,0.99171
+E3x vitaldb_train->all_mover,G0,hgb,0.89064,0.99171
+E3x vitaldb_train->all_mover,G0,hgb,0.89584,0.99254
+E3x vitaldb_train->all_mover,G0,hgb,0.90104,0.99337
+E3x vitaldb_train->all_mover,G0,hgb,0.90623,0.9942
+E3x vitaldb_train->all_mover,G0,hgb,0.91143,0.9942
+E3x vitaldb_train->all_mover,G0,hgb,0.91666,0.9942
+E3x vitaldb_train->all_mover,G0,hgb,0.92189,0.9942
+E3x vitaldb_train->all_mover,G0,hgb,0.92708,0.99502
+E3x vitaldb_train->all_mover,G0,hgb,0.93228,0.99502
+E3x vitaldb_train->all_mover,G0,hgb,0.93751,0.99502
+E3x vitaldb_train->all_mover,G0,hgb,0.94271,0.99585
+E3x vitaldb_train->all_mover,G0,hgb,0.94794,0.99585
+E3x vitaldb_train->all_mover,G0,hgb,0.95317,0.99585
+E3x vitaldb_train->all_mover,G0,hgb,0.9583,0.99751
+E3x vitaldb_train->all_mover,G0,hgb,0.96353,0.99751
+E3x vitaldb_train->all_mover,G0,hgb,0.96872,0.99834
+E3x vitaldb_train->all_mover,G0,hgb,0.97392,0.99917
+E3x vitaldb_train->all_mover,G0,hgb,0.97912,0.99917
+E3x vitaldb_train->all_mover,G0,hgb,0.98431,1.0
+E3x vitaldb_train->all_mover,G0,hgb,0.98954,1.0
+E3x vitaldb_train->all_mover,G0,hgb,0.99477,1.0
+E3x vitaldb_train->all_mover,G0,hgb,1.0,1.0
+E3x vitaldb_train->all_mover,G4,hgb,3e-05,0.0
+E3x vitaldb_train->all_mover,G4,hgb,0.00315,0.05307
+E3x vitaldb_train->all_mover,G4,hgb,0.0065,0.10116
+E3x vitaldb_train->all_mover,G4,hgb,0.01013,0.14179
+E3x vitaldb_train->all_mover,G4,hgb,0.01403,0.17579
+E3x vitaldb_train->all_mover,G4,hgb,0.01803,0.20647
+E3x vitaldb_train->all_mover,G4,hgb,0.02215,0.23466
+E3x vitaldb_train->all_mover,G4,hgb,0.02647,0.25788
+E3x vitaldb_train->all_mover,G4,hgb,0.03076,0.28192
+E3x vitaldb_train->all_mover,G4,hgb,0.03511,0.30348
+E3x vitaldb_train->all_mover,G4,hgb,0.03943,0.3267
+E3x vitaldb_train->all_mover,G4,hgb,0.04394,0.34494
+E3x vitaldb_train->all_mover,G4,hgb,0.04823,0.36899
+E3x vitaldb_train->all_mover,G4,hgb,0.05284,0.38474
+E3x vitaldb_train->all_mover,G4,hgb,0.05749,0.39884
+E3x vitaldb_train->all_mover,G4,hgb,0.06174,0.42371
+E3x vitaldb_train->all_mover,G4,hgb,0.06626,0.44196
+E3x vitaldb_train->all_mover,G4,hgb,0.0711,0.45191
+E3x vitaldb_train->all_mover,G4,hgb,0.07568,0.46766
+E3x vitaldb_train->all_mover,G4,hgb,0.08052,0.47761
+E3x vitaldb_train->all_mover,G4,hgb,0.08506,0.49502
+E3x vitaldb_train->all_mover,G4,hgb,0.08987,0.5058
+E3x vitaldb_train->all_mover,G4,hgb,0.0949,0.51078
+E3x vitaldb_train->all_mover,G4,hgb,0.09968,0.52156
+E3x vitaldb_train->all_mover,G4,hgb,0.10439,0.53483
+E3x vitaldb_train->all_mover,G4,hgb,0.10913,0.54726
+E3x vitaldb_train->all_mover,G4,hgb,0.11387,0.5597
+E3x vitaldb_train->all_mover,G4,hgb,0.11848,0.57463
+E3x vitaldb_train->all_mover,G4,hgb,0.12329,0.58541
+E3x vitaldb_train->all_mover,G4,hgb,0.12803,0.59784
+E3x vitaldb_train->all_mover,G4,hgb,0.13297,0.60531
+E3x vitaldb_train->all_mover,G4,hgb,0.13784,0.6136
+E3x vitaldb_train->all_mover,G4,hgb,0.14258,0.62604
+E3x vitaldb_train->all_mover,G4,hgb,0.14759,0.63184
+E3x vitaldb_train->all_mover,G4,hgb,0.15239,0.64262
+E3x vitaldb_train->all_mover,G4,hgb,0.1573,0.65091
+E3x vitaldb_train->all_mover,G4,hgb,0.16197,0.66418
+E3x vitaldb_train->all_mover,G4,hgb,0.16675,0.67579
+E3x vitaldb_train->all_mover,G4,hgb,0.17168,0.68325
+E3x vitaldb_train->all_mover,G4,hgb,0.17656,0.69237
+E3x vitaldb_train->all_mover,G4,hgb,0.18162,0.69569
+E3x vitaldb_train->all_mover,G4,hgb,0.18666,0.70066
+E3x vitaldb_train->all_mover,G4,hgb,0.19166,0.70647
+E3x vitaldb_train->all_mover,G4,hgb,0.19653,0.71559
+E3x vitaldb_train->all_mover,G4,hgb,0.20153,0.72139
+E3x vitaldb_train->all_mover,G4,hgb,0.20631,0.73217
+E3x vitaldb_train->all_mover,G4,hgb,0.21137,0.73632
+E3x vitaldb_train->all_mover,G4,hgb,0.21634,0.74295
+E3x vitaldb_train->all_mover,G4,hgb,0.22128,0.75041
+E3x vitaldb_train->all_mover,G4,hgb,0.22615,0.75871
+E3x vitaldb_train->all_mover,G4,hgb,0.23119,0.76368
+E3x vitaldb_train->all_mover,G4,hgb,0.23606,0.7728
+E3x vitaldb_train->all_mover,G4,hgb,0.24103,0.77944
+E3x vitaldb_train->all_mover,G4,hgb,0.24606,0.78441
+E3x vitaldb_train->all_mover,G4,hgb,0.25103,0.79022
+E3x vitaldb_train->all_mover,G4,hgb,0.25603,0.79602
+E3x vitaldb_train->all_mover,G4,hgb,0.261,0.80265
+E3x vitaldb_train->all_mover,G4,hgb,0.26613,0.80514
+E3x vitaldb_train->all_mover,G4,hgb,0.27123,0.80763
+E3x vitaldb_train->all_mover,G4,hgb,0.27636,0.81012
+E3x vitaldb_train->all_mover,G4,hgb,0.28156,0.81095
+E3x vitaldb_train->all_mover,G4,hgb,0.28663,0.81509
+E3x vitaldb_train->all_mover,G4,hgb,0.29176,0.81675
+E3x vitaldb_train->all_mover,G4,hgb,0.29679,0.82172
+E3x vitaldb_train->all_mover,G4,hgb,0.3018,0.82753
+E3x vitaldb_train->all_mover,G4,hgb,0.3069,0.83085
+E3x vitaldb_train->all_mover,G4,hgb,0.31196,0.83499
+E3x vitaldb_train->all_mover,G4,hgb,0.31709,0.83665
+E3x vitaldb_train->all_mover,G4,hgb,0.32223,0.83914
+E3x vitaldb_train->all_mover,G4,hgb,0.32723,0.84494
+E3x vitaldb_train->all_mover,G4,hgb,0.33226,0.84992
+E3x vitaldb_train->all_mover,G4,hgb,0.33713,0.85821
+E3x vitaldb_train->all_mover,G4,hgb,0.34223,0.86153
+E3x vitaldb_train->all_mover,G4,hgb,0.34727,0.8665
+E3x vitaldb_train->all_mover,G4,hgb,0.35237,0.86982
+E3x vitaldb_train->all_mover,G4,hgb,0.35753,0.87148
+E3x vitaldb_train->all_mover,G4,hgb,0.36263,0.87396
+E3x vitaldb_train->all_mover,G4,hgb,0.36773,0.87728
+E3x vitaldb_train->all_mover,G4,hgb,0.37289,0.87894
+E3x vitaldb_train->all_mover,G4,hgb,0.37806,0.8806
+E3x vitaldb_train->all_mover,G4,hgb,0.38322,0.88143
+E3x vitaldb_train->all_mover,G4,hgb,0.38832,0.88474
+E3x vitaldb_train->all_mover,G4,hgb,0.39352,0.88557
+E3x vitaldb_train->all_mover,G4,hgb,0.39871,0.8864
+E3x vitaldb_train->all_mover,G4,hgb,0.40385,0.88889
+E3x vitaldb_train->all_mover,G4,hgb,0.40881,0.89469
+E3x vitaldb_train->all_mover,G4,hgb,0.41385,0.89967
+E3x vitaldb_train->all_mover,G4,hgb,0.41892,0.90381
+E3x vitaldb_train->all_mover,G4,hgb,0.42405,0.9063
+E3x vitaldb_train->all_mover,G4,hgb,0.42908,0.91045
+E3x vitaldb_train->all_mover,G4,hgb,0.43428,0.91128
+E3x vitaldb_train->all_mover,G4,hgb,0.43941,0.91376
+E3x vitaldb_train->all_mover,G4,hgb,0.44461,0.91459
+E3x vitaldb_train->all_mover,G4,hgb,0.44977,0.91542
+E3x vitaldb_train->all_mover,G4,hgb,0.45494,0.91708
+E3x vitaldb_train->all_mover,G4,hgb,0.4601,0.91874
+E3x vitaldb_train->all_mover,G4,hgb,0.4652,0.92206
+E3x vitaldb_train->all_mover,G4,hgb,0.47033,0.92454
+E3x vitaldb_train->all_mover,G4,hgb,0.47549,0.92537
+E3x vitaldb_train->all_mover,G4,hgb,0.48066,0.92703
+E3x vitaldb_train->all_mover,G4,hgb,0.48589,0.92703
+E3x vitaldb_train->all_mover,G4,hgb,0.49102,0.92952
+E3x vitaldb_train->all_mover,G4,hgb,0.49615,0.93118
+E3x vitaldb_train->all_mover,G4,hgb,0.50132,0.93284
+E3x vitaldb_train->all_mover,G4,hgb,0.50641,0.93615
+E3x vitaldb_train->all_mover,G4,hgb,0.51158,0.93781
+E3x vitaldb_train->all_mover,G4,hgb,0.51668,0.94113
+E3x vitaldb_train->all_mover,G4,hgb,0.52178,0.94362
+E3x vitaldb_train->all_mover,G4,hgb,0.52697,0.94444
+E3x vitaldb_train->all_mover,G4,hgb,0.53217,0.94527
+E3x vitaldb_train->all_mover,G4,hgb,0.53737,0.9461
+E3x vitaldb_train->all_mover,G4,hgb,0.54256,0.9461
+E3x vitaldb_train->all_mover,G4,hgb,0.54779,0.9461
+E3x vitaldb_train->all_mover,G4,hgb,0.55299,0.94693
+E3x vitaldb_train->all_mover,G4,hgb,0.55819,0.94776
+E3x vitaldb_train->all_mover,G4,hgb,0.56338,0.94776
+E3x vitaldb_train->all_mover,G4,hgb,0.56855,0.94942
+E3x vitaldb_train->all_mover,G4,hgb,0.57374,0.95025
+E3x vitaldb_train->all_mover,G4,hgb,0.57894,0.95108
+E3x vitaldb_train->all_mover,G4,hgb,0.5841,0.95274
+E3x vitaldb_train->all_mover,G4,hgb,0.58924,0.95439
+E3x vitaldb_train->all_mover,G4,hgb,0.5943,0.95854
+E3x vitaldb_train->all_mover,G4,hgb,0.5995,0.95937
+E3x vitaldb_train->all_mover,G4,hgb,0.60466,0.96103
+E3x vitaldb_train->all_mover,G4,hgb,0.60976,0.96352
+E3x vitaldb_train->all_mover,G4,hgb,0.61496,0.96434
+E3x vitaldb_train->all_mover,G4,hgb,0.62016,0.96517
+E3x vitaldb_train->all_mover,G4,hgb,0.62535,0.966
+E3x vitaldb_train->all_mover,G4,hgb,0.63055,0.96683
+E3x vitaldb_train->all_mover,G4,hgb,0.63568,0.96849
+E3x vitaldb_train->all_mover,G4,hgb,0.64085,0.97015
+E3x vitaldb_train->all_mover,G4,hgb,0.64607,0.97015
+E3x vitaldb_train->all_mover,G4,hgb,0.65127,0.97098
+E3x vitaldb_train->all_mover,G4,hgb,0.65644,0.97181
+E3x vitaldb_train->all_mover,G4,hgb,0.66166,0.97181
+E3x vitaldb_train->all_mover,G4,hgb,0.66689,0.97181
+E3x vitaldb_train->all_mover,G4,hgb,0.67209,0.97264
+E3x vitaldb_train->all_mover,G4,hgb,0.67732,0.97264
+E3x vitaldb_train->all_mover,G4,hgb,0.68248,0.97347
+E3x vitaldb_train->all_mover,G4,hgb,0.68771,0.97347
+E3x vitaldb_train->all_mover,G4,hgb,0.69294,0.97347
+E3x vitaldb_train->all_mover,G4,hgb,0.69817,0.97347
+E3x vitaldb_train->all_mover,G4,hgb,0.70337,0.97347
+E3x vitaldb_train->all_mover,G4,hgb,0.70856,0.9743
+E3x vitaldb_train->all_mover,G4,hgb,0.71379,0.9743
+E3x vitaldb_train->all_mover,G4,hgb,0.71896,0.97595
+E3x vitaldb_train->all_mover,G4,hgb,0.72415,0.97595
+E3x vitaldb_train->all_mover,G4,hgb,0.72932,0.97761
+E3x vitaldb_train->all_mover,G4,hgb,0.73452,0.97844
+E3x vitaldb_train->all_mover,G4,hgb,0.73974,0.97844
+E3x vitaldb_train->all_mover,G4,hgb,0.74497,0.97844
+E3x vitaldb_train->all_mover,G4,hgb,0.75014,0.97927
+E3x vitaldb_train->all_mover,G4,hgb,0.7553,0.98093
+E3x vitaldb_train->all_mover,G4,hgb,0.76053,0.98093
+E3x vitaldb_train->all_mover,G4,hgb,0.76573,0.98176
+E3x vitaldb_train->all_mover,G4,hgb,0.77089,0.98259
+E3x vitaldb_train->all_mover,G4,hgb,0.77602,0.98507
+E3x vitaldb_train->all_mover,G4,hgb,0.78125,0.98507
+E3x vitaldb_train->all_mover,G4,hgb,0.78648,0.98507
+E3x vitaldb_train->all_mover,G4,hgb,0.79168,0.9859
+E3x vitaldb_train->all_mover,G4,hgb,0.79688,0.9859
+E3x vitaldb_train->all_mover,G4,hgb,0.80207,0.98673
+E3x vitaldb_train->all_mover,G4,hgb,0.80727,0.98756
+E3x vitaldb_train->all_mover,G4,hgb,0.8125,0.98756
+E3x vitaldb_train->all_mover,G4,hgb,0.81766,0.98839
+E3x vitaldb_train->all_mover,G4,hgb,0.82286,0.98922
+E3x vitaldb_train->all_mover,G4,hgb,0.82799,0.99171
+E3x vitaldb_train->all_mover,G4,hgb,0.83319,0.99254
+E3x vitaldb_train->all_mover,G4,hgb,0.83835,0.9942
+E3x vitaldb_train->all_mover,G4,hgb,0.84355,0.9942
+E3x vitaldb_train->all_mover,G4,hgb,0.84878,0.9942
+E3x vitaldb_train->all_mover,G4,hgb,0.85397,0.99502
+E3x vitaldb_train->all_mover,G4,hgb,0.8592,0.99502
+E3x vitaldb_train->all_mover,G4,hgb,0.8644,0.99502
+E3x vitaldb_train->all_mover,G4,hgb,0.86963,0.99502
+E3x vitaldb_train->all_mover,G4,hgb,0.87486,0.99502
+E3x vitaldb_train->all_mover,G4,hgb,0.88009,0.99502
+E3x vitaldb_train->all_mover,G4,hgb,0.88522,0.99668
+E3x vitaldb_train->all_mover,G4,hgb,0.89045,0.99668
+E3x vitaldb_train->all_mover,G4,hgb,0.89568,0.99668
+E3x vitaldb_train->all_mover,G4,hgb,0.90091,0.99668
+E3x vitaldb_train->all_mover,G4,hgb,0.9061,0.99751
+E3x vitaldb_train->all_mover,G4,hgb,0.9113,0.99751
+E3x vitaldb_train->all_mover,G4,hgb,0.91653,0.99751
+E3x vitaldb_train->all_mover,G4,hgb,0.92176,0.99751
+E3x vitaldb_train->all_mover,G4,hgb,0.92699,0.99751
+E3x vitaldb_train->all_mover,G4,hgb,0.93218,0.99751
+E3x vitaldb_train->all_mover,G4,hgb,0.93741,0.99751
+E3x vitaldb_train->all_mover,G4,hgb,0.94264,0.99751
+E3x vitaldb_train->all_mover,G4,hgb,0.94784,0.99834
+E3x vitaldb_train->all_mover,G4,hgb,0.953,1.0
+E3x vitaldb_train->all_mover,G4,hgb,0.9582,1.0
+E3x vitaldb_train->all_mover,G4,hgb,0.96343,1.0
+E3x vitaldb_train->all_mover,G4,hgb,0.96866,1.0
+E3x vitaldb_train->all_mover,G4,hgb,0.97389,1.0
+E3x vitaldb_train->all_mover,G4,hgb,0.97908,1.0
+E3x vitaldb_train->all_mover,G4,hgb,0.98431,1.0
+E3x vitaldb_train->all_mover,G4,hgb,0.98954,1.0
+E3x vitaldb_train->all_mover,G4,hgb,0.99477,1.0
+E3x vitaldb_train->all_mover,G4,hgb,1.0,1.0
+reverse mover_train->vitaldb_test,G0,lr,1e-05,0.0
+reverse mover_train->vitaldb_test,G0,lr,0.00366,0.04636
+reverse mover_train->vitaldb_test,G0,lr,0.00696,0.10404
+reverse mover_train->vitaldb_test,G0,lr,0.01049,0.15418
+reverse mover_train->vitaldb_test,G0,lr,0.01403,0.20431
+reverse mover_train->vitaldb_test,G0,lr,0.01792,0.24367
+reverse mover_train->vitaldb_test,G0,lr,0.02183,0.28221
+reverse mover_train->vitaldb_test,G0,lr,0.0259,0.31644
+reverse mover_train->vitaldb_test,G0,lr,0.03003,0.34852
+reverse mover_train->vitaldb_test,G0,lr,0.03414,0.38113
+reverse mover_train->vitaldb_test,G0,lr,0.03853,0.40566
+reverse mover_train->vitaldb_test,G0,lr,0.04285,0.43208
+reverse mover_train->vitaldb_test,G0,lr,0.04719,0.45768
+reverse mover_train->vitaldb_test,G0,lr,0.05175,0.47682
+reverse mover_train->vitaldb_test,G0,lr,0.0564,0.49353
+reverse mover_train->vitaldb_test,G0,lr,0.06107,0.50916
+reverse mover_train->vitaldb_test,G0,lr,0.06566,0.52722
+reverse mover_train->vitaldb_test,G0,lr,0.0704,0.5407
+reverse mover_train->vitaldb_test,G0,lr,0.07502,0.55822
+reverse mover_train->vitaldb_test,G0,lr,0.07976,0.57197
+reverse mover_train->vitaldb_test,G0,lr,0.08465,0.58086
+reverse mover_train->vitaldb_test,G0,lr,0.08943,0.59353
+reverse mover_train->vitaldb_test,G0,lr,0.09427,0.60431
+reverse mover_train->vitaldb_test,G0,lr,0.09912,0.61429
+reverse mover_train->vitaldb_test,G0,lr,0.10401,0.62345
+reverse mover_train->vitaldb_test,G0,lr,0.10892,0.63208
+reverse mover_train->vitaldb_test,G0,lr,0.11364,0.64636
+reverse mover_train->vitaldb_test,G0,lr,0.11856,0.65472
+reverse mover_train->vitaldb_test,G0,lr,0.12349,0.66253
+reverse mover_train->vitaldb_test,G0,lr,0.1283,0.67412
+reverse mover_train->vitaldb_test,G0,lr,0.13317,0.68383
+reverse mover_train->vitaldb_test,G0,lr,0.13812,0.69084
+reverse mover_train->vitaldb_test,G0,lr,0.14302,0.69973
+reverse mover_train->vitaldb_test,G0,lr,0.14802,0.70566
+reverse mover_train->vitaldb_test,G0,lr,0.15298,0.71267
+reverse mover_train->vitaldb_test,G0,lr,0.15793,0.71995
+reverse mover_train->vitaldb_test,G0,lr,0.16296,0.7248
+reverse mover_train->vitaldb_test,G0,lr,0.16799,0.72965
+reverse mover_train->vitaldb_test,G0,lr,0.17298,0.73585
+reverse mover_train->vitaldb_test,G0,lr,0.17796,0.74232
+reverse mover_train->vitaldb_test,G0,lr,0.18298,0.74717
+reverse mover_train->vitaldb_test,G0,lr,0.18791,0.75526
+reverse mover_train->vitaldb_test,G0,lr,0.1929,0.76146
+reverse mover_train->vitaldb_test,G0,lr,0.19785,0.76873
+reverse mover_train->vitaldb_test,G0,lr,0.20278,0.77655
+reverse mover_train->vitaldb_test,G0,lr,0.20775,0.78302
+reverse mover_train->vitaldb_test,G0,lr,0.21274,0.78922
+reverse mover_train->vitaldb_test,G0,lr,0.21771,0.79623
+reverse mover_train->vitaldb_test,G0,lr,0.22276,0.80027
+reverse mover_train->vitaldb_test,G0,lr,0.22783,0.80404
+reverse mover_train->vitaldb_test,G0,lr,0.23283,0.8097
+reverse mover_train->vitaldb_test,G0,lr,0.2379,0.81348
+reverse mover_train->vitaldb_test,G0,lr,0.24296,0.81725
+reverse mover_train->vitaldb_test,G0,lr,0.24811,0.81887
+reverse mover_train->vitaldb_test,G0,lr,0.25319,0.82183
+reverse mover_train->vitaldb_test,G0,lr,0.25827,0.82534
+reverse mover_train->vitaldb_test,G0,lr,0.26331,0.83019
+reverse mover_train->vitaldb_test,G0,lr,0.26837,0.83396
+reverse mover_train->vitaldb_test,G0,lr,0.27349,0.83612
+reverse mover_train->vitaldb_test,G0,lr,0.27859,0.83881
+reverse mover_train->vitaldb_test,G0,lr,0.2837,0.84124
+reverse mover_train->vitaldb_test,G0,lr,0.28881,0.84367
+reverse mover_train->vitaldb_test,G0,lr,0.29394,0.84555
+reverse mover_train->vitaldb_test,G0,lr,0.29907,0.84744
+reverse mover_train->vitaldb_test,G0,lr,0.30416,0.8504
+reverse mover_train->vitaldb_test,G0,lr,0.30925,0.85337
+reverse mover_train->vitaldb_test,G0,lr,0.31438,0.85526
+reverse mover_train->vitaldb_test,G0,lr,0.31952,0.85714
+reverse mover_train->vitaldb_test,G0,lr,0.32458,0.86092
+reverse mover_train->vitaldb_test,G0,lr,0.32968,0.86361
+reverse mover_train->vitaldb_test,G0,lr,0.33481,0.8655
+reverse mover_train->vitaldb_test,G0,lr,0.33992,0.86792
+reverse mover_train->vitaldb_test,G0,lr,0.34501,0.87116
+reverse mover_train->vitaldb_test,G0,lr,0.35013,0.87305
+reverse mover_train->vitaldb_test,G0,lr,0.35522,0.87628
+reverse mover_train->vitaldb_test,G0,lr,0.36035,0.87817
+reverse mover_train->vitaldb_test,G0,lr,0.36544,0.88086
+reverse mover_train->vitaldb_test,G0,lr,0.37055,0.88356
+reverse mover_train->vitaldb_test,G0,lr,0.37564,0.88652
+reverse mover_train->vitaldb_test,G0,lr,0.38071,0.89003
+reverse mover_train->vitaldb_test,G0,lr,0.38584,0.89218
+reverse mover_train->vitaldb_test,G0,lr,0.39098,0.8938
+reverse mover_train->vitaldb_test,G0,lr,0.39603,0.89784
+reverse mover_train->vitaldb_test,G0,lr,0.40116,0.89973
+reverse mover_train->vitaldb_test,G0,lr,0.40631,0.90108
+reverse mover_train->vitaldb_test,G0,lr,0.41147,0.90189
+reverse mover_train->vitaldb_test,G0,lr,0.41663,0.90296
+reverse mover_train->vitaldb_test,G0,lr,0.42177,0.90431
+reverse mover_train->vitaldb_test,G0,lr,0.42686,0.90755
+reverse mover_train->vitaldb_test,G0,lr,0.432,0.90916
+reverse mover_train->vitaldb_test,G0,lr,0.43706,0.91294
+reverse mover_train->vitaldb_test,G0,lr,0.44223,0.91348
+reverse mover_train->vitaldb_test,G0,lr,0.44741,0.91402
+reverse mover_train->vitaldb_test,G0,lr,0.45255,0.91536
+reverse mover_train->vitaldb_test,G0,lr,0.4577,0.91671
+reverse mover_train->vitaldb_test,G0,lr,0.46284,0.91833
+reverse mover_train->vitaldb_test,G0,lr,0.46798,0.91968
+reverse mover_train->vitaldb_test,G0,lr,0.47311,0.92156
+reverse mover_train->vitaldb_test,G0,lr,0.47828,0.92237
+reverse mover_train->vitaldb_test,G0,lr,0.48339,0.9248
+reverse mover_train->vitaldb_test,G0,lr,0.48857,0.92507
+reverse mover_train->vitaldb_test,G0,lr,0.49369,0.92695
+reverse mover_train->vitaldb_test,G0,lr,0.49887,0.92749
+reverse mover_train->vitaldb_test,G0,lr,0.50404,0.9283
+reverse mover_train->vitaldb_test,G0,lr,0.50915,0.93046
+reverse mover_train->vitaldb_test,G0,lr,0.51428,0.93235
+reverse mover_train->vitaldb_test,G0,lr,0.51945,0.93315
+reverse mover_train->vitaldb_test,G0,lr,0.52461,0.93396
+reverse mover_train->vitaldb_test,G0,lr,0.52975,0.93558
+reverse mover_train->vitaldb_test,G0,lr,0.53491,0.93666
+reverse mover_train->vitaldb_test,G0,lr,0.54009,0.93693
+reverse mover_train->vitaldb_test,G0,lr,0.54526,0.93747
+reverse mover_train->vitaldb_test,G0,lr,0.55041,0.93881
+reverse mover_train->vitaldb_test,G0,lr,0.55558,0.93935
+reverse mover_train->vitaldb_test,G0,lr,0.56075,0.93989
+reverse mover_train->vitaldb_test,G0,lr,0.56589,0.94151
+reverse mover_train->vitaldb_test,G0,lr,0.57104,0.94286
+reverse mover_train->vitaldb_test,G0,lr,0.57621,0.9434
+reverse mover_train->vitaldb_test,G0,lr,0.58137,0.9442
+reverse mover_train->vitaldb_test,G0,lr,0.58654,0.94501
+reverse mover_train->vitaldb_test,G0,lr,0.59167,0.9469
+reverse mover_train->vitaldb_test,G0,lr,0.59684,0.94744
+reverse mover_train->vitaldb_test,G0,lr,0.602,0.94825
+reverse mover_train->vitaldb_test,G0,lr,0.60716,0.94933
+reverse mover_train->vitaldb_test,G0,lr,0.61229,0.95094
+reverse mover_train->vitaldb_test,G0,lr,0.61747,0.95148
+reverse mover_train->vitaldb_test,G0,lr,0.62262,0.95283
+reverse mover_train->vitaldb_test,G0,lr,0.62779,0.95337
+reverse mover_train->vitaldb_test,G0,lr,0.63296,0.95418
+reverse mover_train->vitaldb_test,G0,lr,0.63811,0.95499
+reverse mover_train->vitaldb_test,G0,lr,0.64328,0.9558
+reverse mover_train->vitaldb_test,G0,lr,0.64846,0.95633
+reverse mover_train->vitaldb_test,G0,lr,0.65361,0.95741
+reverse mover_train->vitaldb_test,G0,lr,0.65877,0.95822
+reverse mover_train->vitaldb_test,G0,lr,0.66392,0.95957
+reverse mover_train->vitaldb_test,G0,lr,0.66908,0.96038
+reverse mover_train->vitaldb_test,G0,lr,0.67428,0.96038
+reverse mover_train->vitaldb_test,G0,lr,0.67943,0.96173
+reverse mover_train->vitaldb_test,G0,lr,0.6846,0.96199
+reverse mover_train->vitaldb_test,G0,lr,0.68978,0.96253
+reverse mover_train->vitaldb_test,G0,lr,0.69495,0.96334
+reverse mover_train->vitaldb_test,G0,lr,0.70009,0.96469
+reverse mover_train->vitaldb_test,G0,lr,0.70525,0.96577
+reverse mover_train->vitaldb_test,G0,lr,0.71041,0.96631
+reverse mover_train->vitaldb_test,G0,lr,0.71559,0.96685
+reverse mover_train->vitaldb_test,G0,lr,0.72078,0.96685
+reverse mover_train->vitaldb_test,G0,lr,0.72593,0.96792
+reverse mover_train->vitaldb_test,G0,lr,0.73113,0.96792
+reverse mover_train->vitaldb_test,G0,lr,0.73631,0.96819
+reverse mover_train->vitaldb_test,G0,lr,0.7415,0.96819
+reverse mover_train->vitaldb_test,G0,lr,0.74665,0.96954
+reverse mover_train->vitaldb_test,G0,lr,0.7518,0.97089
+reverse mover_train->vitaldb_test,G0,lr,0.75696,0.9717
+reverse mover_train->vitaldb_test,G0,lr,0.76212,0.97251
+reverse mover_train->vitaldb_test,G0,lr,0.76732,0.97251
+reverse mover_train->vitaldb_test,G0,lr,0.7725,0.97251
+reverse mover_train->vitaldb_test,G0,lr,0.77768,0.97305
+reverse mover_train->vitaldb_test,G0,lr,0.78286,0.97305
+reverse mover_train->vitaldb_test,G0,lr,0.78803,0.97385
+reverse mover_train->vitaldb_test,G0,lr,0.79322,0.97412
+reverse mover_train->vitaldb_test,G0,lr,0.7984,0.97412
+reverse mover_train->vitaldb_test,G0,lr,0.80356,0.9752
+reverse mover_train->vitaldb_test,G0,lr,0.80874,0.97574
+reverse mover_train->vitaldb_test,G0,lr,0.81392,0.97574
+reverse mover_train->vitaldb_test,G0,lr,0.81908,0.97682
+reverse mover_train->vitaldb_test,G0,lr,0.82426,0.97709
+reverse mover_train->vitaldb_test,G0,lr,0.82941,0.97817
+reverse mover_train->vitaldb_test,G0,lr,0.8346,0.97844
+reverse mover_train->vitaldb_test,G0,lr,0.83978,0.97898
+reverse mover_train->vitaldb_test,G0,lr,0.84495,0.97925
+reverse mover_train->vitaldb_test,G0,lr,0.85014,0.97951
+reverse mover_train->vitaldb_test,G0,lr,0.85528,0.98086
+reverse mover_train->vitaldb_test,G0,lr,0.86045,0.98167
+reverse mover_train->vitaldb_test,G0,lr,0.86562,0.98221
+reverse mover_train->vitaldb_test,G0,lr,0.8708,0.98248
+reverse mover_train->vitaldb_test,G0,lr,0.87599,0.98248
+reverse mover_train->vitaldb_test,G0,lr,0.88117,0.98302
+reverse mover_train->vitaldb_test,G0,lr,0.88631,0.98437
+reverse mover_train->vitaldb_test,G0,lr,0.89148,0.98491
+reverse mover_train->vitaldb_test,G0,lr,0.89668,0.98491
+reverse mover_train->vitaldb_test,G0,lr,0.90185,0.98544
+reverse mover_train->vitaldb_test,G0,lr,0.90702,0.98598
+reverse mover_train->vitaldb_test,G0,lr,0.91222,0.98598
+reverse mover_train->vitaldb_test,G0,lr,0.91738,0.98652
+reverse mover_train->vitaldb_test,G0,lr,0.92258,0.98652
+reverse mover_train->vitaldb_test,G0,lr,0.92775,0.98679
+reverse mover_train->vitaldb_test,G0,lr,0.93293,0.98733
+reverse mover_train->vitaldb_test,G0,lr,0.93811,0.98787
+reverse mover_train->vitaldb_test,G0,lr,0.94329,0.98787
+reverse mover_train->vitaldb_test,G0,lr,0.94844,0.98922
+reverse mover_train->vitaldb_test,G0,lr,0.95361,0.99003
+reverse mover_train->vitaldb_test,G0,lr,0.95876,0.99111
+reverse mover_train->vitaldb_test,G0,lr,0.96391,0.99245
+reverse mover_train->vitaldb_test,G0,lr,0.96908,0.99299
+reverse mover_train->vitaldb_test,G0,lr,0.97425,0.99353
+reverse mover_train->vitaldb_test,G0,lr,0.97944,0.9938
+reverse mover_train->vitaldb_test,G0,lr,0.9846,0.99488
+reverse mover_train->vitaldb_test,G0,lr,0.98973,0.9965
+reverse mover_train->vitaldb_test,G0,lr,0.99489,0.99757
+reverse mover_train->vitaldb_test,G0,lr,1.0,1.0
+reverse mover_train->vitaldb_test,G0,hgb,1e-05,0.0
+reverse mover_train->vitaldb_test,G0,hgb,0.00275,0.07412
+reverse mover_train->vitaldb_test,G0,hgb,0.00619,0.12722
+reverse mover_train->vitaldb_test,G0,hgb,0.00957,0.18194
+reverse mover_train->vitaldb_test,G0,hgb,0.01321,0.22911
+reverse mover_train->vitaldb_test,G0,hgb,0.01717,0.26658
+reverse mover_train->vitaldb_test,G0,hgb,0.02126,0.29973
+reverse mover_train->vitaldb_test,G0,hgb,0.02548,0.32911
+reverse mover_train->vitaldb_test,G0,hgb,0.02971,0.35849
+reverse mover_train->vitaldb_test,G0,hgb,0.0341,0.38248
+reverse mover_train->vitaldb_test,G0,hgb,0.03858,0.40404
+reverse mover_train->vitaldb_test,G0,hgb,0.04302,0.42695
+reverse mover_train->vitaldb_test,G0,hgb,0.04756,0.44636
+reverse mover_train->vitaldb_test,G0,hgb,0.05208,0.46685
+reverse mover_train->vitaldb_test,G0,hgb,0.05671,0.4841
+reverse mover_train->vitaldb_test,G0,hgb,0.06143,0.49811
+reverse mover_train->vitaldb_test,G0,hgb,0.06616,0.51213
+reverse mover_train->vitaldb_test,G0,hgb,0.07088,0.52615
+reverse mover_train->vitaldb_test,G0,hgb,0.07556,0.54178
+reverse mover_train->vitaldb_test,G0,hgb,0.0803,0.55553
+reverse mover_train->vitaldb_test,G0,hgb,0.08504,0.569
+reverse mover_train->vitaldb_test,G0,hgb,0.0898,0.58221
+reverse mover_train->vitaldb_test,G0,hgb,0.09467,0.59218
+reverse mover_train->vitaldb_test,G0,hgb,0.09945,0.60431
+reverse mover_train->vitaldb_test,G0,hgb,0.10425,0.61644
+reverse mover_train->vitaldb_test,G0,hgb,0.10913,0.62588
+reverse mover_train->vitaldb_test,G0,hgb,0.11405,0.63396
+reverse mover_train->vitaldb_test,G0,hgb,0.11887,0.64528
+reverse mover_train->vitaldb_test,G0,hgb,0.12376,0.65445
+reverse mover_train->vitaldb_test,G0,hgb,0.12873,0.66092
+reverse mover_train->vitaldb_test,G0,hgb,0.13365,0.66927
+reverse mover_train->vitaldb_test,G0,hgb,0.13855,0.6779
+reverse mover_train->vitaldb_test,G0,hgb,0.14352,0.68464
+reverse mover_train->vitaldb_test,G0,hgb,0.14851,0.69084
+reverse mover_train->vitaldb_test,G0,hgb,0.15352,0.69623
+reverse mover_train->vitaldb_test,G0,hgb,0.15849,0.70296
+reverse mover_train->vitaldb_test,G0,hgb,0.16352,0.70809
+reverse mover_train->vitaldb_test,G0,hgb,0.16846,0.71536
+reverse mover_train->vitaldb_test,G0,hgb,0.17333,0.72507
+reverse mover_train->vitaldb_test,G0,hgb,0.17831,0.73181
+reverse mover_train->vitaldb_test,G0,hgb,0.18329,0.73801
+reverse mover_train->vitaldb_test,G0,hgb,0.18827,0.74447
+reverse mover_train->vitaldb_test,G0,hgb,0.19332,0.74879
+reverse mover_train->vitaldb_test,G0,hgb,0.19835,0.75337
+reverse mover_train->vitaldb_test,G0,hgb,0.20337,0.75876
+reverse mover_train->vitaldb_test,G0,hgb,0.20839,0.76388
+reverse mover_train->vitaldb_test,G0,hgb,0.21344,0.76819
+reverse mover_train->vitaldb_test,G0,hgb,0.21844,0.77385
+reverse mover_train->vitaldb_test,G0,hgb,0.2234,0.78086
+reverse mover_train->vitaldb_test,G0,hgb,0.22841,0.78652
+reverse mover_train->vitaldb_test,G0,hgb,0.23348,0.7903
+reverse mover_train->vitaldb_test,G0,hgb,0.23856,0.79326
+reverse mover_train->vitaldb_test,G0,hgb,0.24368,0.79569
+reverse mover_train->vitaldb_test,G0,hgb,0.24877,0.79865
+reverse mover_train->vitaldb_test,G0,hgb,0.25372,0.80593
+reverse mover_train->vitaldb_test,G0,hgb,0.25872,0.81186
+reverse mover_train->vitaldb_test,G0,hgb,0.26375,0.81671
+reverse mover_train->vitaldb_test,G0,hgb,0.26884,0.81968
+reverse mover_train->vitaldb_test,G0,hgb,0.27392,0.82318
+reverse mover_train->vitaldb_test,G0,hgb,0.27902,0.82561
+reverse mover_train->vitaldb_test,G0,hgb,0.28408,0.82965
+reverse mover_train->vitaldb_test,G0,hgb,0.2891,0.83504
+reverse mover_train->vitaldb_test,G0,hgb,0.29416,0.83881
+reverse mover_train->vitaldb_test,G0,hgb,0.29928,0.84097
+reverse mover_train->vitaldb_test,G0,hgb,0.30424,0.84825
+reverse mover_train->vitaldb_test,G0,hgb,0.30922,0.85418
+reverse mover_train->vitaldb_test,G0,hgb,0.31432,0.85714
+reverse mover_train->vitaldb_test,G0,hgb,0.31938,0.86119
+reverse mover_train->vitaldb_test,G0,hgb,0.32447,0.86415
+reverse mover_train->vitaldb_test,G0,hgb,0.32956,0.86739
+reverse mover_train->vitaldb_test,G0,hgb,0.33461,0.8717
+reverse mover_train->vitaldb_test,G0,hgb,0.33968,0.8752
+reverse mover_train->vitaldb_test,G0,hgb,0.34481,0.87709
+reverse mover_train->vitaldb_test,G0,hgb,0.34988,0.88059
+reverse mover_train->vitaldb_test,G0,hgb,0.35498,0.88356
+reverse mover_train->vitaldb_test,G0,hgb,0.36008,0.88625
+reverse mover_train->vitaldb_test,G0,hgb,0.36519,0.88868
+reverse mover_train->vitaldb_test,G0,hgb,0.37028,0.89164
+reverse mover_train->vitaldb_test,G0,hgb,0.3754,0.8938
+reverse mover_train->vitaldb_test,G0,hgb,0.38051,0.89623
+reverse mover_train->vitaldb_test,G0,hgb,0.38559,0.89973
+reverse mover_train->vitaldb_test,G0,hgb,0.39072,0.90162
+reverse mover_train->vitaldb_test,G0,hgb,0.39586,0.90296
+reverse mover_train->vitaldb_test,G0,hgb,0.40098,0.90512
+reverse mover_train->vitaldb_test,G0,hgb,0.40612,0.90701
+reverse mover_train->vitaldb_test,G0,hgb,0.41123,0.90916
+reverse mover_train->vitaldb_test,G0,hgb,0.41637,0.91078
+reverse mover_train->vitaldb_test,G0,hgb,0.42152,0.91186
+reverse mover_train->vitaldb_test,G0,hgb,0.42663,0.91429
+reverse mover_train->vitaldb_test,G0,hgb,0.43174,0.91698
+reverse mover_train->vitaldb_test,G0,hgb,0.43687,0.9186
+reverse mover_train->vitaldb_test,G0,hgb,0.44197,0.92156
+reverse mover_train->vitaldb_test,G0,hgb,0.44713,0.92264
+reverse mover_train->vitaldb_test,G0,hgb,0.4522,0.92588
+reverse mover_train->vitaldb_test,G0,hgb,0.45734,0.92749
+reverse mover_train->vitaldb_test,G0,hgb,0.46241,0.93154
+reverse mover_train->vitaldb_test,G0,hgb,0.46754,0.93315
+reverse mover_train->vitaldb_test,G0,hgb,0.47265,0.93558
+reverse mover_train->vitaldb_test,G0,hgb,0.47782,0.93639
+reverse mover_train->vitaldb_test,G0,hgb,0.48299,0.93666
+reverse mover_train->vitaldb_test,G0,hgb,0.48811,0.93908
+reverse mover_train->vitaldb_test,G0,hgb,0.4932,0.94205
+reverse mover_train->vitaldb_test,G0,hgb,0.4983,0.94474
+reverse mover_train->vitaldb_test,G0,hgb,0.50345,0.94609
+reverse mover_train->vitaldb_test,G0,hgb,0.50862,0.94663
+reverse mover_train->vitaldb_test,G0,hgb,0.51379,0.94744
+reverse mover_train->vitaldb_test,G0,hgb,0.51894,0.94879
+reverse mover_train->vitaldb_test,G0,hgb,0.52408,0.95013
+reverse mover_train->vitaldb_test,G0,hgb,0.52922,0.95175
+reverse mover_train->vitaldb_test,G0,hgb,0.53436,0.95337
+reverse mover_train->vitaldb_test,G0,hgb,0.53953,0.95364
+reverse mover_train->vitaldb_test,G0,hgb,0.54469,0.95472
+reverse mover_train->vitaldb_test,G0,hgb,0.54987,0.95526
+reverse mover_train->vitaldb_test,G0,hgb,0.555,0.95687
+reverse mover_train->vitaldb_test,G0,hgb,0.56014,0.95849
+reverse mover_train->vitaldb_test,G0,hgb,0.56526,0.96038
+reverse mover_train->vitaldb_test,G0,hgb,0.57041,0.96173
+reverse mover_train->vitaldb_test,G0,hgb,0.57557,0.9628
+reverse mover_train->vitaldb_test,G0,hgb,0.58072,0.96388
+reverse mover_train->vitaldb_test,G0,hgb,0.58587,0.96523
+reverse mover_train->vitaldb_test,G0,hgb,0.59104,0.96604
+reverse mover_train->vitaldb_test,G0,hgb,0.59621,0.96658
+reverse mover_train->vitaldb_test,G0,hgb,0.60136,0.96765
+reverse mover_train->vitaldb_test,G0,hgb,0.60654,0.96819
+reverse mover_train->vitaldb_test,G0,hgb,0.61171,0.96873
+reverse mover_train->vitaldb_test,G0,hgb,0.61686,0.97008
+reverse mover_train->vitaldb_test,G0,hgb,0.62201,0.97143
+reverse mover_train->vitaldb_test,G0,hgb,0.62717,0.97197
+reverse mover_train->vitaldb_test,G0,hgb,0.63234,0.97278
+reverse mover_train->vitaldb_test,G0,hgb,0.63752,0.97305
+reverse mover_train->vitaldb_test,G0,hgb,0.64271,0.97305
+reverse mover_train->vitaldb_test,G0,hgb,0.64789,0.97358
+reverse mover_train->vitaldb_test,G0,hgb,0.65304,0.97466
+reverse mover_train->vitaldb_test,G0,hgb,0.65821,0.97547
+reverse mover_train->vitaldb_test,G0,hgb,0.66339,0.97574
+reverse mover_train->vitaldb_test,G0,hgb,0.66856,0.97628
+reverse mover_train->vitaldb_test,G0,hgb,0.67373,0.97709
+reverse mover_train->vitaldb_test,G0,hgb,0.67889,0.9779
+reverse mover_train->vitaldb_test,G0,hgb,0.68404,0.97898
+reverse mover_train->vitaldb_test,G0,hgb,0.68923,0.97925
+reverse mover_train->vitaldb_test,G0,hgb,0.6944,0.97978
+reverse mover_train->vitaldb_test,G0,hgb,0.69957,0.98032
+reverse mover_train->vitaldb_test,G0,hgb,0.70475,0.98086
+reverse mover_train->vitaldb_test,G0,hgb,0.70992,0.98113
+reverse mover_train->vitaldb_test,G0,hgb,0.71511,0.9814
+reverse mover_train->vitaldb_test,G0,hgb,0.72029,0.98194
+reverse mover_train->vitaldb_test,G0,hgb,0.72544,0.98275
+reverse mover_train->vitaldb_test,G0,hgb,0.73062,0.98329
+reverse mover_train->vitaldb_test,G0,hgb,0.73581,0.98356
+reverse mover_train->vitaldb_test,G0,hgb,0.74095,0.98464
+reverse mover_train->vitaldb_test,G0,hgb,0.74615,0.98464
+reverse mover_train->vitaldb_test,G0,hgb,0.75133,0.98518
+reverse mover_train->vitaldb_test,G0,hgb,0.75648,0.98598
+reverse mover_train->vitaldb_test,G0,hgb,0.76165,0.98679
+reverse mover_train->vitaldb_test,G0,hgb,0.76685,0.98679
+reverse mover_train->vitaldb_test,G0,hgb,0.77199,0.98787
+reverse mover_train->vitaldb_test,G0,hgb,0.77716,0.98868
+reverse mover_train->vitaldb_test,G0,hgb,0.78235,0.98868
+reverse mover_train->vitaldb_test,G0,hgb,0.78752,0.98922
+reverse mover_train->vitaldb_test,G0,hgb,0.7927,0.98976
+reverse mover_train->vitaldb_test,G0,hgb,0.79787,0.9903
+reverse mover_train->vitaldb_test,G0,hgb,0.80306,0.9903
+reverse mover_train->vitaldb_test,G0,hgb,0.80824,0.99084
+reverse mover_train->vitaldb_test,G0,hgb,0.81342,0.99084
+reverse mover_train->vitaldb_test,G0,hgb,0.81861,0.99111
+reverse mover_train->vitaldb_test,G0,hgb,0.82379,0.99137
+reverse mover_train->vitaldb_test,G0,hgb,0.82895,0.99218
+reverse mover_train->vitaldb_test,G0,hgb,0.83413,0.99272
+reverse mover_train->vitaldb_test,G0,hgb,0.83932,0.99272
+reverse mover_train->vitaldb_test,G0,hgb,0.84451,0.99272
+reverse mover_train->vitaldb_test,G0,hgb,0.84968,0.99326
+reverse mover_train->vitaldb_test,G0,hgb,0.85484,0.99407
+reverse mover_train->vitaldb_test,G0,hgb,0.86003,0.99434
+reverse mover_train->vitaldb_test,G0,hgb,0.86522,0.99434
+reverse mover_train->vitaldb_test,G0,hgb,0.87039,0.99488
+reverse mover_train->vitaldb_test,G0,hgb,0.87556,0.99542
+reverse mover_train->vitaldb_test,G0,hgb,0.88076,0.99542
+reverse mover_train->vitaldb_test,G0,hgb,0.88592,0.99623
+reverse mover_train->vitaldb_test,G0,hgb,0.89111,0.99623
+reverse mover_train->vitaldb_test,G0,hgb,0.89629,0.99677
+reverse mover_train->vitaldb_test,G0,hgb,0.90144,0.99784
+reverse mover_train->vitaldb_test,G0,hgb,0.90663,0.99784
+reverse mover_train->vitaldb_test,G0,hgb,0.91181,0.99838
+reverse mover_train->vitaldb_test,G0,hgb,0.91699,0.99838
+reverse mover_train->vitaldb_test,G0,hgb,0.92219,0.99838
+reverse mover_train->vitaldb_test,G0,hgb,0.92737,0.99838
+reverse mover_train->vitaldb_test,G0,hgb,0.93257,0.99838
+reverse mover_train->vitaldb_test,G0,hgb,0.93776,0.99838
+reverse mover_train->vitaldb_test,G0,hgb,0.94294,0.99865
+reverse mover_train->vitaldb_test,G0,hgb,0.94812,0.99892
+reverse mover_train->vitaldb_test,G0,hgb,0.95332,0.99892
+reverse mover_train->vitaldb_test,G0,hgb,0.95849,0.99919
+reverse mover_train->vitaldb_test,G0,hgb,0.96367,0.99973
+reverse mover_train->vitaldb_test,G0,hgb,0.96886,0.99973
+reverse mover_train->vitaldb_test,G0,hgb,0.97405,0.99973
+reverse mover_train->vitaldb_test,G0,hgb,0.97924,0.99973
+reverse mover_train->vitaldb_test,G0,hgb,0.98444,0.99973
+reverse mover_train->vitaldb_test,G0,hgb,0.98962,0.99973
+reverse mover_train->vitaldb_test,G0,hgb,0.99481,1.0
+reverse mover_train->vitaldb_test,G0,hgb,1.0,1.0
+reverse mover_train->vitaldb_test,G4,hgb,0.0,0.00027
+reverse mover_train->vitaldb_test,G4,hgb,0.0031,0.06334
+reverse mover_train->vitaldb_test,G4,hgb,0.00669,0.11213
+reverse mover_train->vitaldb_test,G4,hgb,0.01059,0.15094
+reverse mover_train->vitaldb_test,G4,hgb,0.0145,0.19003
+reverse mover_train->vitaldb_test,G4,hgb,0.01862,0.22237
+reverse mover_train->vitaldb_test,G4,hgb,0.02294,0.24879
+reverse mover_train->vitaldb_test,G4,hgb,0.02714,0.27898
+reverse mover_train->vitaldb_test,G4,hgb,0.03148,0.30485
+reverse mover_train->vitaldb_test,G4,hgb,0.03578,0.33154
+reverse mover_train->vitaldb_test,G4,hgb,0.04023,0.35418
+reverse mover_train->vitaldb_test,G4,hgb,0.04465,0.37763
+reverse mover_train->vitaldb_test,G4,hgb,0.04919,0.39704
+reverse mover_train->vitaldb_test,G4,hgb,0.0538,0.41482
+reverse mover_train->vitaldb_test,G4,hgb,0.05853,0.42884
+reverse mover_train->vitaldb_test,G4,hgb,0.06312,0.4469
+reverse mover_train->vitaldb_test,G4,hgb,0.06777,0.46334
+reverse mover_train->vitaldb_test,G4,hgb,0.07243,0.47925
+reverse mover_train->vitaldb_test,G4,hgb,0.07721,0.49191
+reverse mover_train->vitaldb_test,G4,hgb,0.08198,0.50485
+reverse mover_train->vitaldb_test,G4,hgb,0.08667,0.51968
+reverse mover_train->vitaldb_test,G4,hgb,0.09137,0.53477
+reverse mover_train->vitaldb_test,G4,hgb,0.09606,0.54987
+reverse mover_train->vitaldb_test,G4,hgb,0.10088,0.56119
+reverse mover_train->vitaldb_test,G4,hgb,0.10557,0.57628
+reverse mover_train->vitaldb_test,G4,hgb,0.1103,0.5903
+reverse mover_train->vitaldb_test,G4,hgb,0.11519,0.59946
+reverse mover_train->vitaldb_test,G4,hgb,0.12004,0.6097
+reverse mover_train->vitaldb_test,G4,hgb,0.1249,0.61995
+reverse mover_train->vitaldb_test,G4,hgb,0.12982,0.62776
+reverse mover_train->vitaldb_test,G4,hgb,0.1347,0.63747
+reverse mover_train->vitaldb_test,G4,hgb,0.13955,0.64744
+reverse mover_train->vitaldb_test,G4,hgb,0.14455,0.65337
+reverse mover_train->vitaldb_test,G4,hgb,0.14945,0.66226
+reverse mover_train->vitaldb_test,G4,hgb,0.15436,0.67062
+reverse mover_train->vitaldb_test,G4,hgb,0.15926,0.67978
+reverse mover_train->vitaldb_test,G4,hgb,0.16417,0.68814
+reverse mover_train->vitaldb_test,G4,hgb,0.16913,0.69515
+reverse mover_train->vitaldb_test,G4,hgb,0.17402,0.70431
+reverse mover_train->vitaldb_test,G4,hgb,0.17903,0.70997
+reverse mover_train->vitaldb_test,G4,hgb,0.18395,0.71779
+reverse mover_train->vitaldb_test,G4,hgb,0.18891,0.72507
+reverse mover_train->vitaldb_test,G4,hgb,0.1939,0.73127
+reverse mover_train->vitaldb_test,G4,hgb,0.19882,0.73908
+reverse mover_train->vitaldb_test,G4,hgb,0.20381,0.74528
+reverse mover_train->vitaldb_test,G4,hgb,0.20875,0.75283
+reverse mover_train->vitaldb_test,G4,hgb,0.2138,0.75714
+reverse mover_train->vitaldb_test,G4,hgb,0.21884,0.76173
+reverse mover_train->vitaldb_test,G4,hgb,0.22386,0.76685
+reverse mover_train->vitaldb_test,G4,hgb,0.22889,0.77197
+reverse mover_train->vitaldb_test,G4,hgb,0.23392,0.77682
+reverse mover_train->vitaldb_test,G4,hgb,0.23891,0.78275
+reverse mover_train->vitaldb_test,G4,hgb,0.244,0.78598
+reverse mover_train->vitaldb_test,G4,hgb,0.24897,0.79272
+reverse mover_train->vitaldb_test,G4,hgb,0.25404,0.79623
+reverse mover_train->vitaldb_test,G4,hgb,0.25907,0.80108
+reverse mover_train->vitaldb_test,G4,hgb,0.26408,0.80674
+reverse mover_train->vitaldb_test,G4,hgb,0.26915,0.81024
+reverse mover_train->vitaldb_test,G4,hgb,0.27419,0.81482
+reverse mover_train->vitaldb_test,G4,hgb,0.2792,0.82022
+reverse mover_train->vitaldb_test,G4,hgb,0.2843,0.82318
+reverse mover_train->vitaldb_test,G4,hgb,0.28932,0.8283
+reverse mover_train->vitaldb_test,G4,hgb,0.2944,0.83154
+reverse mover_train->vitaldb_test,G4,hgb,0.29949,0.83477
+reverse mover_train->vitaldb_test,G4,hgb,0.3046,0.8372
+reverse mover_train->vitaldb_test,G4,hgb,0.30966,0.84097
+reverse mover_train->vitaldb_test,G4,hgb,0.31477,0.8434
+reverse mover_train->vitaldb_test,G4,hgb,0.31985,0.8469
+reverse mover_train->vitaldb_test,G4,hgb,0.32495,0.8496
+reverse mover_train->vitaldb_test,G4,hgb,0.33006,0.85202
+reverse mover_train->vitaldb_test,G4,hgb,0.33519,0.85418
+reverse mover_train->vitaldb_test,G4,hgb,0.34023,0.85849
+reverse mover_train->vitaldb_test,G4,hgb,0.34534,0.86092
+reverse mover_train->vitaldb_test,G4,hgb,0.35046,0.86307
+reverse mover_train->vitaldb_test,G4,hgb,0.35558,0.86523
+reverse mover_train->vitaldb_test,G4,hgb,0.36071,0.86712
+reverse mover_train->vitaldb_test,G4,hgb,0.36585,0.86846
+reverse mover_train->vitaldb_test,G4,hgb,0.37097,0.87089
+reverse mover_train->vitaldb_test,G4,hgb,0.37612,0.87224
+reverse mover_train->vitaldb_test,G4,hgb,0.38127,0.87305
+reverse mover_train->vitaldb_test,G4,hgb,0.38639,0.87547
+reverse mover_train->vitaldb_test,G4,hgb,0.39148,0.87844
+reverse mover_train->vitaldb_test,G4,hgb,0.39659,0.88086
+reverse mover_train->vitaldb_test,G4,hgb,0.4017,0.88356
+reverse mover_train->vitaldb_test,G4,hgb,0.40681,0.88598
+reverse mover_train->vitaldb_test,G4,hgb,0.41191,0.88841
+reverse mover_train->vitaldb_test,G4,hgb,0.41701,0.89137
+reverse mover_train->vitaldb_test,G4,hgb,0.4221,0.89434
+reverse mover_train->vitaldb_test,G4,hgb,0.42724,0.89596
+reverse mover_train->vitaldb_test,G4,hgb,0.43236,0.89811
+reverse mover_train->vitaldb_test,G4,hgb,0.43748,0.90027
+reverse mover_train->vitaldb_test,G4,hgb,0.44263,0.90135
+reverse mover_train->vitaldb_test,G4,hgb,0.44777,0.90323
+reverse mover_train->vitaldb_test,G4,hgb,0.45293,0.90377
+reverse mover_train->vitaldb_test,G4,hgb,0.45809,0.90485
+reverse mover_train->vitaldb_test,G4,hgb,0.46325,0.90593
+reverse mover_train->vitaldb_test,G4,hgb,0.46836,0.90809
+reverse mover_train->vitaldb_test,G4,hgb,0.4735,0.9097
+reverse mover_train->vitaldb_test,G4,hgb,0.47861,0.9124
+reverse mover_train->vitaldb_test,G4,hgb,0.48377,0.91321
+reverse mover_train->vitaldb_test,G4,hgb,0.48888,0.91563
+reverse mover_train->vitaldb_test,G4,hgb,0.49401,0.91725
+reverse mover_train->vitaldb_test,G4,hgb,0.49916,0.9186
+reverse mover_train->vitaldb_test,G4,hgb,0.50431,0.91995
+reverse mover_train->vitaldb_test,G4,hgb,0.50946,0.92102
+reverse mover_train->vitaldb_test,G4,hgb,0.51459,0.92291
+reverse mover_train->vitaldb_test,G4,hgb,0.51974,0.92453
+reverse mover_train->vitaldb_test,G4,hgb,0.52482,0.92749
+reverse mover_train->vitaldb_test,G4,hgb,0.53,0.92803
+reverse mover_train->vitaldb_test,G4,hgb,0.53514,0.92965
+reverse mover_train->vitaldb_test,G4,hgb,0.54029,0.93073
+reverse mover_train->vitaldb_test,G4,hgb,0.54545,0.93181
+reverse mover_train->vitaldb_test,G4,hgb,0.5506,0.93315
+reverse mover_train->vitaldb_test,G4,hgb,0.55574,0.9345
+reverse mover_train->vitaldb_test,G4,hgb,0.56089,0.93585
+reverse mover_train->vitaldb_test,G4,hgb,0.56602,0.93747
+reverse mover_train->vitaldb_test,G4,hgb,0.57118,0.93854
+reverse mover_train->vitaldb_test,G4,hgb,0.57636,0.93881
+reverse mover_train->vitaldb_test,G4,hgb,0.58151,0.93989
+reverse mover_train->vitaldb_test,G4,hgb,0.58669,0.94043
+reverse mover_train->vitaldb_test,G4,hgb,0.59181,0.94259
+reverse mover_train->vitaldb_test,G4,hgb,0.59695,0.94394
+reverse mover_train->vitaldb_test,G4,hgb,0.6021,0.94528
+reverse mover_train->vitaldb_test,G4,hgb,0.60723,0.94744
+reverse mover_train->vitaldb_test,G4,hgb,0.61237,0.94879
+reverse mover_train->vitaldb_test,G4,hgb,0.61753,0.9496
+reverse mover_train->vitaldb_test,G4,hgb,0.6227,0.9504
+reverse mover_train->vitaldb_test,G4,hgb,0.62782,0.95229
+reverse mover_train->vitaldb_test,G4,hgb,0.633,0.95283
+reverse mover_train->vitaldb_test,G4,hgb,0.63815,0.95391
+reverse mover_train->vitaldb_test,G4,hgb,0.64328,0.9558
+reverse mover_train->vitaldb_test,G4,hgb,0.64842,0.95741
+reverse mover_train->vitaldb_test,G4,hgb,0.65355,0.95903
+reverse mover_train->vitaldb_test,G4,hgb,0.6587,0.96038
+reverse mover_train->vitaldb_test,G4,hgb,0.66385,0.96173
+reverse mover_train->vitaldb_test,G4,hgb,0.669,0.9628
+reverse mover_train->vitaldb_test,G4,hgb,0.67418,0.96334
+reverse mover_train->vitaldb_test,G4,hgb,0.67934,0.96442
+reverse mover_train->vitaldb_test,G4,hgb,0.68446,0.96631
+reverse mover_train->vitaldb_test,G4,hgb,0.6896,0.96792
+reverse mover_train->vitaldb_test,G4,hgb,0.69476,0.969
+reverse mover_train->vitaldb_test,G4,hgb,0.69989,0.97062
+reverse mover_train->vitaldb_test,G4,hgb,0.70508,0.97089
+reverse mover_train->vitaldb_test,G4,hgb,0.71024,0.9717
+reverse mover_train->vitaldb_test,G4,hgb,0.7154,0.97251
+reverse mover_train->vitaldb_test,G4,hgb,0.72055,0.97385
+reverse mover_train->vitaldb_test,G4,hgb,0.72573,0.97412
+reverse mover_train->vitaldb_test,G4,hgb,0.73091,0.97439
+reverse mover_train->vitaldb_test,G4,hgb,0.73606,0.97574
+reverse mover_train->vitaldb_test,G4,hgb,0.74122,0.97655
+reverse mover_train->vitaldb_test,G4,hgb,0.74642,0.97655
+reverse mover_train->vitaldb_test,G4,hgb,0.75159,0.97709
+reverse mover_train->vitaldb_test,G4,hgb,0.75673,0.97844
+reverse mover_train->vitaldb_test,G4,hgb,0.76192,0.97871
+reverse mover_train->vitaldb_test,G4,hgb,0.76708,0.97978
+reverse mover_train->vitaldb_test,G4,hgb,0.77223,0.98086
+reverse mover_train->vitaldb_test,G4,hgb,0.77741,0.98113
+reverse mover_train->vitaldb_test,G4,hgb,0.78256,0.98221
+reverse mover_train->vitaldb_test,G4,hgb,0.78771,0.98356
+reverse mover_train->vitaldb_test,G4,hgb,0.79288,0.98437
+reverse mover_train->vitaldb_test,G4,hgb,0.79803,0.98544
+reverse mover_train->vitaldb_test,G4,hgb,0.80321,0.98571
+reverse mover_train->vitaldb_test,G4,hgb,0.80836,0.98706
+reverse mover_train->vitaldb_test,G4,hgb,0.81352,0.98787
+reverse mover_train->vitaldb_test,G4,hgb,0.81866,0.98949
+reverse mover_train->vitaldb_test,G4,hgb,0.82379,0.99137
+reverse mover_train->vitaldb_test,G4,hgb,0.82896,0.99191
+reverse mover_train->vitaldb_test,G4,hgb,0.83415,0.99218
+reverse mover_train->vitaldb_test,G4,hgb,0.83932,0.99272
+reverse mover_train->vitaldb_test,G4,hgb,0.84449,0.99326
+reverse mover_train->vitaldb_test,G4,hgb,0.84967,0.99353
+reverse mover_train->vitaldb_test,G4,hgb,0.85485,0.9938
+reverse mover_train->vitaldb_test,G4,hgb,0.86004,0.9938
+reverse mover_train->vitaldb_test,G4,hgb,0.86523,0.99407
+reverse mover_train->vitaldb_test,G4,hgb,0.8704,0.99461
+reverse mover_train->vitaldb_test,G4,hgb,0.87559,0.99461
+reverse mover_train->vitaldb_test,G4,hgb,0.88076,0.99542
+reverse mover_train->vitaldb_test,G4,hgb,0.88594,0.99569
+reverse mover_train->vitaldb_test,G4,hgb,0.89111,0.99623
+reverse mover_train->vitaldb_test,G4,hgb,0.8963,0.9965
+reverse mover_train->vitaldb_test,G4,hgb,0.90147,0.99677
+reverse mover_train->vitaldb_test,G4,hgb,0.90667,0.99677
+reverse mover_train->vitaldb_test,G4,hgb,0.91186,0.99677
+reverse mover_train->vitaldb_test,G4,hgb,0.91704,0.99704
+reverse mover_train->vitaldb_test,G4,hgb,0.92222,0.9973
+reverse mover_train->vitaldb_test,G4,hgb,0.92738,0.99811
+reverse mover_train->vitaldb_test,G4,hgb,0.93257,0.99811
+reverse mover_train->vitaldb_test,G4,hgb,0.93777,0.99811
+reverse mover_train->vitaldb_test,G4,hgb,0.94294,0.99865
+reverse mover_train->vitaldb_test,G4,hgb,0.9481,0.99946
+reverse mover_train->vitaldb_test,G4,hgb,0.9533,0.99946
+reverse mover_train->vitaldb_test,G4,hgb,0.95848,0.99946
+reverse mover_train->vitaldb_test,G4,hgb,0.96367,0.99973
+reverse mover_train->vitaldb_test,G4,hgb,0.96886,0.99973
+reverse mover_train->vitaldb_test,G4,hgb,0.97405,0.99973
+reverse mover_train->vitaldb_test,G4,hgb,0.97924,0.99973
+reverse mover_train->vitaldb_test,G4,hgb,0.98443,1.0
+reverse mover_train->vitaldb_test,G4,hgb,0.98961,1.0
+reverse mover_train->vitaldb_test,G4,hgb,0.99481,1.0
+reverse mover_train->vitaldb_test,G4,hgb,1.0,1.0

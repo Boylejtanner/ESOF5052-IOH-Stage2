@@ -1,0 +1,6 @@
+recipe,inner_domain_auroc,features
+g0,0.5941109680079737,5
+ind3,0.7528452715797379,8
+ind3_all_eap_low_domain,0.9914465767190473,147
+ind3_multiscale,0.7613735091571356,13
+ind3_all_eap_low_domain__smoother,0.9914465767190473,147

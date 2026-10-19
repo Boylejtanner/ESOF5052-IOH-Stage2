@@ -1,0 +1,25 @@
+setting,rung,learner,subset,windows,events,auroc,auroc_lo,auroc_hi
+pooled_test,G0,lr,gray_zone 65-75 mmHg,24117,2511,0.7573,0.7413,0.7696
+pooled_test,G0,lr,outside gray zone,89627,969,0.7074,0.6787,0.7436
+pooled_test,G0,hgb,gray_zone 65-75 mmHg,24117,2511,0.7633,0.7467,0.7778
+pooled_test,G0,hgb,outside gray zone,89627,969,0.7759,0.7476,0.8015
+pooled_test,G4,lr,gray_zone 65-75 mmHg,24117,2511,0.7688,0.7525,0.7819
+pooled_test,G4,lr,outside gray zone,89627,969,0.7424,0.7132,0.7769
+pooled_test,G4,hgb,gray_zone 65-75 mmHg,24117,2511,0.7843,0.7678,0.7973
+pooled_test,G4,hgb,outside gray zone,89627,969,0.8141,0.7858,0.8381
+E3x vitaldb_train->all_mover,G0,lr,gray_zone 65-75 mmHg,8387,868,0.748,0.7245,0.7719
+E3x vitaldb_train->all_mover,G0,lr,outside gray zone,23608,338,0.7518,0.7065,0.7945
+E3x vitaldb_train->all_mover,G0,hgb,gray_zone 65-75 mmHg,8387,868,0.7592,0.7384,0.7842
+E3x vitaldb_train->all_mover,G0,hgb,outside gray zone,23608,338,0.7737,0.7371,0.8169
+E3x vitaldb_train->all_mover,G4,lr,gray_zone 65-75 mmHg,8387,868,0.6645,0.6243,0.6987
+E3x vitaldb_train->all_mover,G4,lr,outside gray zone,23608,338,0.7423,0.6997,0.7912
+E3x vitaldb_train->all_mover,G4,hgb,gray_zone 65-75 mmHg,8387,868,0.7362,0.7071,0.7641
+E3x vitaldb_train->all_mover,G4,hgb,outside gray zone,23608,338,0.7795,0.741,0.8287
+reverse mover_train->vitaldb_test,G0,lr,gray_zone 65-75 mmHg,24097,2677,0.7459,0.7301,0.76
+reverse mover_train->vitaldb_test,G0,lr,outside gray zone,92049,1033,0.7402,0.7118,0.7678
+reverse mover_train->vitaldb_test,G0,hgb,gray_zone 65-75 mmHg,24097,2677,0.743,0.7294,0.7562
+reverse mover_train->vitaldb_test,G0,hgb,outside gray zone,92049,1033,0.7808,0.7633,0.7972
+reverse mover_train->vitaldb_test,G4,lr,gray_zone 65-75 mmHg,24097,2677,0.6463,0.6192,0.6761
+reverse mover_train->vitaldb_test,G4,lr,outside gray zone,92049,1033,0.7319,0.7022,0.7666
+reverse mover_train->vitaldb_test,G4,hgb,gray_zone 65-75 mmHg,24097,2677,0.706,0.6887,0.7265
+reverse mover_train->vitaldb_test,G4,hgb,outside gray zone,92049,1033,0.7315,0.7034,0.7538

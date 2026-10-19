@@ -1,0 +1,17 @@
+dataset,step,description,cases,patients
+mover,1,surgeries listed in the three archive case tables,64354,
+mover,2,with the ECG + ART + PPG waveform members observed,1796,
+mover,3,"of those, with an arterial line",748,
+mover,4,assessed for window-level eligibility,728,
+mover,5,selected at rung R1 (>= 30 ready minutes at theta 0.75),420,405.0
+mover,6,with at least one BSHI core window (>= 54 of 60 usable beats),405,392.0
+mover,7,with at least one BSHI full window (also usable PPG),348,336.0
+vitaldb,1,surgeries in the VitalDB clinical table,6388,6090.0
+vitaldb,2,with ART + ECG + PPG + ART numeric MAP tracks (original cohort),3458,
+vitaldb,3,"usable after quality filters (duration, missingness, MAP density)",3185,3085.0
+vitaldb,4,with at least one BSHI core window,3088,2991.0
+vitaldb,5,with at least one BSHI full window,3065,2972.0
+mover,10,"ladder R1: theta 0.75, >= 30 ready min",420,405.0
+mover,10,"ladder R2: theta 0.7, >= 20 ready min",471,453.0
+mover,10,"ladder R3: theta 0.6, >= 15 ready min",523,499.0
+mover,10,"ladder R4: theta 0.5, >= 10 ready min",567,536.0

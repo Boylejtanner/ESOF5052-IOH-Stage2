@@ -1,0 +1,13 @@
+split_type,dataset,split,cases,patients,patient_share_of_dataset_pct
+split_pooled,mover,test,67,66,16.3
+split_pooled,mover,train,285,274,67.65
+split_pooled,mover,validation,68,65,16.05
+split_pooled,vitaldb,test,468,458,14.85
+split_pooled,vitaldb,train,2244,2168,70.28
+split_pooled,vitaldb,validation,473,459,14.88
+split_within_dataset,mover,test,62,61,15.06
+split_within_dataset,mover,train,291,283,69.88
+split_within_dataset,mover,validation,67,61,15.06
+split_within_dataset,vitaldb,test,473,464,15.04
+split_within_dataset,vitaldb,train,2224,2159,69.98
+split_within_dataset,vitaldb,validation,488,462,14.98

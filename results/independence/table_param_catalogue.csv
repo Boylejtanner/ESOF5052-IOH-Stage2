@@ -1,0 +1,158 @@
+name,signal,family,definition,unit,lookback,normalization,independent,candidate
+a_sbp_l60,A,level_shape,median systolic pressure (pulse maximum),mmHg,L60,raw,yes,True
+a_dbp_l60,A,level_shape,median diastolic pressure (minimum before the upstroke),mmHg,L60,raw,yes,True
+a_pp_l60,A,level_shape,median pulse pressure SBP - DBP,mmHg,L60,raw,yes,True
+a_dpdt_max_l60,A,level_shape,median maximum upstroke dP/dt,mmHg/s,L60,raw,yes,True
+a_dpdt_min_l60,A,level_shape,median minimum dP/dt after the peak,mmHg/s,L60,raw,yes,True
+a_rise_l60,A,level_shape,median foot-to-peak (systolic rise) time,s,L60,raw,yes,True
+a_notch_rel_l60,A,level_shape,median dicrotic notch height (P_notch - DBP)/PP,ratio,L60,raw,yes,True
+a_ejec_l60,A,level_shape,median foot-to-notch time / pulse interval,fraction,L60,raw,yes,True
+a_area_ratio_l60,A,level_shape,median systolic / diastolic area above DBP (split at the notch),ratio,L60,raw,yes,True
+a_tau_l60,A,level_shape,"median diastolic decay time constant (exponential fit, notch to next foot; R*C surrogate)",s,L60,raw,yes,True
+a_form_l60,A,level_shape,median form factor (foot-to-foot mean - DBP)/PP,ratio,L60,raw,yes,True
+a_skew_l60,A,level_shape,median skewness of the pulse samples,unitless,L60,raw,yes,True
+a_hr_l60,A,level_shape,median ART pulse rate 60 / foot-to-foot interval,bpm,L60,raw,yes,True
+a_map_l60,A,meta,median foot-to-foot mean pressure (QC vs current MAP),mmHg,L60,raw,yes,False
+a_q_l60,A,meta,median template correlation of ART pulses (own quality),unitless,L60,raw,yes,False
+a_cover_l60,A,meta,fraction of the last 60 s covered by valid ART pulses,fraction,L60,raw,yes,False
+a_int_sbp_corr_l60,A,within_coupling,Spearman of pulse interval vs SBP over valid pulses,unitless,L60,raw,yes,True
+a_pp_dbp_corr_l60,A,within_coupling,Spearman of PP vs DBP over valid pulses,unitless,L60,raw,yes,True
+a_ppv_l60,A,variability,PPV: median over 8-beat spans of (PPmax - PPmin)/mean PP,ratio,L60,raw,yes,True
+a_spv_l60,A,variability,SPV: median over 8-beat spans of SBPmax - SBPmin,mmHg,L60,raw,yes,True
+a_map_sd_l60,A,variability,SD of pulse mean pressure,mmHg,L60,raw,yes,True
+a_pp_cv_l60,A,variability,coefficient of variation of PP,ratio,L60,raw,yes,True
+a_int_sdnn_l60,A,variability,SD of ART pulse intervals,ms,L60,raw,yes,True
+a_int_rmssd_l60,A,variability,RMSSD of adjacent ART pulse intervals,ms,L60,raw,yes,True
+a_map_range_l60,A,variability,robust range (p95 - p5) of pulse mean pressure,mmHg,L60,raw,yes,True
+a_map_slope_l60,A,trend,linear slope of per-pulse foot-to-foot mean pressure,mmHg/min,L60,raw,yes,True
+a_pp_slope_l60,A,trend,linear slope of per-pulse pulse pressure SBP - DBP,mmHg/min,L60,raw,yes,True
+a_hr_slope_l60,A,trend,linear slope of per-pulse ART pulse rate 60 / foot-to-foot interval,bpm/min,L60,raw,yes,True
+a_dpdt_slope_l60,A,trend,linear slope of per-pulse maximum upstroke dP/dt,mmHg/s/min,L60,raw,yes,True
+a_tau_slope_l60,A,trend,"linear slope of per-pulse diastolic decay time constant (exponential fit, notch to next foot; R*C surrogate)",s/min,L60,raw,yes,True
+a_map_ac1_l60,A,temporal,lag-1 autocorrelation of the Gaussian-detrended (30 beats) MAP series,unitless,L60,raw,yes,True
+a_sbp_ac1_l60,A,temporal,lag-1 autocorrelation of the Gaussian-detrended (30 beats) SBP series,unitless,L60,raw,yes,True
+a_pp_ac1_l60,A,temporal,lag-1 autocorrelation of the Gaussian-detrended (30 beats) PP series,unitless,L60,raw,yes,True
+a_int_ac1_l60,A,temporal,lag-1 autocorrelation of the Gaussian-detrended (30 beats) INT series,unitless,L60,raw,yes,True
+a_ppv_l300,A,variability,PPV: median over 8-beat spans of (PPmax - PPmin)/mean PP,ratio,L300,raw,yes,True
+a_spv_l300,A,variability,SPV: median over 8-beat spans of SBPmax - SBPmin,mmHg,L300,raw,yes,True
+a_map_sd_l300,A,variability,SD of pulse mean pressure,mmHg,L300,raw,yes,True
+a_pp_cv_l300,A,variability,coefficient of variation of PP,ratio,L300,raw,yes,True
+a_int_sdnn_l300,A,variability,SD of ART pulse intervals,ms,L300,raw,yes,True
+a_int_rmssd_l300,A,variability,RMSSD of adjacent ART pulse intervals,ms,L300,raw,yes,True
+a_map_range_l300,A,variability,robust range (p95 - p5) of pulse mean pressure,mmHg,L300,raw,yes,True
+a_map_slope_l300,A,trend,linear slope of per-pulse foot-to-foot mean pressure,mmHg/min,L300,raw,yes,True
+a_pp_slope_l300,A,trend,linear slope of per-pulse pulse pressure SBP - DBP,mmHg/min,L300,raw,yes,True
+a_hr_slope_l300,A,trend,linear slope of per-pulse ART pulse rate 60 / foot-to-foot interval,bpm/min,L300,raw,yes,True
+a_dpdt_slope_l300,A,trend,linear slope of per-pulse maximum upstroke dP/dt,mmHg/s/min,L300,raw,yes,True
+a_tau_slope_l300,A,trend,"linear slope of per-pulse diastolic decay time constant (exponential fit, notch to next foot; R*C surrogate)",s/min,L300,raw,yes,True
+a_map_ac1_l300,A,temporal,lag-1 autocorrelation of the Gaussian-detrended (30 beats) MAP series,unitless,L300,raw,yes,True
+a_sbp_ac1_l300,A,temporal,lag-1 autocorrelation of the Gaussian-detrended (30 beats) SBP series,unitless,L300,raw,yes,True
+a_pp_ac1_l300,A,temporal,lag-1 autocorrelation of the Gaussian-detrended (30 beats) PP series,unitless,L300,raw,yes,True
+a_int_ac1_l300,A,temporal,lag-1 autocorrelation of the Gaussian-detrended (30 beats) INT series,unitless,L300,raw,yes,True
+a_map_d60_300,A,trend,median L60 - median L300 of MAP,mmHg,L60-L300,raw,yes,True
+a_pp_d60_300,A,trend,median L60 - median L300 of PP,mmHg,L60-L300,raw,yes,True
+a_hr_d60_300,A,trend,median L60 - median L300 of HR,bpm,L60-L300,raw,yes,True
+a_dpdt_d60_300,A,trend,median L60 - median L300 of DPDT,mmHg/s,L60-L300,raw,yes,True
+a_tau_d60_300,A,trend,median L60 - median L300 of TAU,s,L60-L300,raw,yes,True
+a_notch_rel_d60_300,A,trend,median L60 - median L300 of NOTCH_REL,ratio,L60-L300,raw,yes,True
+a_map_rsd_l300,A,temporal,SD of the detrended MAP series,mmHg,L300,raw,yes,True
+a_map_rskew_l300,A,temporal,skewness of the detrended MAP series,unitless,L300,raw,yes,True
+a_map_dfa_l300,A,temporal,DFA alpha1 (4-16 beats) of the MAP series,unitless,L300,raw,yes,True
+a_map_ktau_ac1_l300,A,temporal,"Kendall tau of rolling (50 beats, step 10) lag-1 autocorrelation of the detrended MAP series",unitless,L300,raw,yes,True
+a_map_ktau_var_l300,A,temporal,"Kendall tau of rolling (50 beats, step 10) variance of the detrended MAP series",unitless,L300,raw,yes,True
+a_sbp_rsd_l300,A,temporal,SD of the detrended SBP series,mmHg,L300,raw,yes,True
+a_sbp_rskew_l300,A,temporal,skewness of the detrended SBP series,unitless,L300,raw,yes,True
+a_sbp_dfa_l300,A,temporal,DFA alpha1 (4-16 beats) of the SBP series,unitless,L300,raw,yes,True
+a_sbp_ktau_ac1_l300,A,temporal,"Kendall tau of rolling (50 beats, step 10) lag-1 autocorrelation of the detrended SBP series",unitless,L300,raw,yes,True
+a_sbp_ktau_var_l300,A,temporal,"Kendall tau of rolling (50 beats, step 10) variance of the detrended SBP series",unitless,L300,raw,yes,True
+a_pp_rsd_l300,A,temporal,SD of the detrended PP series,mmHg,L300,raw,yes,True
+a_pp_rskew_l300,A,temporal,skewness of the detrended PP series,unitless,L300,raw,yes,True
+a_pp_dfa_l300,A,temporal,DFA alpha1 (4-16 beats) of the PP series,unitless,L300,raw,yes,True
+a_pp_ktau_ac1_l300,A,temporal,"Kendall tau of rolling (50 beats, step 10) lag-1 autocorrelation of the detrended PP series",unitless,L300,raw,yes,True
+a_pp_ktau_var_l300,A,temporal,"Kendall tau of rolling (50 beats, step 10) variance of the detrended PP series",unitless,L300,raw,yes,True
+a_int_rsd_l300,A,temporal,SD of the detrended INT series,s,L300,raw,yes,True
+a_int_rskew_l300,A,temporal,skewness of the detrended INT series,unitless,L300,raw,yes,True
+a_int_dfa_l300,A,temporal,DFA alpha1 (4-16 beats) of the INT series,unitless,L300,raw,yes,True
+a_int_ktau_ac1_l300,A,temporal,"Kendall tau of rolling (50 beats, step 10) lag-1 autocorrelation of the detrended INT series",unitless,L300,raw,yes,True
+a_int_ktau_var_l300,A,temporal,"Kendall tau of rolling (50 beats, step 10) variance of the detrended INT series",unitless,L300,raw,yes,True
+a_map_sampen_l300,A,temporal,"sample entropy (m = 2, r = 0.2 SD, last 300 beats) of the detrended MAP series",unitless,L300,raw,yes,True
+a_map_lfhf_l300,A,temporal,log LF(0.04-0.15 Hz)/HF(0.15-0.40 Hz) Lomb-Scargle power of the MAP series,log ratio,L300,raw,yes,True
+a_int_sampen_l300,A,temporal,"sample entropy (m = 2, r = 0.2 SD, last 300 beats) of the detrended INT series",unitless,L300,raw,yes,True
+a_int_lfhf_l300,A,temporal,log LF(0.04-0.15 Hz)/HF(0.15-0.40 Hz) Lomb-Scargle power of the INT series,log ratio,L300,raw,yes,True
+e_hr_l60,E,level_shape,ECG heart rate 60 / median NN interval,bpm,L60,raw,yes,True
+e_q_l60,E,meta,median R-peak confidence (own quality),unitless,L60,raw,yes,False
+e_cover_l60,E,meta,fraction of the last 60 s covered by valid R-R intervals,fraction,L60,raw,yes,False
+e_sdnn_l60,E,variability,SDNN of NN intervals (ectopy excluded),ms,L60,raw,yes,True
+e_rmssd_l60,E,variability,RMSSD of adjacent NN intervals,ms,L60,raw,yes,True
+e_pnn50_l60,E,variability,share of adjacent NN differences > 50 ms,fraction,L60,raw,yes,True
+e_sd1sd2_l60,E,variability,Poincare SD1/SD2,ratio,L60,raw,yes,True
+e_ectopy_l60,E,variability,share of R-R intervals outside 0.8-1.2 x causal median of the previous 9,fraction,L60,raw,yes,True
+e_rsa_l60,E,variability,respiratory sinus arrhythmia: median over 8-beat spans of NNmax - NNmin,ms,L60,raw,yes,True
+e_edr_rate_l60,E,variability,ECG-derived respiration rate (Lomb-Scargle peak 0.1-0.6 Hz of R amplitude),breaths/min,L60,raw,yes,True
+e_hr_slope_l60,E,trend,linear slope of beat-to-beat ECG heart rate,bpm/min,L60,raw,yes,True
+e_rr_ac1_l60,E,temporal,lag-1 autocorrelation of the Gaussian-detrended (30 beats) RR series,unitless,L60,raw,yes,True
+e_sdnn_l300,E,variability,SDNN of NN intervals (ectopy excluded),ms,L300,raw,yes,True
+e_rmssd_l300,E,variability,RMSSD of adjacent NN intervals,ms,L300,raw,yes,True
+e_pnn50_l300,E,variability,share of adjacent NN differences > 50 ms,fraction,L300,raw,yes,True
+e_sd1sd2_l300,E,variability,Poincare SD1/SD2,ratio,L300,raw,yes,True
+e_ectopy_l300,E,variability,share of R-R intervals outside 0.8-1.2 x causal median of the previous 9,fraction,L300,raw,yes,True
+e_rsa_l300,E,variability,respiratory sinus arrhythmia: median over 8-beat spans of NNmax - NNmin,ms,L300,raw,yes,True
+e_edr_rate_l300,E,variability,ECG-derived respiration rate (Lomb-Scargle peak 0.1-0.6 Hz of R amplitude),breaths/min,L300,raw,yes,True
+e_hr_slope_l300,E,trend,linear slope of beat-to-beat ECG heart rate,bpm/min,L300,raw,yes,True
+e_rr_ac1_l300,E,temporal,lag-1 autocorrelation of the Gaussian-detrended (30 beats) RR series,unitless,L300,raw,yes,True
+e_hr_d60_300,E,trend,ECG heart rate L60 - L300,bpm,L60-L300,raw,yes,True
+e_rr_rsd_l300,E,temporal,SD of the detrended RR series,ms,L300,raw,yes,True
+e_rr_rskew_l300,E,temporal,skewness of the detrended RR series,unitless,L300,raw,yes,True
+e_rr_dfa_l300,E,temporal,DFA alpha1 (4-16 beats) of the RR series,unitless,L300,raw,yes,True
+e_rr_ktau_ac1_l300,E,temporal,"Kendall tau of rolling (50 beats, step 10) lag-1 autocorrelation of the detrended RR series",unitless,L300,raw,yes,True
+e_rr_ktau_var_l300,E,temporal,"Kendall tau of rolling (50 beats, step 10) variance of the detrended RR series",unitless,L300,raw,yes,True
+e_rr_sampen_l300,E,temporal,"sample entropy (m = 2, r = 0.2 SD, last 300 beats) of the detrended RR series",unitless,L300,raw,yes,True
+e_rr_lfhf_l300,E,temporal,log LF(0.04-0.15 Hz)/HF(0.15-0.40 Hz) Lomb-Scargle power of the RR series,log ratio,L300,raw,yes,True
+p_rise_l60,P,level_shape,median PPG foot-to-peak time,s,L60,raw,yes,True
+p_width_l60,P,level_shape,median share of the PPG cycle above 50% amplitude,fraction,L60,raw,yes,True
+p_hr_l60,P,level_shape,median PPG pulse rate,bpm,L60,raw,yes,True
+p_amp_l60,P,meta,median PPG amplitude (device units; only the _sn form is a candidate),device units,L60,raw,yes,False
+p_acdc_l60,P,meta,median PPG AC/DC (device dependent; only the _sn form is a candidate),ratio,L60,raw,yes,False
+p_q_l60,P,meta,median template correlation of PPG pulses (own quality),unitless,L60,raw,yes,False
+p_cover_l60,P,meta,fraction of the last 60 s covered by valid PPG pulses,fraction,L60,raw,yes,False
+p_hr_slope_l60,P,trend,linear slope of PPG pulse rate,bpm/min,L60,raw,yes,True
+p_int_amp_corr_l60,P,within_coupling,Spearman of PPG pulse interval vs amplitude,unitless,L60,raw,yes,True
+p_amp_cv_l60,P,variability,coefficient of variation of PPG amplitude,ratio,L60,raw,yes,True
+p_pvi_l60,P,variability,PVI-like: median over 8-beat spans of (AMPmax - AMPmin)/mean,ratio,L60,raw,yes,True
+p_int_sdnn_l60,P,variability,SD of PPG pulse intervals,ms,L60,raw,yes,True
+p_int_rmssd_l60,P,variability,RMSSD of adjacent PPG pulse intervals,ms,L60,raw,yes,True
+p_amp_rslope_l60,P,trend,slope of PPG amplitude / median amplitude,1/min,L60,raw,yes,True
+p_amp_ac1_l60,P,temporal,lag-1 autocorrelation of the Gaussian-detrended (30 beats) PPG amplitude series,unitless,L60,raw,yes,True
+p_amp_cv_l300,P,variability,coefficient of variation of PPG amplitude,ratio,L300,raw,yes,True
+p_pvi_l300,P,variability,PVI-like: median over 8-beat spans of (AMPmax - AMPmin)/mean,ratio,L300,raw,yes,True
+p_int_sdnn_l300,P,variability,SD of PPG pulse intervals,ms,L300,raw,yes,True
+p_int_rmssd_l300,P,variability,RMSSD of adjacent PPG pulse intervals,ms,L300,raw,yes,True
+p_amp_rslope_l300,P,trend,slope of PPG amplitude / median amplitude,1/min,L300,raw,yes,True
+p_amp_ac1_l300,P,temporal,lag-1 autocorrelation of the Gaussian-detrended (30 beats) PPG amplitude series,unitless,L300,raw,yes,True
+p_amp_d60_300,P,trend,PPG amplitude median L60 / median L300 - 1,ratio,L60-L300,raw,yes,True
+p_int_ac1_l300,P,temporal,lag-1 autocorrelation of the Gaussian-detrended (30 beats) PPG interval series,unitless,L300,raw,yes,True
+p_amp_dfa_l300,P,temporal,DFA alpha1 (4-16 beats) of the PPG amplitude series,unitless,L300,raw,yes,True
+p_amp_lfhf_l300,P,temporal,log LF(0.04-0.15 Hz)/HF(0.15-0.40 Hz) Lomb-Scargle power of the PPG amplitude series,log ratio,L300,raw,yes,True
+p_amp_ktau_var_l300,P,temporal,"Kendall tau of rolling (50 beats, step 10) variance of the detrended PPG amplitude series",unitless,L300,raw,yes,True
+a_sbp_l60_sn,A,level_shape_sn,"median systolic pressure (pulse maximum), ratio to the case's expanding median (causal, >= 5 min)",ratio,L60,self_ratio,yes,True
+a_dbp_l60_sn,A,level_shape_sn,"median diastolic pressure (minimum before the upstroke), ratio to the case's expanding median (causal, >= 5 min)",ratio,L60,self_ratio,yes,True
+a_pp_l60_sn,A,level_shape_sn,"median pulse pressure SBP - DBP, ratio to the case's expanding median (causal, >= 5 min)",ratio,L60,self_ratio,yes,True
+a_dpdt_max_l60_sn,A,level_shape_sn,"median maximum upstroke dP/dt, ratio to the case's expanding median (causal, >= 5 min)",ratio,L60,self_ratio,yes,True
+a_dpdt_min_l60_sn,A,level_shape_sn,"median minimum dP/dt after the peak, ratio to the case's expanding median (causal, >= 5 min)",ratio,L60,self_ratio,yes,True
+a_rise_l60_sn,A,level_shape_sn,"median foot-to-peak (systolic rise) time, ratio to the case's expanding median (causal, >= 5 min)",ratio,L60,self_ratio,yes,True
+a_tau_l60_sn,A,level_shape_sn,"median diastolic decay time constant (exponential fit, notch to next foot; R*C surrogate), ratio to the case's expanding median (causal, >= 5 min)",ratio,L60,self_ratio,yes,True
+a_area_ratio_l60_sn,A,level_shape_sn,"median systolic / diastolic area above DBP (split at the notch), ratio to the case's expanding median (causal, >= 5 min)",ratio,L60,self_ratio,yes,True
+a_hr_l60_sn,A,level_shape_sn,"median ART pulse rate 60 / foot-to-foot interval, ratio to the case's expanding median (causal, >= 5 min)",ratio,L60,self_ratio,yes,True
+a_form_l60_sn,A,level_shape_sn,"median form factor (foot-to-foot mean - DBP)/PP, ratio to the case's expanding median (causal, >= 5 min)",ratio,L60,self_ratio,yes,True
+a_notch_rel_l60_sn,A,level_shape_sn,"median dicrotic notch height (P_notch - DBP)/PP, difference from the case's expanding median (causal, >= 5 min)",ratio,L60,self_diff,yes,True
+e_hr_l60_sn,E,level_shape_sn,"ECG heart rate 60 / median NN interval, ratio to the case's expanding median (causal, >= 5 min)",ratio,L60,self_ratio,yes,True
+e_sdnn_l60_sn,E,level_shape_sn,"SDNN of NN intervals (ectopy excluded), ratio to the case's expanding median (causal, >= 5 min)",ratio,L60,self_ratio,yes,True
+e_rmssd_l60_sn,E,level_shape_sn,"RMSSD of adjacent NN intervals, ratio to the case's expanding median (causal, >= 5 min)",ratio,L60,self_ratio,yes,True
+e_sdnn_l300_sn,E,level_shape_sn,"SDNN of NN intervals (ectopy excluded), ratio to the case's expanding median (causal, >= 5 min)",ratio,L300,self_ratio,yes,True
+e_rmssd_l300_sn,E,level_shape_sn,"RMSSD of adjacent NN intervals, ratio to the case's expanding median (causal, >= 5 min)",ratio,L300,self_ratio,yes,True
+p_amp_l60_sn,P,level_shape_sn,"median PPG amplitude (device units; only the _sn form is a candidate), ratio to the case's expanding median (causal, >= 5 min)",ratio,L60,self_ratio,yes,True
+p_acdc_l60_sn,P,level_shape_sn,"median PPG AC/DC (device dependent; only the _sn form is a candidate), ratio to the case's expanding median (causal, >= 5 min)",ratio,L60,self_ratio,yes,True
+p_rise_l60_sn,P,level_shape_sn,"median PPG foot-to-peak time, ratio to the case's expanding median (causal, >= 5 min)",ratio,L60,self_ratio,yes,True
+p_width_l60_sn,P,level_shape_sn,"median share of the PPG cycle above 50% amplitude, ratio to the case's expanding median (causal, >= 5 min)",ratio,L60,self_ratio,yes,True
+p_hr_l60_sn,P,level_shape_sn,"median PPG pulse rate, ratio to the case's expanding median (causal, >= 5 min)",ratio,L60,self_ratio,yes,True
+x_hr_map_corr_l60,E+A,cross,Spearman of ECG heart rate vs ART pulse MAP interpolated at the R peaks,unitless,L60,raw,no,False

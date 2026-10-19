@@ -1,0 +1,225 @@
+train,setting,clean,window_set,learner,windows,events,patients,train_windows_used,model,subset,subset_windows,subset_events,auroc,auroc_lo,auroc_hi
+vitaldb_within_train,E3x vitaldb_train->all_mover (not clean),False,core,hgb,50044,2381,392,198349,G0,gray zone 65-75 mmHg,12453,1630,0.7432628706532158,0.7251724813271231,0.7613887665081537
+vitaldb_within_train,E3x vitaldb_train->all_mover (not clean),False,core,hgb,50044,2381,392,198349,G0,outside gray zone,37591,751,0.7702938065930189,0.7360809237779972,0.7999292361594191
+vitaldb_within_train,E3x vitaldb_train->all_mover (not clean),False,core,hgb,50044,2381,392,198349,old G2,gray zone 65-75 mmHg,12453,1630,0.7181323686377965,0.6956918733433202,0.7400890027142235
+vitaldb_within_train,E3x vitaldb_train->all_mover (not clean),False,core,hgb,50044,2381,392,198349,old G2,outside gray zone,37591,751,0.7611988214049743,0.7272751477686191,0.792847365966687
+vitaldb_within_train,E3x vitaldb_train->all_mover (not clean),False,core,hgb,50044,2381,392,198349,G0 + IND-EA,gray zone 65-75 mmHg,12453,1630,0.7563108614975266,0.7377565595579711,0.7755622054427441
+vitaldb_within_train,E3x vitaldb_train->all_mover (not clean),False,core,hgb,50044,2381,392,198349,G0 + IND-EA,outside gray zone,37591,751,0.7828641977182793,0.7451659145176878,0.8156422580487369
+vitaldb_within_train,E3x vitaldb_train->all_mover (not clean),False,core,lr,50044,2381,392,198349,G0,gray zone 65-75 mmHg,12453,1630,0.7305053598080434,0.7114294922945806,0.7490460498764845
+vitaldb_within_train,E3x vitaldb_train->all_mover (not clean),False,core,lr,50044,2381,392,198349,G0,outside gray zone,37591,751,0.7240165483300587,0.6885762722618788,0.7589920241127444
+vitaldb_within_train,E3x vitaldb_train->all_mover (not clean),False,core,lr,50044,2381,392,198349,old G2,gray zone 65-75 mmHg,12453,1630,0.6745871805612791,0.642234372246675,0.7056391759864917
+vitaldb_within_train,E3x vitaldb_train->all_mover (not clean),False,core,lr,50044,2381,392,198349,old G2,outside gray zone,37591,751,0.7106468610076178,0.6741521173262038,0.7449134481455646
+vitaldb_within_train,E3x vitaldb_train->all_mover (not clean),False,core,lr,50044,2381,392,198349,G0 + IND-EA,gray zone 65-75 mmHg,12453,1630,0.7294397468694538,0.7051779165050135,0.7527345951393294
+vitaldb_within_train,E3x vitaldb_train->all_mover (not clean),False,core,lr,50044,2381,392,198349,G0 + IND-EA,outside gray zone,37591,751,0.7447346715418168,0.7076892906321679,0.7794502118781041
+vitaldb_within_train,E3x vitaldb_train->all_mover (not clean),False,full,lr,31995,1206,336,177206,G0,gray zone 65-75 mmHg,8387,868,0.7480194567004755,0.7254811430551678,0.7756771025212176
+vitaldb_within_train,E3x vitaldb_train->all_mover (not clean),False,full,lr,31995,1206,336,177206,G0,outside gray zone,23608,338,0.7518309629942304,0.7075066427470544,0.7958314995386586
+vitaldb_within_train,E3x vitaldb_train->all_mover (not clean),False,full,lr,31995,1206,336,177206,old G4,gray zone 65-75 mmHg,8387,868,0.6645064454227477,0.6278454510351239,0.701240274544703
+vitaldb_within_train,E3x vitaldb_train->all_mover (not clean),False,full,lr,31995,1206,336,177206,old G4,outside gray zone,23608,338,0.7423084551559643,0.6988986029670006,0.7836660151404956
+vitaldb_within_train,E3x vitaldb_train->all_mover (not clean),False,full,lr,31995,1206,336,177206,G0 + IND-EA,gray zone 65-75 mmHg,8387,868,0.7459315050106551,0.7139841032161859,0.7758519900415899
+vitaldb_within_train,E3x vitaldb_train->all_mover (not clean),False,full,lr,31995,1206,336,177206,G0 + IND-EA,outside gray zone,23608,338,0.772235628574262,0.7235760680904869,0.8169485366517327
+vitaldb_within_train,E3x vitaldb_train->all_mover (not clean),False,full,lr,31995,1206,336,177206,G0 + IND-EAP,gray zone 65-75 mmHg,8387,868,0.7459315050106551,0.7139841032161859,0.7758519900415899
+vitaldb_within_train,E3x vitaldb_train->all_mover (not clean),False,full,lr,31995,1206,336,177206,G0 + IND-EAP,outside gray zone,23608,338,0.772235628574262,0.7235760680904869,0.8169485366517327
+vitaldb_within_train,E3x vitaldb_train->all_mover (not clean),False,full,lr,31995,1206,336,177206,noninvasive IND-E + IND-P,gray zone 65-75 mmHg,8387,868,0.5749640082298423,0.5241255304023055,0.6204513529566409
+vitaldb_within_train,E3x vitaldb_train->all_mover (not clean),False,full,lr,31995,1206,336,177206,noninvasive IND-E + IND-P,outside gray zone,23608,338,0.6066202515873601,0.5416955961749055,0.668582942319274
+vitaldb_within_train,E3x vitaldb_train->all_mover (not clean),False,full,hgb,31995,1206,336,177206,G0,gray zone 65-75 mmHg,8387,868,0.7591869414687094,0.7366188153151337,0.7853581631761715
+vitaldb_within_train,E3x vitaldb_train->all_mover (not clean),False,full,hgb,31995,1206,336,177206,G0,outside gray zone,23608,338,0.7736549077843581,0.7289504882604845,0.8126602961630679
+vitaldb_within_train,E3x vitaldb_train->all_mover (not clean),False,full,hgb,31995,1206,336,177206,old G4,gray zone 65-75 mmHg,8387,868,0.7361695992272724,0.7088316721984781,0.7660412485243736
+vitaldb_within_train,E3x vitaldb_train->all_mover (not clean),False,full,hgb,31995,1206,336,177206,old G4,outside gray zone,23608,338,0.7795315094478759,0.7328250033727525,0.8189733218063797
+vitaldb_within_train,E3x vitaldb_train->all_mover (not clean),False,full,hgb,31995,1206,336,177206,G0 + IND-EA,gray zone 65-75 mmHg,8387,868,0.7645257973196014,0.7398091826915684,0.7896601293712224
+vitaldb_within_train,E3x vitaldb_train->all_mover (not clean),False,full,hgb,31995,1206,336,177206,G0 + IND-EA,outside gray zone,23608,338,0.7934676031053011,0.7442983982596243,0.8366004344264507
+vitaldb_within_train,E3x vitaldb_train->all_mover (not clean),False,full,hgb,31995,1206,336,177206,G0 + IND-EAP,gray zone 65-75 mmHg,8387,868,0.7645257973196014,0.7398091826915684,0.7896601293712224
+vitaldb_within_train,E3x vitaldb_train->all_mover (not clean),False,full,hgb,31995,1206,336,177206,G0 + IND-EAP,outside gray zone,23608,338,0.7934676031053011,0.7442983982596243,0.8366004344264507
+vitaldb_within_train,E3x vitaldb_train->all_mover (not clean),False,full,hgb,31995,1206,336,177206,noninvasive IND-E + IND-P,gray zone 65-75 mmHg,8387,868,0.5343004327592833,0.49450889435172596,0.5768378857572355
+vitaldb_within_train,E3x vitaldb_train->all_mover (not clean),False,full,hgb,31995,1206,336,177206,noninvasive IND-E + IND-P,outside gray zone,23608,338,0.6451326466003666,0.5817420326031706,0.7118439698606776
+mover_within_train,reverse mover_train->vitaldb_test (not clean),False,core,hgb,129273,4092,452,35228,G0,gray zone 65-75 mmHg,26177,2917,0.7421278324855246,0.7278328555711667,0.7564417168646939
+mover_within_train,reverse mover_train->vitaldb_test (not clean),False,core,hgb,129273,4092,452,35228,G0,outside gray zone,103096,1175,0.7900019017649673,0.7695435572161806,0.8114510692318833
+mover_within_train,reverse mover_train->vitaldb_test (not clean),False,core,hgb,129273,4092,452,35228,old G2,gray zone 65-75 mmHg,26177,2917,0.6912708760074884,0.6679716626482304,0.714948980796912
+mover_within_train,reverse mover_train->vitaldb_test (not clean),False,core,hgb,129273,4092,452,35228,old G2,outside gray zone,103096,1175,0.7667441303621265,0.7425792545240654,0.7892354710349351
+mover_within_train,reverse mover_train->vitaldb_test (not clean),False,core,hgb,129273,4092,452,35228,G0 + IND-EA,gray zone 65-75 mmHg,26177,2917,0.7447796900843073,0.7289396280067079,0.7609598702108984
+mover_within_train,reverse mover_train->vitaldb_test (not clean),False,core,hgb,129273,4092,452,35228,G0 + IND-EA,outside gray zone,103096,1175,0.8003172169016178,0.7787049487621359,0.8217474900252115
+mover_within_train,reverse mover_train->vitaldb_test (not clean),False,core,lr,129273,4092,452,35228,G0,gray zone 65-75 mmHg,26177,2917,0.7385305135990846,0.7229810430149937,0.7538170999116162
+mover_within_train,reverse mover_train->vitaldb_test (not clean),False,core,lr,129273,4092,452,35228,G0,outside gray zone,103096,1175,0.7491982755939258,0.7231558155927246,0.7738334794026476
+mover_within_train,reverse mover_train->vitaldb_test (not clean),False,core,lr,129273,4092,452,35228,old G2,gray zone 65-75 mmHg,26177,2917,0.7060915332806087,0.6802163951067081,0.7303705965458006
+mover_within_train,reverse mover_train->vitaldb_test (not clean),False,core,lr,129273,4092,452,35228,old G2,outside gray zone,103096,1175,0.7533716038308352,0.7280752412365462,0.7770641853321957
+mover_within_train,reverse mover_train->vitaldb_test (not clean),False,core,lr,129273,4092,452,35228,G0 + IND-EA,gray zone 65-75 mmHg,26177,2917,0.7460910351186495,0.7291259485939889,0.7653127923942277
+mover_within_train,reverse mover_train->vitaldb_test (not clean),False,core,lr,129273,4092,452,35228,G0 + IND-EA,outside gray zone,103096,1175,0.7775784958187265,0.751104453714058,0.8030154988492979
+vitaldb_pooled_train,clean vitaldb_train->mover_test,True,core,lr,8091,419,64,202118,G0,gray zone 65-75 mmHg,1889,284,0.7656092317142732,0.7310431564590639,0.8017050296114161
+vitaldb_pooled_train,clean vitaldb_train->mover_test,True,core,lr,8091,419,64,202118,G0,outside gray zone,6202,135,0.781347789193512,0.7078703688123604,0.8514643510906937
+vitaldb_pooled_train,clean vitaldb_train->mover_test,True,core,lr,8091,419,64,202118,old G2,gray zone 65-75 mmHg,1889,284,0.6991860822254399,0.6547430532252554,0.7554501406222713
+vitaldb_pooled_train,clean vitaldb_train->mover_test,True,core,lr,8091,419,64,202118,old G2,outside gray zone,6202,135,0.7630276724722085,0.681226270537363,0.8427320775007328
+vitaldb_pooled_train,clean vitaldb_train->mover_test,True,core,lr,8091,419,64,202118,G0 + IND-EA,gray zone 65-75 mmHg,1889,284,0.7544666754420605,0.7113803507139949,0.8045765693418747
+vitaldb_pooled_train,clean vitaldb_train->mover_test,True,core,lr,8091,419,64,202118,G0 + IND-EA,outside gray zone,6202,135,0.8041279783162097,0.727056449350183,0.8756734594799505
+vitaldb_pooled_train,clean vitaldb_train->mover_test,True,core,hgb,8091,419,64,202118,G0,gray zone 65-75 mmHg,1889,284,0.7596671931902944,0.7265881322666603,0.79680809563875
+vitaldb_pooled_train,clean vitaldb_train->mover_test,True,core,hgb,8091,419,64,202118,G0,outside gray zone,6202,135,0.8321191143343772,0.7822261643383245,0.8722898220235918
+vitaldb_pooled_train,clean vitaldb_train->mover_test,True,core,hgb,8091,419,64,202118,old G2,gray zone 65-75 mmHg,1889,284,0.7548374358299329,0.7217455342614344,0.7906908707521202
+vitaldb_pooled_train,clean vitaldb_train->mover_test,True,core,hgb,8091,419,64,202118,old G2,outside gray zone,6202,135,0.8168342398769298,0.7598815515266985,0.8683801685094645
+vitaldb_pooled_train,clean vitaldb_train->mover_test,True,core,hgb,8091,419,64,202118,G0 + IND-EA,gray zone 65-75 mmHg,1889,284,0.7698927208108464,0.7278177708742722,0.8191710902893798
+vitaldb_pooled_train,clean vitaldb_train->mover_test,True,core,hgb,8091,419,64,202118,G0 + IND-EA,outside gray zone,6202,135,0.8475675939661435,0.8035140592731913,0.8875804318415077
+vitaldb_pooled_train,clean vitaldb_train->mover_test,True,full,lr,5611,219,53,181520,G0,gray zone 65-75 mmHg,1286,168,0.7687515972399693,0.7157101657223751,0.8163348666470538
+vitaldb_pooled_train,clean vitaldb_train->mover_test,True,full,lr,5611,219,53,181520,G0,outside gray zone,4325,51,0.8176617394735152,0.7363750784700631,0.8975318818542379
+vitaldb_pooled_train,clean vitaldb_train->mover_test,True,full,lr,5611,219,53,181520,old G4,gray zone 65-75 mmHg,1286,168,0.6950283243887895,0.6213989043003081,0.7736409421946846
+vitaldb_pooled_train,clean vitaldb_train->mover_test,True,full,lr,5611,219,53,181520,old G4,outside gray zone,4325,51,0.7553928450182131,0.6491385346646018,0.8561757267048337
+vitaldb_pooled_train,clean vitaldb_train->mover_test,True,full,lr,5611,219,53,181520,G0 + IND-EA,gray zone 65-75 mmHg,1286,168,0.7565380356078031,0.6907814219577456,0.8251699068109614
+vitaldb_pooled_train,clean vitaldb_train->mover_test,True,full,lr,5611,219,53,181520,G0 + IND-EA,outside gray zone,4325,51,0.8671997577692753,0.7995841254525786,0.9268209879229559
+vitaldb_pooled_train,clean vitaldb_train->mover_test,True,full,lr,5611,219,53,181520,G0 + IND-EAP,gray zone 65-75 mmHg,1286,168,0.7565380356078031,0.6907814219577456,0.8251699068109614
+vitaldb_pooled_train,clean vitaldb_train->mover_test,True,full,lr,5611,219,53,181520,G0 + IND-EAP,outside gray zone,4325,51,0.8671997577692753,0.7995841254525786,0.9268209879229559
+vitaldb_pooled_train,clean vitaldb_train->mover_test,True,full,lr,5611,219,53,181520,noninvasive IND-E + IND-P,gray zone 65-75 mmHg,1286,168,0.5986774853053923,0.5298501575034471,0.6887231946561841
+vitaldb_pooled_train,clean vitaldb_train->mover_test,True,full,lr,5611,219,53,181520,noninvasive IND-E + IND-P,outside gray zone,4325,51,0.7267472267334636,0.6499734869643649,0.8133431942873726
+vitaldb_pooled_train,clean vitaldb_train->mover_test,True,full,hgb,5611,219,53,181520,G0,gray zone 65-75 mmHg,1286,168,0.7645508561206236,0.7045101099004972,0.8167414308531296
+vitaldb_pooled_train,clean vitaldb_train->mover_test,True,full,hgb,5611,219,53,181520,G0,outside gray zone,4325,51,0.8357464651747456,0.7671387707456846,0.8954913652630317
+vitaldb_pooled_train,clean vitaldb_train->mover_test,True,full,hgb,5611,219,53,181520,old G4,gray zone 65-75 mmHg,1286,168,0.7458578243461964,0.676977122384934,0.8172500442948045
+vitaldb_pooled_train,clean vitaldb_train->mover_test,True,full,hgb,5611,219,53,181520,old G4,outside gray zone,4325,51,0.8444172240725958,0.7708603483740749,0.9051093383253159
+vitaldb_pooled_train,clean vitaldb_train->mover_test,True,full,hgb,5611,219,53,181520,G0 + IND-EA,gray zone 65-75 mmHg,1286,168,0.7598602947440157,0.6947662058174217,0.8233927670487232
+vitaldb_pooled_train,clean vitaldb_train->mover_test,True,full,hgb,5611,219,53,181520,G0 + IND-EA,outside gray zone,4325,51,0.8793755218512299,0.8111599379973276,0.9261629066782656
+vitaldb_pooled_train,clean vitaldb_train->mover_test,True,full,hgb,5611,219,53,181520,G0 + IND-EAP,gray zone 65-75 mmHg,1286,168,0.7598602947440157,0.6947662058174217,0.8233927670487232
+vitaldb_pooled_train,clean vitaldb_train->mover_test,True,full,hgb,5611,219,53,181520,G0 + IND-EAP,outside gray zone,4325,51,0.8793755218512299,0.8111599379973276,0.9261629066782656
+vitaldb_pooled_train,clean vitaldb_train->mover_test,True,full,hgb,5611,219,53,181520,noninvasive IND-E + IND-P,gray zone 65-75 mmHg,1286,168,0.5845206150438709,0.48208911706885044,0.7005702297855069
+vitaldb_pooled_train,clean vitaldb_train->mover_test,True,full,hgb,5611,219,53,181520,noninvasive IND-E + IND-P,outside gray zone,4325,51,0.7145485241359061,0.5876479709210493,0.8315620541333758
+mover_within_train,reverse mover_train->vitaldb_test (not clean),False,full,lr,116146,3710,450,22311,G0,gray zone 65-75 mmHg,24097,2677,0.7459200465144344,0.730058860503237,0.7615341568118705
+mover_within_train,reverse mover_train->vitaldb_test (not clean),False,full,lr,116146,3710,450,22311,G0,outside gray zone,92049,1033,0.7401740412906561,0.7112393457838766,0.7691873019729276
+mover_within_train,reverse mover_train->vitaldb_test (not clean),False,full,lr,116146,3710,450,22311,old G4,gray zone 65-75 mmHg,24097,2677,0.6462892391423012,0.6139511277232332,0.6790148315509648
+mover_within_train,reverse mover_train->vitaldb_test (not clean),False,full,lr,116146,3710,450,22311,old G4,outside gray zone,92049,1033,0.7318956015180166,0.6988287988350796,0.7634867063966734
+mover_within_train,reverse mover_train->vitaldb_test (not clean),False,full,lr,116146,3710,450,22311,G0 + IND-EA,gray zone 65-75 mmHg,24097,2677,0.747297830849436,0.7282580096253736,0.7672000161459656
+mover_within_train,reverse mover_train->vitaldb_test (not clean),False,full,lr,116146,3710,450,22311,G0 + IND-EA,outside gray zone,92049,1033,0.7849596947561788,0.7558562482127918,0.8143353534836859
+mover_within_train,reverse mover_train->vitaldb_test (not clean),False,full,lr,116146,3710,450,22311,G0 + IND-EAP,gray zone 65-75 mmHg,24097,2677,0.747297830849436,0.7282580096253736,0.7672000161459656
+mover_within_train,reverse mover_train->vitaldb_test (not clean),False,full,lr,116146,3710,450,22311,G0 + IND-EAP,outside gray zone,92049,1033,0.7849596947561788,0.7558562482127918,0.8143353534836859
+mover_within_train,reverse mover_train->vitaldb_test (not clean),False,full,lr,116146,3710,450,22311,noninvasive IND-E + IND-P,gray zone 65-75 mmHg,24097,2677,0.5617404825209875,0.5166640835090938,0.6008350976886991
+mover_within_train,reverse mover_train->vitaldb_test (not clean),False,full,lr,116146,3710,450,22311,noninvasive IND-E + IND-P,outside gray zone,92049,1033,0.6363407397663174,0.5903343419967242,0.6791364654320833
+pooled_train,pooled_test,True,core,hgb,129934,4062,509,212943,G0,gray zone 65-75 mmHg,27045,2863,0.7648376210870107,0.7518250172338098,0.7778810149361787
+pooled_train,pooled_test,True,core,hgb,129934,4062,509,212943,G0,outside gray zone,102889,1199,0.7831609928980874,0.7560688656167769,0.8068781495744736
+pooled_train,pooled_test,True,core,hgb,129934,4062,509,212943,old G2,gray zone 65-75 mmHg,27045,2863,0.7836588227942989,0.7711725775548,0.7971067022658185
+pooled_train,pooled_test,True,core,hgb,129934,4062,509,212943,old G2,outside gray zone,102889,1199,0.8187522446959972,0.7910087122942375,0.8433188039005891
+pooled_train,pooled_test,True,core,hgb,129934,4062,509,212943,G0 + IND-EA,gray zone 65-75 mmHg,27045,2863,0.7739746568496619,0.760092875973238,0.7889628947455161
+pooled_train,pooled_test,True,core,hgb,129934,4062,509,212943,G0 + IND-EA,outside gray zone,102889,1199,0.8134921576811437,0.7847837805432119,0.8367871733413993
+pooled_train,pooled_test:vitaldb,True,core,hgb,121843,3643,445,212943,G0,gray zone 65-75 mmHg,25156,2579,0.7652303607646078,0.7513896532107115,0.7794504438460655
+pooled_train,pooled_test:vitaldb,True,core,hgb,121843,3643,445,212943,G0,outside gray zone,96687,1064,0.7762265448925012,0.7489183769423197,0.8033865479860668
+pooled_train,pooled_test:vitaldb,True,core,hgb,121843,3643,445,212943,old G2,gray zone 65-75 mmHg,25156,2579,0.7861762227763114,0.7717498680024953,0.800177282353827
+pooled_train,pooled_test:vitaldb,True,core,hgb,121843,3643,445,212943,old G2,outside gray zone,96687,1064,0.816225238855062,0.7858708624831968,0.8429034891782811
+pooled_train,pooled_test:vitaldb,True,core,hgb,121843,3643,445,212943,G0 + IND-EA,gray zone 65-75 mmHg,25156,2579,0.7754224339631433,0.7588803858421469,0.7908321403419153
+pooled_train,pooled_test:vitaldb,True,core,hgb,121843,3643,445,212943,G0 + IND-EA,outside gray zone,96687,1064,0.8070942846983915,0.7769072183088992,0.8331977506596236
+pooled_train,pooled_test:mover,True,core,hgb,8091,419,64,212943,G0,gray zone 65-75 mmHg,1889,284,0.7660820060550217,0.7332039216706182,0.8031720690279958
+pooled_train,pooled_test:mover,True,core,hgb,8091,419,64,212943,G0,outside gray zone,6202,135,0.8333638566867511,0.781604394369233,0.8763002446229265
+pooled_train,pooled_test:mover,True,core,hgb,8091,419,64,212943,old G2,gray zone 65-75 mmHg,1889,284,0.7549580974946251,0.716218317700497,0.7977387431279643
+pooled_train,pooled_test:mover,True,core,hgb,8091,419,64,212943,old G2,outside gray zone,6202,135,0.8212332655714888,0.7677749494988129,0.8665611484422956
+pooled_train,pooled_test:mover,True,core,hgb,8091,419,64,212943,G0 + IND-EA,gray zone 65-75 mmHg,1889,284,0.7708843403097714,0.732264052277361,0.8178161263710834
+pooled_train,pooled_test:mover,True,core,hgb,8091,419,64,212943,G0 + IND-EA,outside gray zone,6202,135,0.8604808038630356,0.8165041009491116,0.8993777773194526
+mover_within_train,reverse mover_train->vitaldb_test (not clean),False,full,hgb,116146,3710,450,22311,G0,gray zone 65-75 mmHg,24097,2677,0.7430333944061998,0.7297110454899063,0.7571753776603345
+mover_within_train,reverse mover_train->vitaldb_test (not clean),False,full,hgb,116146,3710,450,22311,G0,outside gray zone,92049,1033,0.7807732559559329,0.7600555141288838,0.8005810918614458
+mover_within_train,reverse mover_train->vitaldb_test (not clean),False,full,hgb,116146,3710,450,22311,old G4,gray zone 65-75 mmHg,24097,2677,0.7059761770478332,0.6869135032966427,0.7254469742150357
+mover_within_train,reverse mover_train->vitaldb_test (not clean),False,full,hgb,116146,3710,450,22311,old G4,outside gray zone,92049,1033,0.7314554163683953,0.7007195498464631,0.7595384174996535
+mover_within_train,reverse mover_train->vitaldb_test (not clean),False,full,hgb,116146,3710,450,22311,G0 + IND-EA,gray zone 65-75 mmHg,24097,2677,0.7375697707796853,0.7217305924917798,0.753092420228092
+mover_within_train,reverse mover_train->vitaldb_test (not clean),False,full,hgb,116146,3710,450,22311,G0 + IND-EA,outside gray zone,92049,1033,0.7881163155807377,0.7632056940863104,0.8137310334371433
+mover_within_train,reverse mover_train->vitaldb_test (not clean),False,full,hgb,116146,3710,450,22311,G0 + IND-EAP,gray zone 65-75 mmHg,24097,2677,0.7375697707796853,0.7217305924917798,0.753092420228092
+mover_within_train,reverse mover_train->vitaldb_test (not clean),False,full,hgb,116146,3710,450,22311,G0 + IND-EAP,outside gray zone,92049,1033,0.7881163155807377,0.7632056940863104,0.8137310334371433
+mover_within_train,reverse mover_train->vitaldb_test (not clean),False,full,hgb,116146,3710,450,22311,noninvasive IND-E + IND-P,gray zone 65-75 mmHg,24097,2677,0.5238532444480718,0.4925659180577876,0.5553808090799376
+mover_within_train,reverse mover_train->vitaldb_test (not clean),False,full,hgb,116146,3710,450,22311,noninvasive IND-E + IND-P,outside gray zone,92049,1033,0.5856369966035141,0.54730401931924,0.6263879971637635
+pooled_train,pooled_test,True,core,lr,129934,4062,509,212943,G0,gray zone 65-75 mmHg,27045,2863,0.7552922616485019,0.7427578110721426,0.7681851234022484
+pooled_train,pooled_test,True,core,lr,129934,4062,509,212943,G0,outside gray zone,102889,1199,0.7126565299975043,0.6826541889171055,0.7457069846215311
+pooled_train,pooled_test,True,core,lr,129934,4062,509,212943,old G2,gray zone 65-75 mmHg,27045,2863,0.7617568171832806,0.7466792296821019,0.7763138166585599
+pooled_train,pooled_test,True,core,lr,129934,4062,509,212943,old G2,outside gray zone,102889,1199,0.744164266104666,0.7146781840547373,0.7745877534652795
+pooled_train,pooled_test,True,core,lr,129934,4062,509,212943,G0 + IND-EA,gray zone 65-75 mmHg,27045,2863,0.7635239785567203,0.7476980257175981,0.7810137469581855
+pooled_train,pooled_test,True,core,lr,129934,4062,509,212943,G0 + IND-EA,outside gray zone,102889,1199,0.7428525639790132,0.7127113875894828,0.7737863461252472
+pooled_train,pooled_test:vitaldb,True,core,lr,121843,3643,445,212943,G0,gray zone 65-75 mmHg,25156,2579,0.7543849806967095,0.7408954132272961,0.768406943427208
+pooled_train,pooled_test:vitaldb,True,core,lr,121843,3643,445,212943,G0,outside gray zone,96687,1064,0.7027333570847105,0.6699840535737929,0.7367046304530921
+pooled_train,pooled_test:vitaldb,True,core,lr,121843,3643,445,212943,old G2,gray zone 65-75 mmHg,25156,2579,0.7669662237111159,0.7518677756551849,0.7823618934887808
+pooled_train,pooled_test:vitaldb,True,core,lr,121843,3643,445,212943,old G2,outside gray zone,96687,1064,0.7392858636819295,0.7067553199725584,0.7708176786194146
+pooled_train,pooled_test:vitaldb,True,core,lr,121843,3643,445,212943,G0 + IND-EA,gray zone 65-75 mmHg,25156,2579,0.7653948660774588,0.7473748256837364,0.7834286678337096
+pooled_train,pooled_test:vitaldb,True,core,lr,121843,3643,445,212943,G0 + IND-EA,outside gray zone,96687,1064,0.7344674032791211,0.7013661223435346,0.7680789758368021
+pooled_train,pooled_test:mover,True,core,lr,8091,419,64,212943,G0,gray zone 65-75 mmHg,1889,284,0.7664472818217718,0.7324539307994944,0.8019781446127896
+pooled_train,pooled_test:mover,True,core,lr,8091,419,64,212943,G0,outside gray zone,6202,135,0.7847688466445678,0.7109533375976127,0.8545231442075968
+pooled_train,pooled_test:mover,True,core,lr,8091,419,64,212943,old G2,gray zone 65-75 mmHg,1889,284,0.7137225220481769,0.6702288861611612,0.7679441310006344
+pooled_train,pooled_test:mover,True,core,lr,8091,419,64,212943,old G2,outside gray zone,6202,135,0.7734666593410618,0.6905879458877078,0.8516314594911817
+pooled_train,pooled_test:mover,True,core,lr,8091,419,64,212943,G0 + IND-EA,gray zone 65-75 mmHg,1889,284,0.7570356719757799,0.7138389154243692,0.80629474619452
+pooled_train,pooled_test:mover,True,core,lr,8091,419,64,212943,G0 + IND-EA,outside gray zone,6202,135,0.8080020023319842,0.7307551037067128,0.8782869354158966
+mover_pooled_train,clean mover_train->vitaldb_test,True,core,hgb,121843,3643,445,32474,G0,gray zone 65-75 mmHg,25156,2579,0.7536776516462562,0.7404589107210698,0.7667482288294912
+mover_pooled_train,clean mover_train->vitaldb_test,True,core,hgb,121843,3643,445,32474,G0,outside gray zone,96687,1064,0.7546697915112913,0.7278546911863399,0.7815998563038293
+mover_pooled_train,clean mover_train->vitaldb_test,True,core,hgb,121843,3643,445,32474,old G2,gray zone 65-75 mmHg,25156,2579,0.7059241646050619,0.683533879031227,0.7266640502425623
+mover_pooled_train,clean mover_train->vitaldb_test,True,core,hgb,121843,3643,445,32474,old G2,outside gray zone,96687,1064,0.7290755955857036,0.7018634791591432,0.7533669355365845
+mover_pooled_train,clean mover_train->vitaldb_test,True,core,hgb,121843,3643,445,32474,G0 + IND-EA,gray zone 65-75 mmHg,25156,2579,0.7517450040388257,0.7349716249604648,0.7684095702235629
+mover_pooled_train,clean mover_train->vitaldb_test,True,core,hgb,121843,3643,445,32474,G0 + IND-EA,outside gray zone,96687,1064,0.7764331392178511,0.7474896928650369,0.8038763158568474
+mover_pooled_train,clean mover_train->vitaldb_test,True,core,lr,121843,3643,445,32474,G0,gray zone 65-75 mmHg,25156,2579,0.7536204607821549,0.7398184362898444,0.7679344905000467
+mover_pooled_train,clean mover_train->vitaldb_test,True,core,lr,121843,3643,445,32474,G0,outside gray zone,96687,1064,0.7078127989152891,0.6749342567605794,0.7419711874355871
+mover_pooled_train,clean mover_train->vitaldb_test,True,core,lr,121843,3643,445,32474,old G2,gray zone 65-75 mmHg,25156,2579,0.6985346240790403,0.6770980632027244,0.719737886719945
+mover_pooled_train,clean mover_train->vitaldb_test,True,core,lr,121843,3643,445,32474,old G2,outside gray zone,96687,1064,0.7063681768291346,0.6738599060060516,0.7405704043232999
+mover_pooled_train,clean mover_train->vitaldb_test,True,core,lr,121843,3643,445,32474,G0 + IND-EA,gray zone 65-75 mmHg,25156,2579,0.750410464670962,0.7301335749336475,0.7696280729273881
+mover_pooled_train,clean mover_train->vitaldb_test,True,core,lr,121843,3643,445,32474,G0 + IND-EA,outside gray zone,96687,1064,0.7355716575407858,0.7026432457031949,0.7705307478135116
+pooled_train,pooled_test,True,full,hgb,113744,3480,497,188274,G0,gray zone 65-75 mmHg,24117,2511,0.7632543348192327,0.7482003129624927,0.7772239710427604
+pooled_train,pooled_test,True,full,hgb,113744,3480,497,188274,G0,outside gray zone,89627,969,0.7758942533571509,0.7438704172194219,0.8038471143378884
+pooled_train,pooled_test,True,full,hgb,113744,3480,497,188274,old G4,gray zone 65-75 mmHg,24117,2511,0.7842528697115088,0.7690948001919669,0.7994639873032278
+pooled_train,pooled_test,True,full,hgb,113744,3480,497,188274,old G4,outside gray zone,89627,969,0.8141416252865424,0.7839045016430874,0.8422366270176914
+pooled_train,pooled_test,True,full,hgb,113744,3480,497,188274,G0 + IND-EA,gray zone 65-75 mmHg,24117,2511,0.7759780044726281,0.7586301069309176,0.7917184435557386
+pooled_train,pooled_test,True,full,hgb,113744,3480,497,188274,G0 + IND-EA,outside gray zone,89627,969,0.8081874247304742,0.7772349622821753,0.8376621394964325
+pooled_train,pooled_test,True,full,hgb,113744,3480,497,188274,G0 + IND-EAP,gray zone 65-75 mmHg,24117,2511,0.7759780044726281,0.7586301069309176,0.7917184435557386
+pooled_train,pooled_test,True,full,hgb,113744,3480,497,188274,G0 + IND-EAP,outside gray zone,89627,969,0.8081874247304742,0.7772349622821753,0.8376621394964325
+pooled_train,pooled_test,True,full,hgb,113744,3480,497,188274,noninvasive IND-E + IND-P,gray zone 65-75 mmHg,24117,2511,0.6096810247076153,0.5842875169380656,0.636846881650717
+pooled_train,pooled_test,True,full,hgb,113744,3480,497,188274,noninvasive IND-E + IND-P,outside gray zone,89627,969,0.7012052273272085,0.6648745263016107,0.7372667513181852
+pooled_train,pooled_test:vitaldb,True,full,hgb,108133,3261,444,188274,G0,gray zone 65-75 mmHg,22831,2343,0.7632907505020896,0.7488979738778571,0.779374310250415
+pooled_train,pooled_test:vitaldb,True,full,hgb,108133,3261,444,188274,G0,outside gray zone,85302,918,0.7723450900975146,0.7409401104637424,0.8031547285027525
+pooled_train,pooled_test:vitaldb,True,full,hgb,108133,3261,444,188274,old G4,gray zone 65-75 mmHg,22831,2343,0.7871200705350273,0.7713576156638275,0.80273478535784
+pooled_train,pooled_test:vitaldb,True,full,hgb,108133,3261,444,188274,old G4,outside gray zone,85302,918,0.812498993087312,0.7816851137144156,0.8416435252578788
+pooled_train,pooled_test:vitaldb,True,full,hgb,108133,3261,444,188274,G0 + IND-EA,gray zone 65-75 mmHg,22831,2343,0.7783844780609633,0.7616814920136533,0.7950414992250983
+pooled_train,pooled_test:vitaldb,True,full,hgb,108133,3261,444,188274,G0 + IND-EA,outside gray zone,85302,918,0.8045595059063949,0.7732304462862709,0.835144743111349
+pooled_train,pooled_test:vitaldb,True,full,hgb,108133,3261,444,188274,G0 + IND-EAP,gray zone 65-75 mmHg,22831,2343,0.7783844780609633,0.7616814920136533,0.7950414992250983
+pooled_train,pooled_test:vitaldb,True,full,hgb,108133,3261,444,188274,G0 + IND-EAP,outside gray zone,85302,918,0.8045595059063949,0.7732304462862709,0.835144743111349
+pooled_train,pooled_test:vitaldb,True,full,hgb,108133,3261,444,188274,noninvasive IND-E + IND-P,gray zone 65-75 mmHg,22831,2343,0.6111767870365139,0.5847228375114855,0.6369356858677999
+pooled_train,pooled_test:vitaldb,True,full,hgb,108133,3261,444,188274,noninvasive IND-E + IND-P,outside gray zone,85302,918,0.7003586235720429,0.6611980401932273,0.7392974323491367
+pooled_train,pooled_test:mover,True,full,hgb,5611,219,53,188274,G0,gray zone 65-75 mmHg,1286,168,0.7654373243036033,0.706979802764323,0.8147555578353468
+pooled_train,pooled_test:mover,True,full,hgb,5611,219,53,188274,G0,outside gray zone,4325,51,0.8453645847669906,0.7776651603336908,0.8967826418652475
+pooled_train,pooled_test:mover,True,full,hgb,5611,219,53,188274,old G4,gray zone 65-75 mmHg,1286,168,0.7648543317147968,0.6884109077407267,0.8340216656355249
+pooled_train,pooled_test:mover,True,full,hgb,5611,219,53,188274,old G4,outside gray zone,4325,51,0.8465183921018103,0.7837911052267225,0.9056558925993675
+pooled_train,pooled_test:mover,True,full,hgb,5611,219,53,188274,G0 + IND-EA,gray zone 65-75 mmHg,1286,168,0.7597431638129313,0.6997619637658612,0.8215728420331049
+pooled_train,pooled_test:mover,True,full,hgb,5611,219,53,188274,G0 + IND-EA,outside gray zone,4325,51,0.8790589703359116,0.8021711249917719,0.9276044712206941
+pooled_train,pooled_test:mover,True,full,hgb,5611,219,53,188274,G0 + IND-EAP,gray zone 65-75 mmHg,1286,168,0.7597431638129313,0.6997619637658612,0.8215728420331049
+pooled_train,pooled_test:mover,True,full,hgb,5611,219,53,188274,G0 + IND-EAP,outside gray zone,4325,51,0.8790589703359116,0.8021711249917719,0.9276044712206941
+pooled_train,pooled_test:mover,True,full,hgb,5611,219,53,188274,noninvasive IND-E + IND-P,gray zone 65-75 mmHg,1286,168,0.5860060482153505,0.5045843344265508,0.6864902614576752
+pooled_train,pooled_test:mover,True,full,hgb,5611,219,53,188274,noninvasive IND-E + IND-P,outside gray zone,4325,51,0.7139337719177516,0.5944689993977296,0.8356999124039545
+pooled_train,pooled_test,True,full,lr,113744,3480,497,188274,G0,gray zone 65-75 mmHg,24117,2511,0.7572951345838009,0.7423012475162825,0.770970026589534
+pooled_train,pooled_test,True,full,lr,113744,3480,497,188274,G0,outside gray zone,89627,969,0.7073645271921991,0.6759073099219263,0.7426014398170112
+pooled_train,pooled_test,True,full,lr,113744,3480,497,188274,old G4,gray zone 65-75 mmHg,24117,2511,0.7687704231898945,0.7521907370280173,0.7849508542864828
+pooled_train,pooled_test,True,full,lr,113744,3480,497,188274,old G4,outside gray zone,89627,969,0.7424433417815158,0.7110524288042702,0.7747079945714347
+pooled_train,pooled_test,True,full,lr,113744,3480,497,188274,G0 + IND-EA,gray zone 65-75 mmHg,24117,2511,0.768100391601032,0.7491793335102374,0.7850343987591324
+pooled_train,pooled_test,True,full,lr,113744,3480,497,188274,G0 + IND-EA,outside gray zone,89627,969,0.740928854495217,0.7082428354844728,0.7753252891802193
+pooled_train,pooled_test,True,full,lr,113744,3480,497,188274,G0 + IND-EAP,gray zone 65-75 mmHg,24117,2511,0.768100391601032,0.7491793335102374,0.7850343987591324
+pooled_train,pooled_test,True,full,lr,113744,3480,497,188274,G0 + IND-EAP,outside gray zone,89627,969,0.740928854495217,0.7082428354844728,0.7753252891802193
+pooled_train,pooled_test,True,full,lr,113744,3480,497,188274,noninvasive IND-E + IND-P,gray zone 65-75 mmHg,24117,2511,0.6034436722427613,0.574480903705287,0.6348777692963751
+pooled_train,pooled_test,True,full,lr,113744,3480,497,188274,noninvasive IND-E + IND-P,outside gray zone,89627,969,0.6887352475454374,0.6470451213468512,0.727621301972176
+pooled_train,pooled_test:vitaldb,True,full,lr,108133,3261,444,188274,G0,gray zone 65-75 mmHg,22831,2343,0.7564492432450179,0.7426781109190647,0.7711389207608947
+pooled_train,pooled_test:vitaldb,True,full,lr,108133,3261,444,188274,G0,outside gray zone,85302,918,0.7016992116338382,0.6674234553201028,0.7369659852845213
+pooled_train,pooled_test:vitaldb,True,full,lr,108133,3261,444,188274,old G4,gray zone 65-75 mmHg,22831,2343,0.7736721227820106,0.7592784398802314,0.7892930932424643
+pooled_train,pooled_test:vitaldb,True,full,lr,108133,3261,444,188274,old G4,outside gray zone,85302,918,0.7398414386190156,0.707327055063006,0.7733792097379291
+pooled_train,pooled_test:vitaldb,True,full,lr,108133,3261,444,188274,G0 + IND-EA,gray zone 65-75 mmHg,22831,2343,0.7697888965494599,0.7519578815888326,0.7871422340499168
+pooled_train,pooled_test:vitaldb,True,full,lr,108133,3261,444,188274,G0 + IND-EA,outside gray zone,85302,918,0.734627851266913,0.7001336520839688,0.7708476201799727
+pooled_train,pooled_test:vitaldb,True,full,lr,108133,3261,444,188274,G0 + IND-EAP,gray zone 65-75 mmHg,22831,2343,0.7697888965494599,0.7519578815888326,0.7871422340499168
+pooled_train,pooled_test:vitaldb,True,full,lr,108133,3261,444,188274,G0 + IND-EAP,outside gray zone,85302,918,0.734627851266913,0.7001336520839688,0.7708476201799727
+pooled_train,pooled_test:vitaldb,True,full,lr,108133,3261,444,188274,noninvasive IND-E + IND-P,gray zone 65-75 mmHg,22831,2343,0.6025342713338709,0.5739274463291797,0.6310162684868856
+pooled_train,pooled_test:vitaldb,True,full,lr,108133,3261,444,188274,noninvasive IND-E + IND-P,outside gray zone,85302,918,0.6859567126686347,0.6420620081478354,0.7259334370604822
+pooled_train,pooled_test:mover,True,full,lr,5611,219,53,188274,G0,gray zone 65-75 mmHg,1286,168,0.7692414174972314,0.7153467871911229,0.817615376616421
+pooled_train,pooled_test:mover,True,full,lr,5611,219,53,188274,G0,outside gray zone,4325,51,0.8156431501004707,0.7371314938414806,0.8934346984863636
+pooled_train,pooled_test:mover,True,full,lr,5611,219,53,188274,old G4,gray zone 65-75 mmHg,1286,168,0.7290016185365022,0.6507500002947882,0.8146390442899809
+pooled_train,pooled_test:mover,True,full,lr,5611,219,53,188274,old G4,outside gray zone,4325,51,0.7955765366511602,0.7060905842225734,0.8863918388269885
+pooled_train,pooled_test:mover,True,full,lr,5611,219,53,188274,G0 + IND-EA,gray zone 65-75 mmHg,1286,168,0.7561334014822387,0.6917729972103844,0.8240274567147888
+pooled_train,pooled_test:mover,True,full,lr,5611,219,53,188274,G0 + IND-EA,outside gray zone,4325,51,0.8641993999284319,0.7972195591599763,0.9249204568975266
+pooled_train,pooled_test:mover,True,full,lr,5611,219,53,188274,G0 + IND-EAP,gray zone 65-75 mmHg,1286,168,0.7561334014822387,0.6917729972103844,0.8240274567147888
+pooled_train,pooled_test:mover,True,full,lr,5611,219,53,188274,G0 + IND-EAP,outside gray zone,4325,51,0.8641993999284319,0.7972195591599763,0.9249204568975266
+pooled_train,pooled_test:mover,True,full,lr,5611,219,53,188274,noninvasive IND-E + IND-P,gray zone 65-75 mmHg,1286,168,0.6034692052133913,0.5286998582677935,0.6983661588794678
+pooled_train,pooled_test:mover,True,full,lr,5611,219,53,188274,noninvasive IND-E + IND-P,outside gray zone,4325,51,0.7423775312651968,0.6569827457627281,0.8364214608884586
+mover_pooled_train,clean mover_train->vitaldb_test,True,full,lr,108133,3261,444,20261,G0,gray zone 65-75 mmHg,22831,2343,0.7552908249135103,0.7411529711894373,0.7705256349737531
+mover_pooled_train,clean mover_train->vitaldb_test,True,full,lr,108133,3261,444,20261,G0,outside gray zone,85302,918,0.7035278425300091,0.6684637820217653,0.7395963307366794
+mover_pooled_train,clean mover_train->vitaldb_test,True,full,lr,108133,3261,444,20261,old G4,gray zone 65-75 mmHg,22831,2343,0.7005387161871754,0.6779845883412688,0.7276822800683058
+mover_pooled_train,clean mover_train->vitaldb_test,True,full,lr,108133,3261,444,20261,old G4,outside gray zone,85302,918,0.7241125846116477,0.6908798602784786,0.7548370999671896
+mover_pooled_train,clean mover_train->vitaldb_test,True,full,lr,108133,3261,444,20261,G0 + IND-EA,gray zone 65-75 mmHg,22831,2343,0.7454639239600275,0.7246616325299527,0.7656313415761288
+mover_pooled_train,clean mover_train->vitaldb_test,True,full,lr,108133,3261,444,20261,G0 + IND-EA,outside gray zone,85302,918,0.74845378229453,0.7140598337992412,0.7867332707649273
+mover_pooled_train,clean mover_train->vitaldb_test,True,full,lr,108133,3261,444,20261,G0 + IND-EAP,gray zone 65-75 mmHg,22831,2343,0.7454639239600275,0.7246616325299527,0.7656313415761288
+mover_pooled_train,clean mover_train->vitaldb_test,True,full,lr,108133,3261,444,20261,G0 + IND-EAP,outside gray zone,85302,918,0.74845378229453,0.7140598337992412,0.7867332707649273
+mover_pooled_train,clean mover_train->vitaldb_test,True,full,lr,108133,3261,444,20261,noninvasive IND-E + IND-P,gray zone 65-75 mmHg,22831,2343,0.590989918544076,0.557264985517967,0.623181690654176
+mover_pooled_train,clean mover_train->vitaldb_test,True,full,lr,108133,3261,444,20261,noninvasive IND-E + IND-P,outside gray zone,85302,918,0.6492112672187234,0.6126126124092837,0.6849062786763166
+mover_pooled_train,clean mover_train->vitaldb_test,True,full,hgb,108133,3261,444,20261,G0,gray zone 65-75 mmHg,22831,2343,0.7487106533989354,0.7343326879394788,0.7635786434851636
+mover_pooled_train,clean mover_train->vitaldb_test,True,full,hgb,108133,3261,444,20261,G0,outside gray zone,85302,918,0.7587346900216708,0.7308200020322413,0.7874190457502512
+mover_pooled_train,clean mover_train->vitaldb_test,True,full,hgb,108133,3261,444,20261,old G4,gray zone 65-75 mmHg,22831,2343,0.6974960556947402,0.6753121713880522,0.7190498920150583
+mover_pooled_train,clean mover_train->vitaldb_test,True,full,hgb,108133,3261,444,20261,old G4,outside gray zone,85302,918,0.7225119807118904,0.6892604673923669,0.7546598096300392
+mover_pooled_train,clean mover_train->vitaldb_test,True,full,hgb,108133,3261,444,20261,G0 + IND-EA,gray zone 65-75 mmHg,22831,2343,0.7410105712547266,0.7233064802020854,0.759034837297182
+mover_pooled_train,clean mover_train->vitaldb_test,True,full,hgb,108133,3261,444,20261,G0 + IND-EA,outside gray zone,85302,918,0.7690174824828174,0.7397318337479254,0.7976338763404732
+mover_pooled_train,clean mover_train->vitaldb_test,True,full,hgb,108133,3261,444,20261,G0 + IND-EAP,gray zone 65-75 mmHg,22831,2343,0.7410105712547266,0.7233064802020854,0.759034837297182
+mover_pooled_train,clean mover_train->vitaldb_test,True,full,hgb,108133,3261,444,20261,G0 + IND-EAP,outside gray zone,85302,918,0.7690174824828174,0.7397318337479254,0.7976338763404732
+mover_pooled_train,clean mover_train->vitaldb_test,True,full,hgb,108133,3261,444,20261,noninvasive IND-E + IND-P,gray zone 65-75 mmHg,22831,2343,0.5421063023390185,0.5098801223759457,0.5727201616917634
+mover_pooled_train,clean mover_train->vitaldb_test,True,full,hgb,108133,3261,444,20261,noninvasive IND-E + IND-P,outside gray zone,85302,918,0.580902065193414,0.5430749815635958,0.617545232952613

@@ -1,0 +1,404 @@
+{
+  "random_seed": 5052,
+  "patient_split_seed": 5052,
+  "min_free_space_gb": 100,
+  "target_mover_size_gb": 120,
+  "max_mover_size_gb": 150,
+  "target_waveform_fs": 100,
+  "mover_archives": [
+    "epic_wave_1_v2.tar.gz",
+    "epic_wave_2_v2.tar.gz",
+    "epic_wave_3_v2.tar.gz"
+  ],
+  "clinical_timezone": "America/Los_Angeles",
+  "discovery_members_per_archive": 2000,
+  "mover_track_map": {
+    "MAP": "IBP_MEAN:1"
+  },
+  "mover_map_validation": "GE_S5 INVP1 gain 0.01, six ordered pressure triplets; channel 1 verified in 2173 triplets across 3 patients in shard 3; unknown device layouts must fail closed",
+  "pilot_cases": 50,
+  "max_member_bytes": 50000000,
+  "max_case_hours": 48,
+  "minimum_duration_sec": 1800,
+  "maximum_waveform_missingness": 0.2,
+  "map_min_valid_points": 300,
+  "map_min_points_per_min": 5,
+  "map_min_coverage": 0.8,
+  "map_max_median_gap_sec": 10,
+  "map_min_mmhg": 20,
+  "map_max_mmhg": 200,
+  "map_coverage_gap_cap_sec": 15,
+  "eligibility_mode": "window_v1",
+  "window_rule": {
+    "window_sec": 90,
+    "stride_sec": 30,
+    "horizon_sec": 300,
+    "theta_floor": 0.5,
+    "map_valid_range": [
+      20,
+      200
+    ],
+    "map_hist_min_points": 15,
+    "map_current_max_age_sec": 10,
+    "horizon_map_min_fraction": 0.5,
+    "horizon_max_gap_sec": 120,
+    "art_plausible": {
+      "pp_range": [
+        15,
+        150
+      ],
+      "mean_range": [
+        30,
+        180
+      ],
+      "min_std": 3
+    },
+    "art_map_tolerance_mmHg": 20,
+    "thetas": [
+      0.5,
+      0.6,
+      0.7,
+      0.75,
+      0.8,
+      0.9
+    ]
+  },
+  "eligibility_ladder": [
+    {
+      "name": "R1",
+      "theta": 0.75,
+      "min_ready_span_min": 30
+    },
+    {
+      "name": "R2",
+      "theta": 0.7,
+      "min_ready_span_min": 20
+    },
+    {
+      "name": "R3",
+      "theta": 0.6,
+      "min_ready_span_min": 15
+    },
+    {
+      "name": "R4",
+      "theta": 0.5,
+      "min_ready_span_min": 10
+    }
+  ],
+  "eligibility_targets": {
+    "min_cases": 300,
+    "min_patients": 250,
+    "floor_cases": 150
+  },
+  "dataset_version": "v1",
+  "label_rule": {
+    "horizon_sec": 300,
+    "hypo_threshold": 65,
+    "sustained_min_sec": 60,
+    "max_gap_sec": 10,
+    "already_hypo_lookback_sec": 60,
+    "gray_zone": [
+      65,
+      75
+    ],
+    "map0_window_sec": 10,
+    "map_valid_range": [
+      20,
+      200
+    ],
+    "robust_min_window_sec": 30,
+    "aut_low_coverage": 0.9
+  },
+  "beats": {
+    "version": "v1",
+    "min_valid_frac": 0.5,
+    "span_pad_sec": 10,
+    "phase_samples": 200,
+    "workers": 20,
+    "store_waveforms": true,
+    "waveform_dtype": "float16",
+    "max_projected_waveform_gb": 60,
+    "min_free_after_gb": 150
+  },
+  "bshi": {
+    "version": "v1",
+    "window_sec": 90,
+    "n_beats": 60,
+    "phase": 200,
+    "min_usable_beats": 54,
+    "sqi_ecg_min": 0.5,
+    "ppg_delay_max_sec": 0.9,
+    "ecg_robust_clip": 8.0,
+    "art_center_mmhg": 80,
+    "art_scale_mmhg": 40,
+    "workers": 16,
+    "dev_subset": {
+      "max_gb": 3,
+      "per_split_max": {
+        "train": 18000,
+        "validation": 6000,
+        "test": 6000
+      },
+      "max_per_case": 12,
+      "min_event_share": 0.25,
+      "min_mover_share": 0.2,
+      "seed": 5052
+    }
+  },
+  "eda": {
+    "bootstrap_reps": 200,
+    "seed": 5052,
+    "min_events_per_test_split": 300,
+    "min_test_patients_with_event": 50
+  },
+  "train": {
+    "optimizer": "adamw",
+    "beta2": 0.95,
+    "lr": 0.0011,
+    "weight_decay": 0.01,
+    "batch_size": 128,
+    "epochs": 30,
+    "patience": 5,
+    "min_delta": 0.0005,
+    "seed": 5052,
+    "num_workers": 16,
+    "amp": "bf16",
+    "variant": "eap",
+    "train_on": "pooled",
+    "schedule": "cosine",
+    "warmup_epochs": 1,
+    "grad_clip": 1.0,
+    "loss_weights": {
+      "event": 1.0,
+      "delta_map": 0.3,
+      "aut65": 0.3
+    },
+    "clamp": 6.0,
+    "pos_weight": null,
+    "store_train_stride": 2,
+    "sampler": "natural",
+    "channels_last": false
+  },
+  "cluster": {
+    "master_host": "vpn",
+    "master_port": 7077,
+    "master_ui": 8080,
+    "driver_ui": 4040,
+    "driver_port": 7090,
+    "block_manager_port_range": [
+      7091,
+      7100
+    ],
+    "worker_port": 7078,
+    "torch_port": 29500,
+    "desktop_worker_cores": 8,
+    "desktop_worker_memory": "24g",
+    "profiles": [
+      "etl",
+      "gpu"
+    ],
+    "java_home_desktop": ""
+  },
+  "max_retries": 3,
+  "allow_full_archive_scan": false,
+  "allow_full_process": false,
+  "allow_full_vitaldb_download": false,
+  "fast_ingest": {
+    "decode_workers": 16,
+    "finalize_workers": 20,
+    "archive_readers": 3,
+    "max_inflight_payload_mb": 6144,
+    "max_inflight_tasks": 64,
+    "min_available_ram_gb": 16,
+    "tar_buffer_kb": 256,
+    "member_window_pad_sec": 120,
+    "commit_batch_members": 100,
+    "commit_interval_sec": 2.0,
+    "progress_interval_sec": 1.0,
+    "staging_cap_gb": 150,
+    "worker_recycle_tasks": 1000,
+    "canary_min_fragments": 20,
+    "canary_max_violation_rate": 0.05,
+    "canary_give_up_fragments": 300,
+    "canary_min_failures": 25,
+    "canary_max_failure_rate": 0.5,
+    "keep_staging": false,
+    "concurrent_vitaldb_worker_scale": 0.5,
+    "debug_task_delay_sec": 0.0
+  },
+  "vitaldb": {
+    "waveform_tracks": {
+      "ART": "SNUADC/ART",
+      "ECG": "SNUADC/ECG_II",
+      "PPG": "SNUADC/PLETH"
+    },
+    "map_track_priority": [
+      "Solar8000/ART_MBP",
+      "EV1000/ART_MBP"
+    ],
+    "pilot_duration_quantiles": [
+      0.1,
+      0.5,
+      0.9
+    ],
+    "patient_split_fractions": {
+      "train": 0.7,
+      "validation": 0.15,
+      "test": 0.15
+    },
+    "retry_backoff_seconds": 2.0,
+    "request_connect_timeout_seconds": 15,
+    "index_read_timeout_seconds": 90,
+    "track_timeout_seconds": 120,
+    "download_workers": 8,
+    "max_inflight_ram_gb": 8,
+    "progress_interval_seconds": 1.0,
+    "stop_grace_seconds": 5.0,
+    "arrow_cpu_threads": 1,
+    "arrow_io_threads": 1,
+    "resample_window": [
+      "kaiser",
+      5.0
+    ],
+    "resample_padtype": "reflect",
+    "quality_thresholds": {
+      "duration_minutes_min": 30,
+      "waveform_missing_pct_strict_max": 20,
+      "map_valid_count_min": 300,
+      "map_measurements_per_minute_min": 10,
+      "map_coverage_span_pct_min": 80,
+      "map_median_gap_sec_max": 10
+    }
+  },
+  "independence": {
+    "version": "v5-independence",
+    "frozen_utc": "2026-10-09T19:22:04Z",
+    "plan_sha256": "3af08bd8f199c82f7bd57a49482f1f391b21d869ce7e8d6d0791d8ee64b96b66",
+    "window_params": "window_params_v1.parquet",
+    "feature_code_version": "if1",
+    "seed": 5052,
+    "screen": {
+      "training_window_step": 3,
+      "lr_folds": 5,
+      "hgb_folds": 3,
+      "bootstrap": 200,
+      "bh_q": 0.05,
+      "f1_coverage": [
+        0.9,
+        0.85
+      ],
+      "f4_min_d_auroc": -0.002,
+      "f5_max_domain_auroc": 0.7,
+      "f6_max_abs_rho_map": 0.5,
+      "redundancy_abs_rho": 0.8
+    },
+    "selection": {
+      "learner": "hgb",
+      "folds": 3,
+      "max_params": 12,
+      "stop_d_auroc": 0.001,
+      "stop_d_auprc": 0.002,
+      "pool_cap": 20
+    },
+    "sets": {
+      "IND-A": [
+        "a_map_slope_l60",
+        "a_dpdt_min_l60",
+        "a_pp_slope_l60"
+      ],
+      "IND-E": [
+        "e_sdnn_l300"
+      ],
+      "IND-P": [
+        "p_int_sdnn_l300"
+      ],
+      "IND-EA": [
+        "e_sdnn_l300",
+        "a_map_slope_l60",
+        "a_dpdt_min_l60"
+      ],
+      "IND-EAP": [
+        "e_sdnn_l300",
+        "a_map_slope_l60",
+        "a_dpdt_min_l60"
+      ]
+    },
+    "window_sets": {
+      "IND-A": "core",
+      "IND-E": "core",
+      "IND-P": "full",
+      "IND-EA": "core",
+      "IND-EAP": "full"
+    },
+    "noninvasive": {
+      "params": [
+        "e_sdnn_l60",
+        "e_rmssd_l60",
+        "e_pnn50_l60",
+        "e_sd1sd2_l60",
+        "e_ectopy_l60",
+        "e_rsa_l60",
+        "e_edr_rate_l60",
+        "e_hr_slope_l60",
+        "e_rr_ac1_l60",
+        "e_sdnn_l300",
+        "e_rmssd_l300",
+        "e_pnn50_l300",
+        "e_sd1sd2_l300",
+        "e_ectopy_l300",
+        "e_rsa_l300",
+        "e_edr_rate_l300",
+        "e_hr_slope_l300",
+        "e_rr_ac1_l300",
+        "e_hr_d60_300",
+        "e_rr_rsd_l300",
+        "e_rr_rskew_l300",
+        "e_rr_dfa_l300",
+        "e_rr_ktau_ac1_l300",
+        "e_rr_ktau_var_l300",
+        "e_rr_sampen_l300",
+        "e_rr_lfhf_l300",
+        "p_rise_l60",
+        "p_hr_slope_l60",
+        "p_int_amp_corr_l60",
+        "p_amp_cv_l60",
+        "p_pvi_l60",
+        "p_int_sdnn_l60",
+        "p_int_rmssd_l60",
+        "p_amp_rslope_l60",
+        "p_amp_ac1_l60",
+        "p_amp_cv_l300",
+        "p_pvi_l300",
+        "p_int_sdnn_l300",
+        "p_int_rmssd_l300",
+        "p_amp_rslope_l300",
+        "p_amp_ac1_l300",
+        "p_amp_d60_300",
+        "p_int_ac1_l300",
+        "p_amp_dfa_l300",
+        "p_amp_ktau_var_l300",
+        "e_hr_l60_sn",
+        "e_sdnn_l60_sn",
+        "e_rmssd_l60_sn",
+        "p_amp_l60_sn",
+        "p_acdc_l60_sn",
+        "p_rise_l60_sn",
+        "p_width_l60_sn",
+        "p_hr_l60_sn"
+      ],
+      "source": "all E and P candidates passing F1 and F5 (unselected; IND-E + IND-P had < 3 parameters)"
+    },
+    "learners": {
+      "hgb": {
+        "l2_regularization": 1.0,
+        "learning_rate": 0.1,
+        "max_iter": 150,
+        "max_leaf_nodes": 31,
+        "min_samples_leaf": 200
+      },
+      "lr": "SimpleImputer(median) + StandardScaler + LogisticRegression(max_iter=300)"
+    },
+    "fit_subsample": 3,
+    "ppg_rule_validation": "remove PPG from the main model (secondary noninvasive study only)"
+  }
+}

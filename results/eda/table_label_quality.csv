@@ -1,0 +1,3 @@
+dataset,labeled_windows,already_hypotensive_pct,primary_eligible_windows,gray_zone_share_of_eligible_pct,ambiguous_pct_of_eligible,aut65_low_coverage_pct_of_eligible
+mover,176995,22.69,88957,24.64,0.56,2.83
+vitaldb,1237182,12.46,1074321,19.82,0.81,3.0

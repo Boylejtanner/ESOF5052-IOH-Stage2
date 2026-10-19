@@ -1,0 +1,10 @@
+feature_family,features,domain_auroc,auroc_lo,auroc_hi,test_windows,mover_share_test,train_windows_used
+MAP only (G0),5,0.5848,0.5351,0.6351,113744,0.0493,188274
+ART morphology + HR (G1 additions),24,0.8941,0.8654,0.919,113744,0.0493,188274
+ECG->ART timing + HRV (G2 additions),6,0.9279,0.896,0.9531,113744,0.0493,188274
+"PPG features + delays (G3 additions, scale-free)",16,1.0,1.0,1.0,113744,0.0493,188274
+"  of which PPG delays only (ECG->PPG, ART->PPG)",6,0.9984,0.995,0.9998,113744,0.0493,188274
+"  of which PPG morphology only (relative amplitude, upstroke, ART-PPG corr)",10,1.0,1.0,1.0,113744,0.0493,188274
+SQI means + counts (G4 additions),7,0.8178,0.785,0.8571,113744,0.0493,188274
+all features (G4),58,1.0,1.0,1.0,113744,0.0493,188274
+RAW PPG amplitude and AC/DC (device units; excluded from every model),2,1.0,1.0,1.0,113744,0.0493,188274
