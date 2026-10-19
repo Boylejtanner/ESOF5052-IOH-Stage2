@@ -4,6 +4,7 @@ On Windows Spark starts one Python process per task (no daemon). ``pyspark/worke
 reads EOF and reports "Python worker exited unexpectedly (crashed)". This module is picked up through PYTHONPATH (scripts/spark/env.ps1) and does nothing except, inside a Spark
 Python worker (the JVM sets PYTHON_WORKER_FACTORY_PORT), register an exit hook that flushes that socket file. No installed package is modified.
 """
+# Flush the Spark worker socket on exit to avoid an incomplete task response.
 import os
 
 if os.environ.get("PYTHON_WORKER_FACTORY_PORT"):

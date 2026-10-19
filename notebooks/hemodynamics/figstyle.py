@@ -4,6 +4,7 @@
 ``capitalize_figure`` gives axis labels, titles, legends and category tick labels a capital first letter and replaces ASCII shorthand by proper symbols.
 """
 from __future__ import annotations
+# Keep figure labels, units, and panel titles consistent across analyses.
 
 import re
 
@@ -47,6 +48,7 @@ def _fix_ticklabels(axis, set_ticks, set_labels):
 
 def capitalize_figure(fig, panel_letters=False):
     """Capitalize all labels, titles, legend text and category tick labels of ``fig`` in place; with ``panel_letters`` prefix the titles of multi-panel figures with (a), (b), ..."""
+    # Apply consistent capitalization to the labels, legends, and panel titles.
     fig.canvas.draw()
     for ax in fig.axes:
         ax.set_xlabel(fix_text(ax.get_xlabel()))
@@ -102,6 +104,7 @@ def mark_helper(ax):
 def audit_axes(fig):
     """Return a list of problems (empty when every visible axes is labelled)."""
     problems = []
+    # Process the selected records in order and retain their individual results.
     for i, ax in enumerate(fig.axes):
         if getattr(ax, "_figstyle_skip", False) or not ax.get_visible():
             continue

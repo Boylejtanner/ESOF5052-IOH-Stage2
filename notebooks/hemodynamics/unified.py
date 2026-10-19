@@ -5,6 +5,7 @@ case of a dataset (incrementally; a case is recomputed only if its waveform hash
 datasets into one manifest that training/Spark code can consume.
 """
 from __future__ import annotations
+# Bring both datasets into one index without mixing their patient partitions.
 
 import concurrent.futures as cf
 import hashlib
@@ -57,13 +58,16 @@ def _write_parquet(path, frame):
 
 
 def _index_case(root, row, rule, fs, rule_hash):
+    # Read the stored table required for this calculation.
     root = Path(root)
     wave = pq.read_table(root / row["waveform_output_path"], columns=["time_sec", "ART", "ECG", "PPG"]).to_pandas()
     numeric = pq.read_table(root / row["map_output_path"]).to_pandas()
+    # Exclude or flag missing values before using these measurements.
     case_id = str(row["case_id"])
     frame = ready_windows(wave["ART"].to_numpy(), wave["ECG"].to_numpy(), wave["PPG"].to_numpy(), fs,
                           numeric["time_sec"].to_numpy(), numeric["MAP"].to_numpy(), rule,
                           t0=float(wave["time_sec"].iloc[0]), case_id=case_id)
+    # Exclude or flag missing values before using these measurements.
     values = numeric["MAP"].to_numpy(dtype=float)
     values = values[np.isfinite(values)]
     stats = {"case_id": case_id, "patient_id": str(row.get("patient_id")), "waveform_sha256": row["waveform_sha256"], "rule_sha256": rule_hash,
@@ -79,13 +83,16 @@ def index_ready_windows(root, dataset="vitaldb", workers=None, progress=True):
     Writes data/manifests/ready_windows_<dataset>.parquet and <dataset>_case_window_stats.parquet. Cases whose
     waveform hash and rule hash are unchanged are skipped; windows/stats of other cases are kept.
     """
+    # Create the destination directory before writing any outputs.
     started = time.perf_counter()
     root = Path(root)
     settings = _settings(root)
+    # Read the stored table required for this calculation.
     rule, fs, rule_hash = load_rule(settings), float(settings["target_waveform_fs"]), rule_sha256(settings)
     manifests = root / "data" / "manifests"
     manifests.mkdir(parents=True, exist_ok=True)
     stats_path, windows_path = manifests / f"{dataset}_case_window_stats.parquet", manifests / f"ready_windows_{dataset}.parquet"
+    # Read the stored table required for this calculation.
     rows = _completed_rows(root, dataset)
     old_stats = pd.read_parquet(stats_path) if stats_path.exists() else pd.DataFrame()
     old_windows = pd.read_parquet(windows_path) if windows_path.exists() else None
@@ -100,6 +107,7 @@ def index_ready_windows(root, dataset="vitaldb", workers=None, progress=True):
         if progress:
             from tqdm.auto import tqdm
             bar = tqdm(total=len(todo), desc=f"ready windows [{dataset}]", unit="case")
+        # Ensure the associated files, locks, or resources are released after this operation.
         try:
             if workers == 1:
                 results = (_index_case(root, r, rule, fs, rule_hash) for r in todo)
@@ -117,6 +125,7 @@ def index_ready_windows(root, dataset="vitaldb", workers=None, progress=True):
                         bar and bar.update(1)
         finally:
             bar and bar.close()
+    # Collect the per-record values into a table for comparison.
     redo = {s["case_id"] for s in new_stats}
     kept_stats = old_stats.loc[~old_stats.case_id.astype(str).isin(redo)] if len(old_stats) else old_stats
     stats = pd.concat([f for f in (kept_stats, pd.DataFrame(new_stats)) if len(f)], ignore_index=True) if (len(kept_stats) or new_stats) else pd.DataFrame()
@@ -128,6 +137,7 @@ def index_ready_windows(root, dataset="vitaldb", workers=None, progress=True):
             write_manifest(root, f"{dataset}_case_window_stats", stats.sort_values("case_id").reset_index(drop=True))
         if windows is not None:
             _write_parquet(windows_path, windows.sort_values(["case_id", "t_start_sec"]).reset_index(drop=True))
+    # Calculate the output summary for the following step.
     own = stats.loc[stats.case_id.astype(str).isin({str(r["case_id"]) for r in rows})] if len(stats) else stats
     ready_col = "ready_span_min_theta_70"
     result = {"dataset": dataset, "completed_cases": len(rows), "indexed_now": len(todo), "skipped_current": len(rows) - len(todo),
@@ -156,6 +166,7 @@ def build_unified_index(root, progress=True, datasets=("mover", "vitaldb"), auto
     settings = _settings(root)
     manifests = root / "data" / "manifests"
     records = []
+    # Process the selected records in order and retain their individual results.
     for dataset in datasets:
         rows = _completed_rows(root, dataset)
         if not rows:
@@ -166,6 +177,7 @@ def build_unified_index(root, progress=True, datasets=("mover", "vitaldb"), auto
                 raise FileNotFoundError(f"{path.name} is missing; run index_ready_windows(ROOT, '{dataset}') first")
             index_ready_windows(root, dataset, progress=progress)
         stats = pd.read_parquet(path).drop_duplicates("case_id", keep="last").assign(case_id=lambda d: d.case_id.astype(str)).set_index("case_id")
+        # Process the selected records in order and retain their individual results.
         for row in rows:
             case_id = str(row["case_id"])
             s = stats.loc[case_id] if case_id in stats.index else None
@@ -198,6 +210,7 @@ def build_unified_index(root, progress=True, datasets=("mover", "vitaldb"), auto
     index = index.sort_values(["dataset", "case_id"]).reset_index(drop=True)
     write_manifest(root, "unified_case_index", index)
     if progress:
+        # Summarize the records separately within each requested group.
         summary = index.groupby(["dataset", "split_within_dataset"]).agg(cases=("case_id", "size"), patients=("patient_key", "nunique"),
                                                                           ready_hours_theta70=("ready_span_min_theta_70", lambda x: round(x.sum() / 60, 1)))
         print(f"UNIFIED INDEX ({utc_now()}): {len(index):,} cases, {index.patient_key.nunique():,} patients\n{summary}", flush=True)

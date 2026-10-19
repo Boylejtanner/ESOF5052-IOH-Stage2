@@ -9,6 +9,7 @@
 * loaders: the on-the-fly assembler through a torch DataLoader (persistent workers), the dev subset (smoke tests, the laptop), and the GPU decode of compact-store batches.
 """
 from __future__ import annotations
+# Prepare batches and normalize them using statistics from training patients.
 
 import json
 from pathlib import Path
@@ -68,10 +69,12 @@ class Preprocessor:
 
     def targets(self, batch):
         """Targets, loss masks and bookkeeping only (cheap: no image work); the masks give the loss normalizers of a batch."""
+        # Calculate the working array and output values for the following step.
         d = self.device
         aut = batch["aut65"].to(d).float()
         delta = batch["delta_map"].to(d).float()
         reg = batch["reg_mask"].to(d).bool() if "reg_mask" in batch else torch.ones_like(aut, dtype=torch.bool)
+        # Calculate output values for the following step.
         m_aut = reg & torch.isfinite(aut)
         out = {"y_event": batch["y_event"].to(d).float(),
                "delta": torch.nan_to_num(delta) / self.delta_scale, "m_delta": reg & torch.isfinite(delta),
@@ -90,6 +93,7 @@ class WindowFlags:
     """Per-window loss-mask flag from the window index (``aut65_low_coverage``): attached to every batch as ``reg_mask`` (True = usable for the regression losses)."""
 
     def __init__(self, idx):
+        # Order the measurements before matching intervals or comparing rows.
         order = np.argsort(idx.window_id.to_numpy())
         self.ids = idx.window_id.to_numpy()[order]
         self.ok = ~idx.aut65_low_coverage.to_numpy()[order]
@@ -112,6 +116,7 @@ class FlaggedLoader:
 def resample_positions(dataset, y_event, n, mover_share, event_share, seed):
     """Row positions of ``n`` windows drawn WITH replacement: ``mover_share`` of them from MOVER, ``event_share`` of each dataset's draw from event windows (uniform inside a stratum).
     A dataset that is absent gets share 0 and the other one all of it. ``dataset``: array of 'mover'/'vitaldb'; ``y_event``: bool array."""
+    # Seed the generated values so this check can be repeated.
     rng = np.random.default_rng(seed)
     ds, ev = np.asarray(dataset), np.asarray(y_event).astype(bool)
     pools = {(d, e): np.flatnonzero((ds == d) & (ev == e)) for d in ("mover", "vitaldb") for e in (False, True)}
@@ -189,6 +194,7 @@ class DevSubsetBatches(torch.utils.data.IterableDataset):
         self._calls = 0
 
     def __iter__(self):
+        # Seed the generated values so this check can be repeated.
         import pyarrow.parquet as pq
         info = torch.utils.data.get_worker_info()
         files = self.files[info.id::info.num_workers] if info else list(self.files)
@@ -197,6 +203,7 @@ class DevSubsetBatches(torch.utils.data.IterableDataset):
         if self.shuffle:
             files = [files[i] for i in rng.permutation(len(files))]
         cols = ["window_id", "dataset_code", "waveforms_f16", "scalars_f32", "beat_mask_u8", "context_f32", "variant_mask_f32"] + S.LABEL_OUT + ["sampling_weight"]
+        # Accumulate the calculation over the required samples or iterations.
         for i in range(0, len(files), self.files_per_chunk):
             t = pd.concat([pq.read_table(f, columns=cols).to_pandas() for f in files[i:i + self.files_per_chunk]], ignore_index=True)
             if self.shuffle:
@@ -219,6 +226,7 @@ def dev_loader(root, split, variant="eap", batch_size=256, shuffle=True, seed=0,
 # compact store decode on the GPU
 def store_frame(store):
     """Dataset name, event flag and patient of every window of a ``bshi_store.Store`` (for sampling and bootstrap)."""
+    # Collect the per-record values into a table for comparison.
     y = np.concatenate([s["y_event"] for s in store.sc])
     code = np.concatenate([s["dataset_code"] for s in store.sc])
     return pd.DataFrame({"dataset": np.where(code == 1, "vitaldb", "mover"), "y_event": y > 0.5, "patient_key": store.meta.patient_key.to_numpy()})
@@ -226,11 +234,13 @@ def store_frame(store):
 
 def prefetch(it, depth=6):
     """Produce the batches of ``it`` in a background thread (memory-map reads release the GIL), so disk reads overlap with the GPU step. Closing the generator stops the thread."""
+    # Read batches ahead on a background thread while forwarding its errors to the caller.
     import queue
     import threading
     q, stop, done = queue.Queue(depth), threading.Event(), object()
 
     def work():
+        # Ensure the associated files, locks, or resources are released after this operation.
         try:
             for x in it:
                 while not stop.is_set():
@@ -248,6 +258,7 @@ def prefetch(it, depth=6):
 
     th = threading.Thread(target=work, daemon=True)
     th.start()
+    # Ensure the associated files, locks, or resources are released after this operation.
     try:
         while True:
             x = q.get()
@@ -290,6 +301,7 @@ class StoreIterable(torch.utils.data.IterableDataset):
         self.path, self.split, self.batch_size, self.seed, self.limit, self._calls = str(path), split, batch_size, seed, limit, 0
 
     def __iter__(self):
+        # Seed the generated values so this check can be repeated.
         from .bshi_store import Store
         store = Store(self.path, self.split)
         order = np.random.default_rng(self.seed + self._calls).permutation(len(store))

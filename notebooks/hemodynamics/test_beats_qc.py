@@ -1,3 +1,4 @@
+# Check beats qc using controlled inputs and isolated files.
 import unittest
 
 import numpy as np
@@ -7,6 +8,7 @@ from hemodynamics import beats_qc as Q
 
 
 def spiky_ecg(n=3000, fs=100.0, period=0.8, sign=1.0):
+    # Reserve output arrays and masks with explicit initial values.
     t = np.arange(n) / fs
     x = np.zeros(n)
     r = np.arange(50, n - 50, int(period * fs))
@@ -21,6 +23,7 @@ class TestRPeakAlignment(unittest.TestCase):
             self.assertGreater(Q.r_peak_alignment(t_r, t, x), 0.99)
 
     def test_constant_offset_onto_the_t_wave_fails(self):
+        # Compare the result with the expected value or tolerance.
         t, x, t_r = spiky_ecg()
         x[(np.rint((t_r + 0.25) * 100)).astype(int)] = -300.0     # undershoot where a late marker would land
         self.assertLess(Q.r_peak_alignment(t_r + 0.25, t, x), 0.05)
@@ -39,11 +42,13 @@ class TestGates(unittest.TestCase):
         return row
 
     def test_all_good_passes(self):
+        # Compare the result with the expected value or tolerance.
         table, ok = Q.evaluate_gates(pd.DataFrame([self.case("vitaldb"), self.case("mover")]))
         self.assertTrue(ok)
         self.assertTrue(table["pass"].all())
 
     def test_misplaced_markers_fail_even_when_other_gates_pass(self):
+        # Verify misplaced markers fail even when other gates pass.
         table, ok = Q.evaluate_gates(pd.DataFrame([self.case("vitaldb"), self.case("mover", r_peak_alignment=0.2)]))
         self.assertFalse(ok)
         failed = table.loc[~table["pass"]]
@@ -51,6 +56,7 @@ class TestGates(unittest.TestCase):
         self.assertEqual(list(failed.dataset), ["mover"])
 
     def test_mover_art_gate_is_looser_than_vitaldb(self):
+        # Verify MOVER ART gate is looser than VitalDB.
         table, ok = Q.evaluate_gates(pd.DataFrame([self.case("vitaldb", art_align_rate=0.85), self.case("mover", art_align_rate=0.85)]))
         self.assertFalse(ok)
         failed = table.loc[~table["pass"]]

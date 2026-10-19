@@ -5,6 +5,7 @@ coverage allow a beat-synchronous image and a label to be built later. Eligibili
 coverage only; it never looks at whether MAP is low, so no outcome-based selection can happen here.
 """
 from __future__ import annotations
+# Define when a signal window has enough usable data for forecasting.
 
 import numpy as np
 import pandas as pd
@@ -55,6 +56,7 @@ def theta_key(theta):
 
 
 def _empty(case_id):
+    # Collect the per-record values into a table for comparison.
     frame = pd.DataFrame({
         "case_id": pd.Series(dtype="object"), "t_start_sec": pd.Series(dtype="float64"), "t_end_sec": pd.Series(dtype="float64"),
         "min_valid_frac": pd.Series(dtype="float32"), "valid_art": pd.Series(dtype="float32"), "valid_ecg": pd.Series(dtype="float32"),
@@ -70,11 +72,13 @@ def _valid_cumsum(values):
 
 def _art_plausibility(art, starts, width, rule):
     """Per-window p95-p5 / mean / std test on the finite ART samples (blocks flat lines that are 'valid' non-NaN)."""
+    # Reserve output arrays and masks with explicit initial values.
     cfg = rule["art_plausible"]
     ok = np.zeros(len(starts), dtype=bool)
     mean = np.full(len(starts), np.nan)
     view = np.lib.stride_tricks.sliding_window_view(art, width)
     for lo in range(0, len(starts), _CHUNK):
+        # Exclude or flag missing values before using these measurements.
         idx = starts[lo:lo + _CHUNK]
         block = np.sort(view[idx], axis=1)
         count = np.isfinite(block).sum(axis=1)
@@ -114,24 +118,29 @@ def ready_windows(art, ecg, ppg, fs, map_time, map_val, rule=None, t0=0.0, case_
         return _empty(case_id)
     starts, min_frac = starts[keep], min_frac[keep]
     frac = [f[keep] for f in frac]
+    # Calculate the window boundary for the following step.
     t_start = t0 + starts / fs
     t_end = t_start + rule["window_sec"]
 
     mt = np.asarray(map_time, dtype=np.float64)
     mv = np.asarray(map_val, dtype=np.float64)
+    # Exclude or flag missing values before using these measurements.
     lo, hi = rule["map_valid_range"]
     good = np.isfinite(mt) & np.isfinite(mv) & (mv >= lo) & (mv <= hi)
     mt, mv = mt[good], mv[good]
+    # Reserve output arrays and masks with explicit initial values.
     order = np.argsort(mt, kind="stable")
     mt, mv = mt[order], mv[order]
     count = len(starts)
     hist_points = np.zeros(count, dtype=np.int32)
+    # Reserve output arrays and masks with explicit initial values.
     horizon_points = np.zeros(count, dtype=np.int32)
     max_gap = np.full(count, float(rule["horizon_sec"]), dtype=np.float32)
     hist_mean = np.full(count, np.nan)
     current = np.zeros(count, dtype=bool)
     expected = None
     if len(mt):
+        # Locate the requested interval within the sorted sample times.
         cadence = float(np.clip(np.median(np.diff(mt)) if len(mt) > 1 else 2.0, 1.0, 30.0))
         expected = rule["horizon_sec"] / cadence
         cmv = np.concatenate(([0.0], np.cumsum(mv)))
@@ -155,6 +164,7 @@ def ready_windows(art, ecg, ppg, fs, map_time, map_val, rule=None, t0=0.0, case_
                 gap = max(gap, float(np.max(np.diff(seg))))
             max_gap[k] = gap
 
+    # Reserve output arrays and masks with explicit initial values.
     map_ok = ((hist_points >= rule["map_hist_min_points"]) & current & (expected is not None)
               & (horizon_points >= rule["horizon_map_min_fraction"] * (expected or np.inf))
               & (max_gap <= rule["horizon_max_gap_sec"]))
@@ -166,6 +176,7 @@ def ready_windows(art, ecg, ppg, fs, map_time, map_val, rule=None, t0=0.0, case_
         plausible[candidates], art_mean[candidates] = p, m
     with np.errstate(invalid="ignore"):
         diff = np.abs(art_mean - hist_mean)
+    # Exclude or flag missing values before using these measurements.
     agree = np.isfinite(diff) & (diff <= rule["art_map_tolerance_mmHg"])
     ready = map_ok & plausible & agree
     return pd.DataFrame({

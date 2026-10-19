@@ -1,3 +1,4 @@
+# Check bshi bench using controlled inputs and isolated files.
 import unittest
 
 import numpy as np
@@ -9,6 +10,7 @@ CFG = {"dev_subset": {"max_gb": 3, "per_split_max": {"train": 600, "validation":
 
 
 def fake_index(seed=0):
+    # Seed the generated values so this check can be repeated.
     rng = np.random.default_rng(seed)
     rows = []
     wid = 0
@@ -26,10 +28,12 @@ def fake_index(seed=0):
 
 class TestDevSelection(unittest.TestCase):
     def test_caps_shares_and_weights(self):
+        # Verify caps shares and weights.
         idx = fake_index()
         sel, notes = K.select_dev_windows(idx, CFG)
         self.assertLessEqual(int(sel.groupby(["dataset", "case_id"]).size().max()), CFG["dev_subset"]["max_per_case"])
         for split, n in notes.items():
+            # Check mover share against the expected result.
             self.assertGreaterEqual(n["mover_share"], 0.2, split)
             self.assertGreaterEqual(n["event_share"], 0.25 - 0.02, split)
             self.assertLessEqual(n["selected"], n["requested"])
@@ -39,6 +43,7 @@ class TestDevSelection(unittest.TestCase):
             self.assertAlmostEqual(value, pop[key], delta=1e-3 * pop[key])                    # weighted counts recover the natural stratum sizes
 
     def test_selection_is_deterministic_and_keeps_patients_in_one_split(self):
+        # Verify selection is deterministic and keeps patients in one split.
         idx = fake_index()
         a, _ = K.select_dev_windows(idx, CFG)
         b, _ = K.select_dev_windows(idx, CFG)

@@ -1,3 +1,4 @@
+# Check bshi using controlled inputs and isolated files.
 import json
 import math
 import tempfile
@@ -16,9 +17,11 @@ CFG = {"version": "v1", "window_sec": 90, "n_beats": 60, "phase": 200, "min_usab
 
 def make_case(root, dataset, case_id, n=1500, seed=0):
     """A synthetic per-case beat table + float16 waveforms written exactly where the real pipeline stores them."""
+    # Seed the generated values so this check can be repeated.
     rng = np.random.default_rng(seed)
     rr = np.clip(0.8 + 0.05 * rng.standard_normal(n), 0.5, 1.3)
     t_r = 5.0 + np.cumsum(rr) - rr
+    # Calculate valid-sample flags for the following step.
     valid, art_ok, ppg_ok = rng.random(n) > 0.02, rng.random(n) > 0.02, rng.random(n) > 0.04
     sqi_ecg = np.clip(rng.beta(8, 1.5, n), 0.5, 1)
     pick = rng.random(n)
@@ -37,6 +40,7 @@ def make_case(root, dataset, case_id, n=1500, seed=0):
     df["art_ppg_corr"] = rng.uniform(-1, 1, n).astype(np.float32)
     for c in ("art_foot_t", "art_sys_t", "ppg_foot_t", "ppg_peak_t"):
         df[c] = t_r
+    # Calculate the observation count for the following step.
     df["art_int_sec"] = rr.astype(np.float32)
     df["sqi_ecg"], df["sqi_art"] = sqi_ecg.astype(np.float32), rng.beta(8, 1.5, n).astype(np.float32)
     df["sqi_ppg"], df["sqi_cross"] = rng.beta(8, 1.5, n).astype(np.float32), rng.beta(8, 1.5, n).astype(np.float32)
@@ -46,6 +50,7 @@ def make_case(root, dataset, case_id, n=1500, seed=0):
     waves = {"ecg": rng.standard_normal((n, 200)), "art": 90 + 25 * np.sin(np.linspace(0, 6.28, 200))[None, :] + rng.normal(0, 3, (n, 200)), "ppg": rng.standard_normal((n, 200))}
     waves["ecg"][~valid] = np.nan
     waves["art"][~art_ok] = np.nan
+    # Create the destination directory before writing any outputs.
     waves["ppg"][~ppg_ok] = np.nan
     waves = {k: v.astype(np.float16) for k, v in waves.items()}
     d = P.case_dir(root, dataset, case_id)
@@ -56,6 +61,7 @@ def make_case(root, dataset, case_id, n=1500, seed=0):
 
 
 def window_rows(dataset, case_id, df, stride=9.0, seed=0, start_id=0):
+    # Collect the per-record values into a table for comparison.
     rng = np.random.default_rng(seed + 1)
     t_end = np.arange(100.0, float(df.t_r.iloc[-1]) - 1.5, stride)
     r = S.index_windows(df.t_r.to_numpy(), df.rr_sec.to_numpy(), df.valid_beat.to_numpy(), df.sqi_ecg.to_numpy(), df.art_ok.to_numpy(), df.ppg_ok.to_numpy(),
@@ -70,6 +76,7 @@ def window_rows(dataset, case_id, df, stride=9.0, seed=0, start_id=0):
 
 class World:
     def __init__(self, tmp):
+        # Store the settings and results as JSON for later inspection.
         self.root = Path(tmp)
         (self.root / "configs").mkdir(parents=True)
         (self.root / "configs" / "hemodynamics.json").write_text(json.dumps({"bshi": CFG}))
@@ -98,6 +105,7 @@ REF_MASK_OF = {"ptt_ecg_art": "art", "ptt_ecg_ppg": "ppg", "ptt_art_ppg": "ppg",
 
 def reference_window(df, waves, lo, ctx_label_values, variant):
     """Independent, loop-based implementation of the documented spec (not sharing code with bshi.py)."""
+    # Reserve output arrays and masks with explicit initial values.
     off = S.VARIANTS[variant]
     x = np.zeros((7, 60, 200), dtype=np.float64)
     beats = [df.iloc[lo + k] for k in range(60)]
@@ -121,6 +129,7 @@ def reference_window(df, waves, lo, ctx_label_values, variant):
         scale = scale if scale > 1e-6 else 1.0
         for k in range(60):
             if mk[k]:
+                # Exclude or flag missing values before using these measurements.
                 w = waves[name][lo + k].astype(np.float64)
                 z = np.clip((w - med) / scale, -8, 8)
                 x[{"ecg": 0, "ppg": 2}[name], k] = np.where(np.isfinite(w), z, 0.0)
@@ -137,6 +146,7 @@ def reference_window(df, waves, lo, ctx_label_values, variant):
         vals = [(k, float(beats[k][name])) for k in range(60) if mk[k] and np.isfinite(float(beats[k][name]))]
         out = np.zeros(60)
         if vals:
+            # Summarize the observed levels and variability for this set of measurements.
             v = np.array([a for _, a in vals])
             mean, std = v.mean(), v.std()
             den = std if std > 1e-9 else 1.0
@@ -160,6 +170,7 @@ def reference_window(df, waves, lo, ctx_label_values, variant):
 
 class TestIndexWindows(unittest.TestCase):
     def test_hand_checked_window_selection(self):
+        # Verify hand checked window selection.
         n = 200
         t_r, rr = np.arange(n, dtype=float), np.ones(n)
         art_ok = np.ones(n, bool)
@@ -171,17 +182,20 @@ class TestIndexWindows(unittest.TestCase):
         self.assertEqual(int(r["beat_hi"][2]), 100)                                                  # the cycle ending at 101 touches the future
 
     def test_no_beat_ends_after_the_forecast_origin(self):
+        # Verify no beat ends after the forecast origin.
         with tempfile.TemporaryDirectory() as tmp:
             w = World(tmp)
             for (ds, cid), (df, _) in w.cases.items():
                 rows = w.index[(w.index.dataset == ds) & (w.index.case_id == cid) & w.index.has60]
                 ce, tr = df.t_r.to_numpy() + df.rr_sec.to_numpy().astype(np.float64), df.t_r.to_numpy()
                 for r in rows.itertuples():
+                    # Check t end sec against the expected result.
                     self.assertLessEqual(ce[r.beat_lo:r.beat_hi].max(), r.t_end_sec)
                     self.assertGreater(tr[r.beat_lo], r.t_end_sec - 90)
                     self.assertEqual(r.beat_hi - r.beat_lo, 60)
 
     def test_check_index_rejects_patient_leakage_and_dead_ecg_in_core(self):
+        # Verify check index rejects patient leakage and dead ECG in core.
         base = pd.DataFrame({"window_id": [0, 1], "patient_key": ["p", "p"], "split_pooled": ["train", "test"], "split_within_dataset": ["train", "test"], "has60": [True, True],
                              "in_core": [True, False], "in_full": [False, False], "primary_eligible": [True, True], "ecg_dead_case": [False, False], "beat_lo": [0, 0], "beat_hi": [60, 60]})
         with self.assertRaises(AssertionError):
@@ -205,6 +219,7 @@ class TestAssembler(unittest.TestCase):
         cls.tmp.cleanup()
 
     def test_fast_assembler_equals_the_loop_reference_on_200_windows(self):
+        # Verify fast assembler equals the loop reference on 200 windows.
         for variant in ("eap", "ea"):
             rows = self.w.sample(200, seed=3, ppg=False)
             out = S.assemble(self.w.root, rows, variant)
@@ -216,6 +231,7 @@ class TestAssembler(unittest.TestCase):
             self.assertLess(worst, 2e-4, f"{variant}: max difference {worst}")
 
     def test_shape_dtype_and_finiteness(self):
+        # Verify shape dtype and finiteness.
         rows = self.w.sample(64, seed=1)
         out = S.assemble(self.w.root, rows, "eap")
         self.assertEqual(out["x"].shape, (64, 7, 60, 200))
@@ -226,9 +242,11 @@ class TestAssembler(unittest.TestCase):
         self.assertEqual(out["variant_mask"].shape, (64, len(S.GROUPS)))
 
     def test_masked_beats_are_exactly_zero_and_their_sqi_is_zero(self):
+        # Verify masked beats are exactly zero and their SQI is zero.
         rows = self.w.sample(64, seed=2)
         out = S.assemble(self.w.root, rows, "eap")
         m_ecg, m_art, m_ppg = out["beat_mask"][:, 0], out["beat_mask"][:, 1], out["beat_mask"][:, 2]
+        # Compare the result with the expected value or tolerance.
         self.assertTrue((out["x"][:, 1].transpose(0, 2, 1)[~np.broadcast_to(m_art[:, None, :], (64, 200, 60))] == 0).all())
         self.assertTrue((out["x"][:, 0].transpose(0, 2, 1)[~np.broadcast_to(m_ecg[:, None, :], (64, 200, 60))] == 0).all())
         sc = S.to_planes(out["x"])["scalars"]
@@ -237,10 +255,12 @@ class TestAssembler(unittest.TestCase):
         self.assertGreater(int((~m_ppg).sum()), int((~m_art).sum()))                                  # PPG is masked more often than ART in the synthetic world
 
     def test_future_beats_cannot_change_the_tensor(self):
+        # Verify future beats cannot change the tensor.
         with tempfile.TemporaryDirectory() as tmp:
             w = World(tmp)
             rows = w.sample(80, seed=4)
             before = S.assemble(w.root, rows, "eap", cache=S.CaseCache())
+            # Apply the same operation to each named field in this group.
             for (ds, cid), (df, waves) in w.cases.items():
                 hi_max = int(rows.loc[(rows.dataset == ds) & (rows.case_id == cid), "beat_hi"].max()) if ((rows.dataset == ds) & (rows.case_id == cid)).any() else None
                 if hi_max is None or hi_max >= len(df):
@@ -261,14 +281,17 @@ class TestAssembler(unittest.TestCase):
             self.assertTrue(np.array_equal(before["context"], after["context"]))
 
     def test_normalization_does_not_depend_on_other_windows(self):
+        # Verify normalization does not depend on other windows.
         rows = self.w.sample(40, seed=5)
         batch = S.assemble(self.w.root, rows, "eap")
         for i in (0, 17, 39):
+            # Compare the result with the expected value or tolerance.
             alone = S.assemble(self.w.root, rows.iloc[[i]], "eap")
             self.assertTrue(np.array_equal(batch["x"][i], alone["x"][0]))
             self.assertTrue(np.array_equal(batch["context"][i], alone["context"][0]))
 
     def test_ea_is_eap_with_the_ppg_groups_zeroed(self):
+        # Verify ea is eap with the PPG groups zeroed.
         rows = self.w.sample(48, seed=6)
         eap, ea = S.assemble(self.w.root, rows, "eap")["x"], S.assemble(self.w.root, rows, "ea")["x"]
         zeroed = eap.copy()
@@ -287,10 +310,12 @@ class TestAssembler(unittest.TestCase):
         self.assertEqual(float(S.variant_mask("ea").sum()), len(S.GROUPS) - len(S.PPG_GROUPS))
 
     def test_ppg_free_variant_ignores_every_ppg_input(self):
+        # Verify PPG free variant ignores every PPG input.
         with tempfile.TemporaryDirectory() as tmp:
             w = World(tmp)
             rows = w.sample(60, seed=7)
             ea0, eap0 = S.assemble(w.root, rows, "ea", cache=S.CaseCache()), S.assemble(w.root, rows, "eap", cache=S.CaseCache())
+            # Apply the same operation to each named field in this group.
             for (ds, cid), (df, waves) in w.cases.items():
                 df2, waves2 = df.copy(), {k: v.copy() for k, v in waves.items()}
                 rng = np.random.default_rng(11)
@@ -307,6 +332,7 @@ class TestAssembler(unittest.TestCase):
             self.assertFalse(np.array_equal(eap0["x"], eap1["x"]))
 
     def test_deterministic_and_order_independent(self):
+        # Verify deterministic and order independent.
         rows = self.w.sample(50, seed=8)
         a, b = S.assemble(self.w.root, rows, "eap"), S.assemble(self.w.root, rows, "eap", cache=S.CaseCache(maxsize=1))
         self.assertTrue(np.array_equal(a["x"], b["x"]))
@@ -315,9 +341,11 @@ class TestAssembler(unittest.TestCase):
         self.assertTrue(np.array_equal(a["x"][perm], c["x"]))
 
     def test_split_and_dataset_are_never_inputs(self):
+        # Verify split and dataset are never inputs.
         for name in S.CONTEXT_NAMES:
             self.assertFalse(any(s in name for s in ("split", "dataset", "patient", "case")), name)
         rows = self.w.sample(20, seed=9)
+        # Compare the result with the expected value or tolerance.
         base = S.assemble(self.w.root, rows, "eap")
         changed = rows.assign(split_pooled="test", patient_key="x")
         self.assertTrue(np.array_equal(base["x"], S.assemble(self.w.root, changed, "eap")["x"]))
@@ -326,9 +354,11 @@ class TestAssembler(unittest.TestCase):
         self.assertEqual(base["context"].shape[1], len(S.CONTEXT_NAMES))
 
     def test_ppg_device_units_cannot_identify_the_dataset(self):
+        # Verify PPG device units cannot identify the dataset.
         self.assertNotIn("mean_ppg_amp", S.CONTEXT_NAMES)
         self.assertNotIn("mean_ppg_ac_dc", S.CONTEXT_NAMES)
         with tempfile.TemporaryDirectory() as tmp:
+            # Build the requested beat images, numerical context, and beat masks.
             w = World(tmp)
             rows = w.sample(50, seed=13)
             before = S.assemble(w.root, rows, "eap", cache=S.CaseCache())
@@ -345,6 +375,7 @@ class TestAssembler(unittest.TestCase):
             self.assertTrue(np.array_equal(before["context"], after["context"]))
 
     def test_apply_variant_equals_assembling_the_variant_directly(self):
+        # Verify apply variant equals assembling the variant directly.
         rows = self.w.sample(60, seed=12)
         eap = S.assemble(self.w.root, rows, "eap")
         derived, direct = S.apply_variant(eap, "ea"), S.assemble(self.w.root, rows, "ea")
@@ -353,12 +384,14 @@ class TestAssembler(unittest.TestCase):
         self.assertTrue(np.array_equal(S.apply_variant(eap, "eap")["x"], eap["x"]))
 
     def test_rejects_windows_without_60_beats(self):
+        # Verify rejects windows without 60 beats.
         bad = self.w.index.loc[~self.w.index.has60].head(2)
         if len(bad):
             with self.assertRaises(ValueError):
                 S.assemble(self.w.root, bad, "eap")
 
     def test_batch_iterator_covers_every_window_once_and_is_seeded(self):
+        # Verify batch iterator covers every window once and is seeded.
         rows = self.w.usable
         ids = lambda seed: np.concatenate([b["window_id"] for b in S.window_batch_iter(self.w.root, rows, "eap", batch_size=32, seed=seed, cases_per_chunk=2)])
         first, again, other = ids(1), ids(1), ids(2)
@@ -367,10 +400,12 @@ class TestAssembler(unittest.TestCase):
         self.assertFalse(np.array_equal(first, other))
 
     def test_torch_dataset_yields_tensors_also_through_spawned_workers(self):
+        # Verify torch dataset yields tensors also through spawned workers.
         try:
             import torch
         except ImportError:
             self.skipTest("torch is not installed")
+        # Check x and Tensor against the expected result.
         ds = S.make_torch_dataset(self.w.root, self.w.usable.head(70), "ea", batch_size=32)
         batch = next(iter(ds))
         self.assertIsInstance(batch["x"], torch.Tensor)
@@ -382,9 +417,11 @@ class TestAssembler(unittest.TestCase):
 
 class TestCompactCodec(unittest.TestCase):
     def test_round_trip_through_parquet_binary_columns(self):
+        # Verify round trip through parquet binary columns.
         with tempfile.TemporaryDirectory() as tmp:
             w = World(tmp)
             out = S.assemble(w.root, w.sample(24, seed=1), "eap")
+            # Compare the result with the expected value or tolerance.
             frame = pd.DataFrame(S.encode_compact(out))
             path = Path(tmp) / "part.parquet"
             frame.to_parquet(path, index=False)

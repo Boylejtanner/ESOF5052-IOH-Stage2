@@ -1,3 +1,4 @@
+# Check bshi ddp using controlled inputs and isolated files.
 import os
 import socket
 import sys
@@ -31,6 +32,7 @@ def free_port():
 
 def window_set(n=48, seed=0):
     """A fixed set of windows with some unobserved targets, to exercise the masks."""
+    # Seed the generated values so this check can be repeated.
     b = fake_batch(n, seed)
     b["delta_map"] = b["delta_map"].clone()
     b["delta_map"][::7] = float("nan")
@@ -62,6 +64,7 @@ def make_trainer(out, rank, world, micro, accum, data, compress="none", epochs=2
 
 
 def worker(rank, world, port, out, micro, accum, compress, epochs, steps, until, result_dir):
+    # Fit the model or transform using the supplied fitting partition.
     torch.set_num_threads(1)
     dist.init_process_group("gloo", init_method=f"tcp://127.0.0.1:{port}", rank=rank, world_size=world, timeout=__import__("datetime").timedelta(seconds=60))
     data = window_set(64, 0)
@@ -73,6 +76,7 @@ def worker(rank, world, port, out, micro, accum, compress, epochs, steps, until,
 
 
 def run_ranks(tmp, micro, accum, compress="none", epochs=2, steps=2, until=None):
+    # Create the destination directory before writing any outputs.
     port = free_port()
     res = Path(tmp) / "res"
     res.mkdir(exist_ok=True)
@@ -82,6 +86,7 @@ def run_ranks(tmp, micro, accum, compress="none", epochs=2, steps=2, until=None)
 
 class TestPureHelpers(unittest.TestCase):
     def test_split_micro_batches(self):
+        # Verify split micro batches.
         self.assertEqual(sum(DD.split_micro_batches(256, [2500, 900])), 256)
         a, b = DD.split_micro_batches(256, [2500, 900])
         self.assertAlmostEqual(a / b, 2500 / 900, delta=0.05)
@@ -90,6 +95,7 @@ class TestPureHelpers(unittest.TestCase):
         self.assertEqual(sum(DD.split_micro_batches(4, [100, 1, 1])), 4)
 
     def test_shard_patients_is_a_disjoint_proportional_partition(self):
+        # Verify shard patients is a disjoint proportional partition.
         counts = pd.Series(np.random.default_rng(0).integers(1, 300, 400), index=[f"p{i}" for i in range(400)])
         own = DD.shard_patients(counts, [3.0, 1.0])
         self.assertEqual(set(own), set(counts.index))
@@ -98,13 +104,16 @@ class TestPureHelpers(unittest.TestCase):
         self.assertEqual(own, DD.shard_patients(counts, [3.0, 1.0]))
 
     def test_loss_sums_over_counts_equal_the_means_of_the_single_process_loss(self):
+        # Verify loss sums over counts equal the means of the single process loss.
         pre = D.Preprocessor("eap", FAKE, device="cpu", channels_last=False)
         t = pre(window_set(24, 3))
         out = {k: torch.randn(24) for k in ("event", "delta_map", "aut_logit", "aut_mag")}
+        # Compare the result with the expected value or tolerance.
         w = {"event": 1.0, "delta_map": 0.3, "aut65": 0.3}
         ref, _ = T.multitask_loss(out, t, w)
         mine = DD.local_loss(DD.loss_sums(out, t), DD.batch_counts(t), w)
         self.assertAlmostEqual(float(ref), float(mine), places=6)
+        # Compare the result with the expected value or tolerance.
         half = {k: v[:10] for k, v in t.items() if torch.is_tensor(v) and v.ndim and len(v) == 24}
         half2 = {k: v[10:] for k, v in t.items() if torch.is_tensor(v) and v.ndim and len(v) == 24}
         counts = DD.batch_counts({**t, **half}) + DD.batch_counts({**t, **half2})
@@ -112,6 +121,7 @@ class TestPureHelpers(unittest.TestCase):
         self.assertAlmostEqual(float(ref), float(split), places=5)                 # two uneven halves with GLOBAL counts add up to the full-batch loss
 
     def test_gloo_adapter_is_pinned_to_the_one_that_reaches_the_master(self):
+        # Verify gloo adapter is pinned to the one that reaches the master.
         self.assertIsNone(DD.lan_interface("127.0.0.1"))
         self.assertIsNone(DD.lan_interface("localhost"))
         env = {}
@@ -135,6 +145,7 @@ class TestPureHelpers(unittest.TestCase):
 
 class TestTwoRanks(unittest.TestCase):
     def test_gradients_of_uneven_ranks_equal_one_big_batch(self):
+        # Verify gradients of uneven ranks equal one big batch.
         with tempfile.TemporaryDirectory() as tmp:
             ranks = run_ranks(tmp, micro=[10, 6], accum=2, epochs=1, steps=3)
             self.assertTrue(all(torch.equal(ranks[0][k], ranks[1][k]) for k in ranks[0]), "the ranks must hold identical weights")
@@ -162,6 +173,7 @@ class TestTwoRanks(unittest.TestCase):
                 dist.destroy_process_group()
 
     def test_fp16_compression_stays_close(self):
+        # Verify fp16 compression stays close.
         with tempfile.TemporaryDirectory() as tmp:
             a = run_ranks(tmp, micro=[8, 8], accum=2, epochs=1, steps=2)
         with tempfile.TemporaryDirectory() as tmp:
@@ -171,6 +183,7 @@ class TestTwoRanks(unittest.TestCase):
         self.assertTrue(all(torch.equal(b[0][k], b[1][k]) for k in b[0]))
 
     def test_resume_continues_exactly(self):
+        # Verify resume continues exactly.
         with tempfile.TemporaryDirectory() as t1, tempfile.TemporaryDirectory() as t2:
             full = run_ranks(t1, micro=[8, 8], accum=1, epochs=2, steps=2)
             run_ranks(t2, micro=[8, 8], accum=1, epochs=2, steps=2, until=1)          # stop after one epoch
@@ -182,6 +195,7 @@ class TestTwoRanks(unittest.TestCase):
 
 class TestPeerLoss(unittest.TestCase):
     def test_a_missing_peer_gives_a_clear_error_instead_of_a_hang(self):
+        # Verify a missing peer gives a clear error instead of a hang.
         t0 = time.time()
         with self.assertRaises(DD.PeerLost) as cm:
             DD.init_group(0, 2, f"tcp://127.0.0.1:{free_port()}", timeout_s=4)

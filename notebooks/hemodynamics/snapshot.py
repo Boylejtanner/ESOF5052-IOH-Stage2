@@ -5,6 +5,7 @@ parquet data or raw archives - and records a content hash of the unified index s
 can refuse to run against a dataset that changed after it was tagged.
 """
 from __future__ import annotations
+# Record the dataset definition so later processing uses a consistent cohort.
 
 import hashlib
 import importlib.metadata
@@ -48,13 +49,16 @@ def _versions():
 
 def dataset_state(root):
     """Everything that identifies the dataset right now (no writes)."""
+    # Summarize the records separately within each requested group.
     root = Path(root)
     index = _read_index(root)
     counts = {f"{ds}/{split}": {"cases": int(len(g)), "patients": int(g.patient_key.nunique())}
               for (ds, split), g in index.groupby(["dataset", "split_within_dataset"])}
+    # Summarize the records separately within each requested group.
     frozen = root / "data" / "manifests" / "mover_cohort_frozen.json"
     frozen_info = json.loads(frozen.read_text(encoding="utf-8")) if frozen.exists() else {}
     splits = root / "data" / "manifests" / "vitaldb_patient_splits.parquet"
+    # Summarize the records separately within each requested group.
     config = root / "configs" / "hemodynamics.json"
     settings = json.loads(config.read_text(encoding="utf-8"))
     return {
@@ -91,6 +95,7 @@ def _new_dir(parent, stamp):
 def _copy_tree(root, files, dest):
     entries = []
     for path in files:
+        # Create the destination directory before writing any outputs.
         rel = path.relative_to(root)
         target = dest / rel
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -101,6 +106,7 @@ def _copy_tree(root, files, dest):
 
 def verify_snapshot(snapshot_dir):
     """Re-hash a snapshot against its SNAPSHOT_MANIFEST.json; returns a list of problems (empty = intact)."""
+    # Load the recorded settings or metadata for this processing step.
     snapshot_dir = Path(snapshot_dir)
     manifest = json.loads((snapshot_dir / "SNAPSHOT_MANIFEST.json").read_text(encoding="utf-8"))
     problems = []
@@ -140,6 +146,7 @@ def snapshot_dataset_v1(root, extra_dest=None, force=False):
     stamp = time.strftime("%Y%m%d_%H%M%S", time.gmtime())
     dest = _new_dir(root / "backups", stamp)
     try:
+        # Create the destination directory before writing any outputs.
         dest.mkdir(parents=True)
         entries = _copy_tree(root, _sources(root), dest)
         atomic_json(dest / "SNAPSHOT_MANIFEST.json", {"created_at": utc_now(), "version": VERSION, "source_root": str(root), "files": entries})

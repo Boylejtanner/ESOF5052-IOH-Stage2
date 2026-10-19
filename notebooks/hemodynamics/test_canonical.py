@@ -1,3 +1,4 @@
+# Check canonical using controlled inputs and isolated files.
 import json
 from pathlib import Path
 import tempfile
@@ -13,6 +14,7 @@ from hemodynamics.canonical import (CheckpointStore, DiskSpaceStop, assert_patie
 
 class CanonicalTests(unittest.TestCase):
     def setUp(self):
+        # Collect the per-record values into a table for comparison.
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
         self.wave = pd.DataFrame({"time_sec": np.arange(100) / 100,
@@ -28,6 +30,7 @@ class CanonicalTests(unittest.TestCase):
                           {"patient_id": "patient1", "split": "train", "min_free_space_bytes": 0, "art_original_fs": 180, "art_final_fs": 100})
 
     def test_real_parquet_readback_and_corruption(self):
+        # Verify real parquet readback and corruption.
         metadata = self.commit()
         self.assertTrue(verify_case(self.root, metadata))
         loaded = load_case(self.root, "mover", "case1")
@@ -38,6 +41,7 @@ class CanonicalTests(unittest.TestCase):
         self.assertFalse(verify_case(self.root, metadata))
 
     def test_checkpoint_reopen_merge(self):
+        # Verify checkpoint reopen merge.
         store = CheckpointStore(self.root, "mover")
         store.update("case1", status="processing", retry_count=1)
         restarted = CheckpointStore(self.root, "mover")
@@ -46,6 +50,7 @@ class CanonicalTests(unittest.TestCase):
         self.assertEqual(restarted.rows()[0]["status"], "completed")
 
     def test_disk_guard(self):
+        # Verify disk guard.
         with patch("hemodynamics.canonical.shutil.disk_usage") as usage:
             usage.return_value.free = 110
             self.assertEqual(ensure_disk_space(self.root, 100, 10), 110)
@@ -63,6 +68,7 @@ class CanonicalTests(unittest.TestCase):
             self.commit()
 
     def test_patient_splits_and_leakage(self):
+        # Verify patient splits and leakage.
         splits = patient_splits([f"p{i}" for i in range(100)], seed=5052)
         self.assertEqual(splits.split.value_counts().to_dict(), {"train": 70, "validation": 15, "test": 15})
         pd.testing.assert_frame_equal(splits, patient_splits([f"p{i}" for i in reversed(range(100))], seed=5052))
@@ -72,6 +78,7 @@ class CanonicalTests(unittest.TestCase):
             assert_patient_independence(bad)
 
     def test_atomic_failure_no_committed_case(self):
+        # Verify atomic failure no committed case.
         with patch("hemodynamics.canonical.os.replace", side_effect=OSError("interrupted rename")):
             with self.assertRaises(OSError):
                 self.commit()
@@ -79,6 +86,7 @@ class CanonicalTests(unittest.TestCase):
         self.assertFalse((self.root / "data/parquet/mover/case_id=case1/metadata.json").exists())
 
     def test_compressed_output_budget_stops_before_commit(self):
+        # Verify compressed output budget stops before commit.
         with self.assertRaises(DiskSpaceStop):
             write_case(self.root, "mover", "case1", self.wave, self.numeric,
                        {"min_free_space_bytes": 0, "max_case_output_bytes": 1})
@@ -86,6 +94,7 @@ class CanonicalTests(unittest.TestCase):
         self.assertFalse(any(self.root.rglob("*.tmp")))
 
     def test_nested_manifest_metadata_is_portable(self):
+        # Verify nested manifest metadata is portable.
         from hemodynamics.canonical import write_manifest
         write_manifest(self.root, "example", pd.DataFrame({"case_id": ["case1"], "metadata": [{"empty": {}}]}))
         result = pd.read_parquet(self.root / "data/manifests/example.parquet")

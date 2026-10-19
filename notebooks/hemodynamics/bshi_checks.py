@@ -1,5 +1,6 @@
 """Real-data checks of the BSHI assembler (statistics, dataset shift evidence) and a gallery of real tensors."""
 from __future__ import annotations
+# Inspect real assembled images and check their masks and numerical ranges.
 
 import time
 from pathlib import Path
@@ -22,6 +23,7 @@ def _sample(frame, cases_per_dataset, per_case, seed):
     rng = np.random.default_rng(seed)
     parts = []
     for ds, g in frame.groupby("dataset"):
+        # Summarize the records separately within each requested group.
         counts = g.groupby("case_id").size()
         cases = counts[counts >= per_case].index.to_numpy()
         pick = rng.choice(cases, size=min(cases_per_dataset, len(cases)), replace=False)
@@ -38,6 +40,7 @@ def _plane_stats(x):
 
 def run_tensor_checks(root, n_full_cases=100, per_case_full=20, n_core_cases=50, per_case_core=10, seed=5052, write=True):
     """2,000 random in_full windows (both datasets, all splits) and 500 core-only windows -> results/bshi_tensor_checks.json."""
+    # Assemble real windows and check finite values, masking, and retained channel variation.
     root = Path(root)
     started = time.perf_counter()
     idx = S.load_window_index(root)
@@ -48,6 +51,7 @@ def run_tensor_checks(root, n_full_cases=100, per_case_full=20, n_core_cases=50,
            "by_dataset_full": full.dataset.value_counts().to_dict(), "events_full": int(full.y_event.sum())}
     results = {}
     for name, rows, variant in (("full_eap", full, "eap"), ("full_ea", full, "ea"), ("core_only_ea", core_only, "ea")):
+        # Exclude or flag missing values before using these measurements.
         b = S.assemble(root, rows, variant, cache=S.CaseCache(maxsize=2))
         x = b["x"]
         entry = {"variant": variant, "windows": int(len(x)), "nan_or_inf_count": int((~np.isfinite(x)).sum()) + int((~np.isfinite(b["context"])).sum()),
@@ -64,6 +68,7 @@ def run_tensor_checks(root, n_full_cases=100, per_case_full=20, n_core_cases=50,
         results[name] = entry
         if name == "full_eap":
             x0 = x
+    # Calculate output values for the following step.
     out["checks"] = results
     out["checks_pass"] = {"no_nan_or_inf": all(v["nan_or_inf_count"] == 0 for v in results.values()), "no_constant_plane": all(not v["constant_plane"] for v in results.values()),
                           "ecg_ppg_within_clip": bool(max(results["full_eap"]["planes"][p]["max"] for p in ("ecg", "ppg")) <= 8.0 + 1e-6),
@@ -77,6 +82,7 @@ def run_tensor_checks(root, n_full_cases=100, per_case_full=20, n_core_cases=50,
 
 
 def _pick_gallery(root, seed=5052):
+    # Seed the generated values so this check can be repeated.
     idx = S.load_window_index(root)
     pool = idx[idx.primary_eligible & idx.in_full & idx.has60 & ~idx.gray_zone]
     rng = np.random.default_rng(seed)
@@ -95,6 +101,7 @@ def _pick_gallery(root, seed=5052):
 
 def draw_gallery(root, out_dir=None, seed=5052):
     """8 real windows (2 events + 2 controls per dataset), EAP on the top row and EA below, the exact 7-plane layout."""
+    # Create the destination directory before writing any outputs.
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -103,9 +110,11 @@ def draw_gallery(root, out_dir=None, seed=5052):
     out_dir.mkdir(parents=True, exist_ok=True)
     paths = []
     for kind, row in _pick_gallery(root, seed):
+        # Collect the per-record values into a table for comparison.
         one = pd.DataFrame([row]).reset_index(drop=True)
         eap, ea = S.assemble(root, one, "eap", cache=S.CaseCache(2)), S.assemble(root, one, "ea", cache=S.CaseCache(2))
         fig, axes = plt.subplots(2, 7, figsize=(27, 8.4))
+        # Process the selected records in order and retain their individual results.
         for r, (label, b) in enumerate((("EAP (with PPG)", eap), ("EA (PPG groups zeroed)", ea))):
             for i, p in enumerate(S.PLANES):
                 cmap, lo, hi = CMAPS[p]
@@ -123,9 +132,11 @@ def draw_gallery(root, out_dir=None, seed=5052):
         fig.suptitle(f"BSHI {row.dataset} case {str(row.case_id)[:10]}  t_end={row.t_end_sec:.0f}s | MAP {row.map_current:.0f} | "
                      + (f"EVENT in {tte:.0f}s" if row.y_event else "no event in 300 s") + f" | dMAP {row.delta_map:+.0f}, AUT65 {row.aut65:.1f} | PPG beats {int(row.n_ppg_ok)}/60",
                      fontsize=11)
+        # Save the labeled figure for the analysis report.
         fig.tight_layout(rect=(0, 0, 1, 0.95))
         path = out_dir / f"bshi_{row.dataset}_{kind}_{str(row.case_id)[:8]}_{int(row.t_end_sec)}.png"
         capitalize_figure(fig)
+        # Save the labeled figure for the analysis report.
         audit_figure(fig, path.name)
         fig.savefig(path, dpi=80)
         plt.close(fig)

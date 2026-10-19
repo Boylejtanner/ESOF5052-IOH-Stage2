@@ -8,6 +8,7 @@ Per window (EAP representation; every other recipe is derived by masks, see ``bs
 A shard holds whole patients only, so shards are patient-disjoint and a machine can take any set of them.
 """
 from __future__ import annotations
+# Store compact window arrays so shuffled training avoids repeated case-file reads.
 
 import concurrent.futures as cf
 import hashlib
@@ -31,6 +32,7 @@ SAMPLE_COLUMNS = list(S.TORCH_INDEX_COLUMNS) + ["patient_key", "t_end_sec", "tim
 
 def plan_shards(rows, shard_windows=20000):
     """Split ``rows`` into shards of about ``shard_windows`` windows, never splitting a patient."""
+    # Summarize the records separately within each requested group.
     rows = rows.sort_values(["patient_key", "case_id", "beat_lo"]).reset_index(drop=True)
     shards, start, current = [], 0, 0
     sizes = rows.groupby("patient_key", sort=False).size().to_numpy()
@@ -51,6 +53,7 @@ def _scal_matrix(x):
 
 def write_shard(root, rows, shard_dir, chunk=512):
     """Assemble ``rows`` (any order) and write one shard. Returns {windows, bytes, seconds}."""
+    # Create the destination directory before writing any outputs.
     t0 = time.perf_counter()
     shard_dir = Path(shard_dir)
     shard_dir.mkdir(parents=True, exist_ok=True)
@@ -59,6 +62,7 @@ def write_shard(root, rows, shard_dir, chunk=512):
     sc = {k: np.zeros(n, dtype=dt) for k, dt in SCALARS.items()}
     cache = S.CaseCache()
     for i in range(0, n, chunk):
+        # Build the requested beat images, numerical context, and beat masks.
         part = rows.iloc[i:i + chunk].reset_index(drop=True)
         b = S.assemble(root, part, "eap", cache=cache, return_times=True)
         j = slice(i, i + len(part))
@@ -164,10 +168,12 @@ class Store:
 
     def gather(self, idx):
         """Arrays for global indices ``idx`` (any order, returned in that order)."""
+        # Locate the requested interval within the sorted sample times.
         idx = np.asarray(idx)
         sh = np.searchsorted(self.offsets, idx, side="right") - 1
         out = None
         for s in np.unique(sh):
+            # Order the measurements before matching intervals or comparing rows.
             sel = np.flatnonzero(sh == s)
             loc = idx[sel] - self.offsets[s]
             order = np.argsort(loc)
@@ -201,9 +207,11 @@ def sweep_selection(idx, n_train=60000, n_val=20000, mover_share=0.10, seed=5052
     """Deterministic stratified sample of the FULL set: ``mover_share`` of the windows from MOVER, the rest from VitalDB, uniformly at random inside each dataset (so events keep their natural
     share inside a dataset), train windows from train patients, validation windows from validation patients (patient-disjoint by construction). ``sampling_weight`` of a window =
     (windows of its stratum split x dataset x event in the full set) / (windows of that stratum in the subset): weighted metrics recover natural counts."""
+    # Seed the generated values so this check can be repeated.
     rng = np.random.default_rng(seed)
     full = idx[idx.primary_eligible & idx.in_full]
     out = []
+    # Process the selected records in order and retain their individual results.
     for split, n in (("train", n_train), ("validation", n_val)):
         pool = full[full.split_pooled == split]
         parts = []
@@ -211,6 +219,7 @@ def sweep_selection(idx, n_train=60000, n_val=20000, mover_share=0.10, seed=5052
             p = pool[pool.dataset == ds]
             k = min(int(round(n * share)), len(p))
             parts.append(p.iloc[np.sort(rng.choice(len(p), k, replace=False))])
+        # Summarize the records separately within each requested group.
         sel = pd.concat(parts).assign(split=split)
         sel["event"] = sel.y_event.astype(bool)
         full_n = pool.assign(event=pool.y_event.astype(bool)).groupby(["dataset", "event"]).size()
@@ -234,6 +243,7 @@ def experiment_frames(idx, train_on="pooled", stride=2, with_test=True):
     """Frames for ``build_store`` of one experiment. The pooled split and the within-dataset split are DIFFERENT patient partitions, so every ``train_on`` has its own store (a window that is
     training data in one can be test data in the other). Training windows: every ``stride``-th window of each case in time order (neighbours 30 s apart are near-duplicates), weight ``stride``
     so weighted sums recover natural counts; validation and test: ALL windows, weight 1."""
+    # Summarize the records separately within each requested group.
     from . import bshi_data as D
     fr = D.frames_for(idx, train_on)
     tr = fr["train"].sort_values(["patient_key", "case_id", "t_end_sec"])

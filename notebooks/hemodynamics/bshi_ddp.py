@@ -12,6 +12,7 @@ Design:
 * Every collective has a timeout; a vanished peer raises ``PeerLost`` with what to check instead of hanging.
 """
 from __future__ import annotations
+# Coordinate training processes and share gradients without changing patient partitions.
 
 import argparse
 import datetime
@@ -82,6 +83,7 @@ def split_micro_batches(total, speeds):
 
 def shard_patients(patient_counts, weights, seed=5052):
     """Assign whole patients to ranks so each rank's window count is proportional to its weight. ``patient_counts``: Series (patient -> windows). Returns {patient: rank}."""
+    # Seed the generated values so this check can be repeated.
     rng = np.random.default_rng(seed)
     pats = list(patient_counts.index)
     rng.shuffle(pats)
@@ -171,6 +173,7 @@ class DDPTrainer(T.Trainer):
             self.model.load_state_dict({k: v.to(self.device) for k, v in state[0].items()})
 
     def _train_epoch(self, epoch):
+        # Track each batch update and aggregate losses over the epoch.
         cfg, total = self.cfg, self.cfg.epochs * self.steps_per_epoch
         self.model.train()
         it = iter(self.train_loader(epoch) if callable(self.train_loader) else self.train_loader)
@@ -180,6 +183,7 @@ class DDPTrainer(T.Trainer):
         prog, g_win = self.progress, 0.0
         if prog is not None:
             prog.begin_epoch(epoch)
+        # Accumulate the calculation over the required samples or iterations.
         for _ in range(self.steps_per_epoch):
             micro = [next(it) for _ in range(self.accum)]
             tgts = [self.pre.targets(b) for b in micro]
@@ -191,6 +195,7 @@ class DDPTrainer(T.Trainer):
             for g in self.opt.param_groups:
                 g["lr"] = lr
             local_parts = {k: 0.0 for k in ("event", "delta", "pos", "mag")}
+            # Process the selected records in order and retain their individual results.
             for b, t in zip(micro, tgts):
                 inp = self.pre.inputs(b)
                 with torch.autocast(device_type=self.device.type, dtype=torch.bfloat16, enabled=cfg.amp == "bf16"):
@@ -202,14 +207,17 @@ class DDPTrainer(T.Trainer):
                 for k in local_parts:
                     local_parts[k] += float(s[k].detach())
                 n_win += len(t["y_event"])
+            # Limit the gradient norm before applying the optimizer update.
             t1 = time.perf_counter()
             allreduce_grads(params, self.compress)
             comm += time.perf_counter() - t1
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), cfg.grad_clip if cfg.grad_clip > 0 else float("inf"))
+            # Calculate the observation count and the accumulated totals for the following step.
             self.opt.step()
             self.opt.zero_grad(set_to_none=True)
             n, nd, na, nm = (float(counts[i]) for i in range(4))
             sums["event"] += local_parts["event"] / max(n, 1)
+            # Calculate the accumulated totals for the following step.
             sums["delta_map"] += local_parts["delta"] / max(nd, 1)
             sums["aut_pos"] += local_parts["pos"] / max(na, 1)
             sums["aut_mag"] += local_parts["mag"] / max(nm, 1)
@@ -222,6 +230,7 @@ class DDPTrainer(T.Trainer):
                 prog.update(steps, g_win, {"total": tot, "event": sums["event"] / steps}, lr)
         if self.device.type == "cuda":
             torch.cuda.synchronize()
+        # Calculate the output record for the following step.
         secs = time.perf_counter() - t0
         row = {k: v / max(1, steps) for k, v in sums.items() if k != "total"}
         row["total"] = float(cfg.loss_weights["event"] * row["event"] + cfg.loss_weights["delta_map"] * row["delta_map"] + cfg.loss_weights["aut65"] * (row["aut_pos"] + row["aut_mag"]))
@@ -249,6 +258,7 @@ class DDPTrainer(T.Trainer):
         if prog is not None:
             prog.start_run(cfg.epochs, self.steps_per_epoch, getattr(self, "global_windows_per_step", cfg.batch_size), self.epoch0,
                            {"mode": f"ddp, {self.world} ranks", "optimizer": cfg.optimizer, "lr": cfg.lr, "accum": self.accum, "compress": self.compress})
+        # Repeat training and validation for each epoch until the stopping rule is met.
         for epoch in range(self.epoch0, min(cfg.epochs, until_epoch or cfg.epochs)):
             row = {"epoch": epoch, **self._train_epoch(epoch)}
             decision = torch.zeros(3)
@@ -271,6 +281,7 @@ class DDPTrainer(T.Trainer):
             if prog is not None:
                 prog.epoch_done(row)
             if self.rank == 0:
+                # Save the comparison table so the same measurements can be inspected later.
                 pd.DataFrame(self.history).to_csv(self.out_dir / "epochs.csv", index=False)
                 self.save_checkpoint()
                 self.log(f"epoch {epoch}: loss {row['total']:.4f} | val AUPRC {row.get('val_auprc', float('nan')):.4f} | {row['train_windows_per_s']:.0f} windows/s (this rank) | "
@@ -285,6 +296,7 @@ class DDPTrainer(T.Trainer):
         return {"history": pd.DataFrame(self.history), "best_epoch": self.stopper.best_epoch, "best_auprc": self.stopper.best, "stopped_early": stopped, "seconds": round(time.perf_counter() - t_all, 1)}
 
     def _load_state(self, s):
+        # Restore the saved model or optimizer state for this run.
         self.model.load_state_dict({k: v.to(self.device) for k, v in s["model"].items()})
         self.opt.load_state_dict(s["opt"])
         self.epoch0, self.step, self.history, self.best_state = s["epoch"], s["step"], s["history"], s["best_state"]
@@ -295,21 +307,26 @@ class DDPTrainer(T.Trainer):
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Two-node data-parallel BSHI training (Gloo).")
     ap.add_argument("--rank", type=int, required=True)
+    # Read command-line options instead of hard-coding this run's settings.
     ap.add_argument("--world-size", type=int, default=2)
     ap.add_argument("--master", required=True, help="tcp://<rank-0 host>:29500")
     ap.add_argument("--store", default="data/derived/bshi/sweep_subset")
     ap.add_argument("--root", default=os.environ.get("BSHI_ROOT", "."))
     ap.add_argument("--global-batch", type=int, default=256, help="windows per micro-step summed over all ranks")
+    # Read command-line options instead of hard-coding this run's settings.
     ap.add_argument("--speeds", default="1,1", help="measured windows/s of each rank, e.g. 2500,900 (sets the micro-batch split and the data shares)")
     ap.add_argument("--accum", type=int, default=4, help="micro-steps per optimizer step (one all-reduce each)")
     ap.add_argument("--compress", choices=("none", "fp16"), default="none")
+    # Read command-line options instead of hard-coding this run's settings.
     ap.add_argument("--shard", choices=("auto", "none"), default="auto")
     ap.add_argument("--epochs", type=int, default=3)
     ap.add_argument("--epoch-windows", type=int, default=0, help="windows per epoch summed over ranks (0 = every training window once)")
     ap.add_argument("--config", default="", help="JSON file with a 'train' block (defaults to configs/hemodynamics.json)")
+    # Read command-line options instead of hard-coding this run's settings.
     ap.add_argument("--set", nargs="*", default=[], help="overrides like lr=0.002 optimizer=sgd")
     ap.add_argument("--out", default="")
     ap.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
+    # Read command-line options instead of hard-coding this run's settings.
     ap.add_argument("--timeout", type=int, default=120)
     ap.add_argument("--no-resume", action="store_true")
     a = ap.parse_args(argv)
@@ -319,6 +336,7 @@ def main(argv=None):
     for kv in a.set:
         k, v = kv.split("=", 1)
         over[k] = json.loads(v) if v[:1] in "[{0123456789-" or v in ("true", "false") else v
+    # Load the recorded settings or metadata for this processing step.
     tcfg = T.TrainConfig.from_dict(json.loads(cfg_file.read_text(encoding="utf-8")).get("train", {}), epochs=a.epochs, num_workers=0, **over)
     out = Path(a.out or root / "runs" / f"ddp_{time.strftime('%Y%m%d_%H%M%S')}")
     out.mkdir(parents=True, exist_ok=True)
@@ -353,6 +371,7 @@ def main(argv=None):
               f"{len(mine)} local training windows, compress {a.compress}", flush=True)
     res = trainer.fit(resume=not a.no_resume)
     if a.rank == 0:
+        # Store the settings and results as JSON for later inspection.
         (out / "result.json").write_text(json.dumps({"best_epoch": res["best_epoch"], "best_val_auprc": res["best_auprc"], "seconds": res["seconds"], "stopped_early": res["stopped_early"],
                                                      "windows_per_s_this_rank": float(res["history"].train_windows_per_s.median()), "comm_share": float(res["history"].comm_share.median()),
                                                      "micro_batches": split_micro_batches(a.global_batch, speeds), "accum": a.accum, "compress": a.compress}, indent=1), encoding="utf-8")

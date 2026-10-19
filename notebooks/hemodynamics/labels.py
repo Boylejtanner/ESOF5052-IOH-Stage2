@@ -19,6 +19,7 @@ Definitions (proposal Sec. V-A; the proposal leaves the "sustained" duration ope
   ``sustained_min_sec`` (an unobserved episode could have fitted in it). ``gray_zone`` = gray_zone[0] <= map_current < gray_zone[1].
 """
 from __future__ import annotations
+# Create future-pressure outcomes while keeping future values out of the inputs.
 
 import concurrent.futures as cf
 import hashlib
@@ -74,6 +75,7 @@ def sustained_runs(t, v, thr, max_gap, min_sec):
     """(starts, ends) of runs of consecutive valid samples < thr (gaps <= max_gap) lasting >= min_sec."""
     if len(t) == 0:
         return np.array([]), np.array([])
+    # Reserve output arrays and masks with explicit initial values.
     below = v < thr
     link = np.zeros(len(t), dtype=bool)
     link[1:] = below[1:] & below[:-1] & (np.diff(t) <= max_gap)
@@ -101,6 +103,7 @@ class _Integral:
     def __init__(self, t, v, thr, max_gap):
         self.t = t
         if len(t) < 2:
+            # Reserve output arrays and masks with explicit initial values.
             self.dt = self.obs = self.a0 = self.a1 = np.array([])
             self.C = self.O = np.zeros(max(1, len(t)))
             return
@@ -116,6 +119,7 @@ class _Integral:
         area, seen = np.zeros_like(tau), np.zeros_like(tau)
         if len(self.t) < 2:
             return area, seen
+        # Locate the requested interval within the sorted sample times.
         k = np.searchsorted(self.t, tau, side="right") - 1
         after = k >= len(self.t) - 1
         area[after], seen[after] = self.C[-1], self.O[-1]
@@ -132,6 +136,7 @@ def _horizon_gap(tm, t0, horizon):
     """Largest gap between valid MAP samples in (t0, t0+H] counting both edges; H when there are none."""
     if tm.shape[1] == 0:
         return np.full(len(t0), float(horizon))
+    # Exclude or flag missing values before using these measurements.
     valid = np.isfinite(tm)
     first = np.where(valid.any(1), np.nanmin(np.where(valid, tm, np.inf), axis=1), np.nan)
     last = np.where(valid.any(1), np.nanmax(np.where(valid, tm, -np.inf), axis=1), np.nan)
@@ -143,13 +148,16 @@ def _horizon_gap(tm, t0, horizon):
 
 def label_case(win, t, v, rule):
     """Label one case. ``win`` has t_start_sec, t_end_sec, min_valid_frac (ready windows only); (t, v) is its raw MAP track."""
+    # Exclude or flag missing values before using these measurements.
     thr, horizon = float(rule["hypo_threshold"]), float(rule["horizon_sec"])
     lo_v, hi_v = rule["map_valid_range"]
     t, v = np.asarray(t, dtype=float), np.asarray(v, dtype=float)
+    # Exclude or flag missing values before using these measurements.
     good = np.isfinite(t) & np.isfinite(v) & (v >= lo_v) & (v <= hi_v)
     t, v = t[good], v[good]
     order = np.argsort(t, kind="stable")
     t, v = t[order], v[order]
+    # Locate the requested interval within the sorted sample times.
     t0 = win["t_end_sec"].to_numpy(dtype=float)
     n = len(t0)
     nan = np.full(n, np.nan)
@@ -158,9 +166,11 @@ def label_case(win, t, v, rule):
     lo60 = np.searchsorted(t, t0 - float(rule["already_hypo_lookback_sec"]), side="right")
     jhi = np.searchsorted(t, t0 + horizon, side="right")
     with warnings.catch_warnings():
+        # Exclude or flag missing values before using these measurements.
         warnings.simplefilter("ignore", RuntimeWarning)
         _, v10 = _gather(t, v, lo10, hi)
         map_current = np.nanmedian(v10, axis=1) if v10.shape[1] else nan.copy()
+        # Exclude or flag missing values before using these measurements.
         t60, v60 = _gather(t, v, lo60, hi)
         has60 = np.isfinite(v60)
         n60 = has60.sum(1)
@@ -174,6 +184,7 @@ def label_case(win, t, v, rule):
             sx, sy, sxx, sxy = x.sum(1), y.sum(1), (x * x).sum(1), (x * y).sum(1)
             den = n60 * sxx - sx * sx
             slope = np.where((n60 >= 3) & (den > 0), (n60 * sxy - sx * sy) / np.where(den > 0, den, 1.0) * 60.0, np.nan)
+        # Exclude or flag missing values before using these measurements.
         already = (v60 < thr).any(axis=1) if v60.shape[1] else np.zeros(n, dtype=bool)
         th, vh = _gather(t, v, hi, jhi)
         min_future = np.nanmin(vh, axis=1) if vh.shape[1] else nan.copy()
@@ -181,6 +192,7 @@ def label_case(win, t, v, rule):
         delta = np.where(np.isfinite(map_current) & (horizon_n > 0), np.maximum(0.0, map_current - min_future), np.nan)
         delta_robust = nan.copy()
         if len(t) and vh.shape[1]:
+            # Locate the requested interval within the sorted sample times.
             rw = float(rule["robust_min_window_sec"])
             rlo = np.searchsorted(t, t - rw, side="left")
             _, vr = _gather(t, v, rlo, np.arange(len(t)) + 1)
@@ -203,9 +215,11 @@ def label_case(win, t, v, rule):
     area_hi, seen_hi = integral.at(t0 + horizon)
     area_lo, seen_lo = integral.at(t0)
     aut65 = (area_hi - area_lo) / 60.0
+    # Exclude or flag missing values before using these measurements.
     observed = np.clip((seen_hi - seen_lo) / horizon, 0.0, 1.0)
     gap = _horizon_gap(th, t0, horizon)
     gray = (map_current >= rule["gray_zone"][0]) & (map_current < rule["gray_zone"][1])
+    # Exclude or flag missing values before using these measurements.
     lt65 = map_current < thr
     f32 = lambda a: np.asarray(a, dtype=np.float32)
     return pd.DataFrame({
@@ -228,6 +242,7 @@ def _job(root, row, win, rule):
 
 
 def _signature(map_sha, rule_hash, win):
+    # Hash the content so later runs can detect changed inputs.
     h = hashlib.sha256(f"{map_sha}|{rule_hash}|{LABEL_CODE_VERSION}".encode())
     h.update(np.ascontiguousarray(win["t_end_sec"].to_numpy(dtype=float)).tobytes())
     return h.hexdigest()
@@ -252,19 +267,23 @@ def labels_path(root, dataset):
 
 def build_labels(root, datasets=("mover", "vitaldb"), workers=None, progress=True, allow_changed=False):
     """Compute labels for every ready window of every case; incremental (unchanged cases are skipped)."""
+    # Keep the label definition and patient partitions fixed while processing cases.
     started = time.perf_counter()
     root = Path(root)
     tag = assert_dataset_v1(root, allow_changed=allow_changed)
+    # Load the recorded settings or metadata for this processing step.
     settings = json.loads((root / "configs" / "hemodynamics.json").read_text(encoding="utf-8"))
     rule = load_label_rule(settings)
     rule_hash = label_rule_sha256(rule)
     index = pd.read_parquet(root / "data" / "manifests" / "unified_case_index.parquet")
+    # Read the stored table required for this calculation.
     sig_path = root / _LABELS_DIR / "case_signatures.parquet"
     old_sig = pd.read_parquet(sig_path) if sig_path.exists() else pd.DataFrame(columns=["dataset", "case_id", "signature"])
     known = {(d, c): s for d, c, s in old_sig[["dataset", "case_id", "signature"]].itertuples(index=False, name=None)}
     summary = {"rule_sha256": rule_hash, "datasets": {}}
     new_sigs = []
     for dataset in datasets:
+        # Summarize the records separately within each requested group.
         windows = pd.read_parquet(root / "data" / "manifests" / f"ready_windows_{dataset}.parquet", columns=["case_id", "t_start_sec", "t_end_sec", "min_valid_frac", "is_ready"])
         windows = windows.loc[windows.is_ready].astype({"case_id": str})
         by_case = {k: g.reset_index(drop=True) for k, g in windows.groupby("case_id")}
@@ -273,6 +292,7 @@ def build_labels(root, datasets=("mover", "vitaldb"), workers=None, progress=Tru
         existing = pd.read_parquet(path) if path.exists() else None
         have = set(existing.case_id.astype(str)) if existing is not None else set()
         todo, skipped = [], 0
+        # Apply this calculation to each row in the selected table.
         for r in cases.itertuples():
             cid = str(r.case_id)
             win = by_case.get(cid)
@@ -292,6 +312,7 @@ def build_labels(root, datasets=("mover", "vitaldb"), workers=None, progress=Tru
                 from tqdm.auto import tqdm
                 bar = tqdm(total=len(todo), desc=f"labels [{dataset}]", unit="case")
             meta = {str(r.case_id): (r.patient_key, r.split_within_dataset, r.split_pooled) for r, _ in todo}
+            # Ensure the associated files, locks, or resources are released after this operation.
             try:
                 with cf.ProcessPoolExecutor(max_workers=workers_n, mp_context=multiprocessing.get_context("spawn")) as pool:
                     futures = [pool.submit(_job, str(root), {"dataset": dataset, "case_id": str(r.case_id), "map_path": r.map_path}, win, rule) for r, win in todo]
@@ -311,6 +332,7 @@ def build_labels(root, datasets=("mover", "vitaldb"), workers=None, progress=Tru
         keep = existing.loc[~existing.case_id.astype(str).isin(redo) & existing.case_id.astype(str).isin({str(c) for c in cases.case_id})] if existing is not None else None
         parts = [p for p in (keep, *frames) if p is not None and len(p)]
         if parts and (todo or existing is None):
+            # Collect the per-record values into a table for comparison.
             out = pd.concat(parts, ignore_index=True)
             out["label_rule_sha256"] = rule_hash
             out["dataset_version"] = tag["version"]
@@ -379,6 +401,7 @@ def auprc(y, s):
 
 
 def _calibration(y, p):
+    # Fit the model or transform using the supplied fitting partition.
     from sklearn.linear_model import LogisticRegression
     p = np.clip(p, 1e-6, 1 - 1e-6)
     z = np.log(p / (1 - p)).reshape(-1, 1)
@@ -392,6 +415,7 @@ def _metrics(y, p):
 
 
 def _cluster_ci(df, y_col, p_col, reps, seed=5052):
+    # Summarize the records separately within each requested group.
     groups = {k: (g[y_col].to_numpy(), g[p_col].to_numpy()) for k, g in df.groupby("patient_key")}
     keys = np.array(list(groups))
     rng = np.random.default_rng(seed)
@@ -422,6 +446,7 @@ def _baseline_settings(lab):
 
 
 def _fit_predict(train, test):
+    # Calculate predicted risk without refitting on evaluation windows.
     from sklearn.linear_model import LogisticRegression
     from sklearn.preprocessing import StandardScaler
     scaler = StandardScaler().fit(train[FEATURES])
@@ -431,6 +456,7 @@ def _fit_predict(train, test):
 
 def calibration_points(root, setting="E3x vitaldb_train->all_mover", bins=10, min_valid_frac=0.7):
     """Reliability-curve points (equal-count bins) of baseline A for one setting."""
+    # Summarize the records separately within each requested group.
     lab = _baseline_frame(root, min_valid_frac)
     tr_mask, te_mask = _baseline_settings(lab)[setting]
     test = lab.loc[te_mask].copy()
@@ -441,6 +467,7 @@ def calibration_points(root, setting="E3x vitaldb_train->all_mover", bins=10, mi
 
 def baseline_a(root, reps=200, min_valid_frac=0.7, write=True):
     """Current-MAP + trend baseline (logistic on MAP features) with patient-level bootstrap CIs; also zero-heavy regression references."""
+    # Load the recorded settings or metadata for this processing step.
     from sklearn.linear_model import Ridge
     from sklearn.preprocessing import StandardScaler
     lab = _baseline_frame(root, min_valid_frac)
@@ -448,6 +475,7 @@ def baseline_a(root, reps=200, min_valid_frac=0.7, write=True):
     out = {"rule_sha256": label_rule_sha256(load_label_rule(json.loads((Path(root) / "configs" / "hemodynamics.json").read_text()))),
            "min_valid_frac": min_valid_frac, "features": FEATURES, "settings": {}}
     for name, (tr_mask, te_mask) in settings.items():
+        # Calculate prediction metrics from these labels and model scores.
         train, test = lab.loc[tr_mask], lab.loc[te_mask].copy()
         test["p"] = _fit_predict(train, test)
         test["naive"] = -test.map_current.to_numpy()
@@ -466,6 +494,7 @@ def baseline_a(root, reps=200, min_valid_frac=0.7, write=True):
     scaler = StandardScaler().fit(train[FEATURES])
     reg = {"test_windows": int(len(test))}
     for target in ("delta_map", "aut65"):
+        # Fit the model or transform using the supplied fitting partition.
         ridge = Ridge(alpha=1.0).fit(scaler.transform(train[FEATURES]), train[target])
         reg[target] = {"zero_fraction_test": float((test[target] == 0).mean()), "mean_test": float(test[target].mean()),
                        "mae_predict_train_median": float(np.mean(np.abs(test[target] - train[target].median()))),

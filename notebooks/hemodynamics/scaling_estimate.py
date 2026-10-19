@@ -9,6 +9,7 @@ Recommendation ``ddp_2node`` when the speed-up is at least 1.25, else ``trial_pa
 second scenario (about 110 MB/s, 0.5 ms) unless the probes were already measured over it.
 """
 from __future__ import annotations
+# Compare expected multi-machine speed with independent experiment runs.
 
 import argparse
 import json
@@ -30,6 +31,7 @@ def estimate(a, b, link, grad_mb=GRAD_MB, max_effective_batch=2048, h2d_gb_s=Non
     cap_a, cap_b = int(a["step"]["max_micro_batch"]), int(b["step"]["max_micro_batch"])
     copy_s = 2 * grad_mb / 1000.0 / max(0.5, min(a.get("h2d_gb_s", 10.0), b.get("h2d_gb_s", 10.0)) if h2d_gb_s is None else h2d_gb_s)
     rows = []
+    # Process the selected records in order and retain their individual results.
     for compress, factor in (("none", 1.0), ("fp16", 0.5)):
         t_comm = 2 * link["latency_s"] + grad_mb * factor / link["bandwidth_mb_s"] + copy_s
         for g in (16, 32, 48, 64, 96, 128, 192, 256, 384, 512):
@@ -51,6 +53,7 @@ def estimate(a, b, link, grad_mb=GRAD_MB, max_effective_batch=2048, h2d_gb_s=Non
 
 
 def run(probe_a, probe_b, cable=True, **kw):
+    # Load the recorded settings or metadata for this processing step.
     a, b = json.loads(Path(probe_a).read_text(encoding="utf-8")), json.loads(Path(probe_b).read_text(encoding="utf-8"))
     measured = a.get("link") or b.get("link")
     link = {**measured, "source": "measured with cluster_probe ranks"} if measured else ASSUMED_WIFI
@@ -68,6 +71,7 @@ def run(probe_a, probe_b, cable=True, **kw):
 
 def format_report(res):
     lines = []
+    # Process the selected records in order and retain their individual results.
     for key in ("current_link", "direct_ethernet_cable", "vpn_over_internet"):
         if key not in res:
             continue
@@ -85,13 +89,16 @@ def format_report(res):
 
 
 def main(argv=None):
+    # Read command-line options instead of hard-coding this run's settings.
     ap = argparse.ArgumentParser()
     ap.add_argument("probe_a", help="probe of the desktop (rank 0)")
     ap.add_argument("probe_b", help="probe of the laptop")
+    # Store the settings and results as JSON for later inspection.
     ap.add_argument("--out", default="results/scaling_estimate.json")
     ap.add_argument("--max-effective-batch", type=int, default=2048)
     a = ap.parse_args(argv)
     res = run(a.probe_a, a.probe_b, max_effective_batch=a.max_effective_batch)
+    # Store the settings and results as JSON for later inspection.
     Path(a.out).parent.mkdir(parents=True, exist_ok=True)
     Path(a.out).write_text(json.dumps(res, indent=1), encoding="utf-8")
     print(format_report(res))

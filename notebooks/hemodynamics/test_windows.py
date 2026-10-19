@@ -1,3 +1,4 @@
+# Check windows using controlled inputs and isolated files.
 import unittest
 
 import numpy as np
@@ -41,6 +42,7 @@ class ReadyWindowTests(unittest.TestCase):
                                self.mt if mt is None else mt, self.mv if mv is None else mv, rule or self.rule, case_id="c1")
 
     def test_structural_gaps_pass_at_075_but_not_at_09(self):
+        # Verify structural gaps pass at 075 but not at 09.
         art, ecg, ppg = (_holes(x) for x in (self.art, self.ecg, self.ppg))
         frame = W.ready_windows(art, ecg, ppg, FS, self.mt, self.mv, self.rule, case_id="c1")
         self.assertTrue(frame.is_ready.sum() > 0)
@@ -51,17 +53,20 @@ class ReadyWindowTests(unittest.TestCase):
         self.assertEqual(summary["ready_span_min_theta_90"], 0.0)
 
     def test_flat_line_art_is_rejected(self):
+        # Verify flat line ART is rejected.
         flat = np.zeros(self.n, dtype=np.float32)
         frame = self.windows(art=flat)
         self.assertEqual(int(frame.is_ready.sum()), 0)
         self.assertFalse(frame.art_plausible.any())
 
     def test_art_map_mismatch_is_rejected(self):
+        # Compare the result with the expected value or tolerance.
         frame = self.windows(mv=np.full(len(self.mt), 40.0))
         self.assertEqual(int(frame.is_ready.sum()), 0)
         self.assertTrue((frame.art_map_diff.dropna() > 20).all())
 
     def test_horizon_gap_rule(self):
+        # Verify horizon gap rule.
         keep = ~((self.mt > 400) & (self.mt < 600))
         frame = self.windows(mt=self.mt[keep], mv=self.mv[keep])
         early = frame.loc[frame.t_end_sec <= 210]
@@ -71,6 +76,7 @@ class ReadyWindowTests(unittest.TestCase):
         self.assertTrue((straddle.map_horizon_max_gap_sec > self.rule["horizon_max_gap_sec"]).any())
 
     def test_windows_without_enough_future_map_are_not_ready(self):
+        # Verify windows without enough future MAP are not ready.
         frame = self.windows()
         last_map = float(self.mt[-1])
         late = frame.loc[frame.t_end_sec + self.rule["horizon_sec"] - last_map > self.rule["horizon_max_gap_sec"] + 1]
@@ -90,6 +96,7 @@ class ReadyWindowTests(unittest.TestCase):
         self.assertEqual(int(frame.is_ready.sum()), int(baseline.is_ready.sum()))
 
     def test_union_span_merges_overlaps(self):
+        # Compare the result with the expected value or tolerance.
         self.assertAlmostEqual(W.union_span_minutes([0, 30, 60], 90), 2.5)
         self.assertAlmostEqual(W.union_span_minutes([0, 300], 90), 3.0)
         self.assertEqual(W.union_span_minutes([], 90), 0.0)
@@ -111,6 +118,7 @@ class LadderTests(unittest.TestCase):
         return pd.DataFrame(rows)
 
     def test_strictest_rung_meeting_target_is_chosen(self):
+        # Verify strictest rung meeting target is chosen.
         spans = [(35, 40, 45, 50)] * 150 + [(5, 25, 30, 40)] * 160 + [(0, 0, 0, 12)] * 100
         rung, funnel, _ = W.choose_rung(self._stats(spans), self.ladder, {"min_cases": 300, "min_patients": 250, "floor_cases": 150})
         self.assertEqual(rung["name"], "R2")
@@ -118,17 +126,20 @@ class LadderTests(unittest.TestCase):
         self.assertEqual(funnel.set_index("rung").loc["R4", "cases"], 410)
 
     def test_falls_back_to_loosest_and_reports(self):
+        # Verify falls back to loosest and reports.
         spans = [(0, 0, 0, 12)] * 200
         rung, _, reason = W.choose_rung(self._stats(spans), self.ladder, {"min_cases": 300, "min_patients": 250, "floor_cases": 150})
         self.assertEqual(rung["name"], "R4")
         self.assertIn("loosest", reason)
 
     def test_stops_below_floor(self):
+        # Check rung against the expected result.
         rung, _, reason = W.choose_rung(self._stats([(0, 0, 0, 12)] * 40), self.ladder, self.targets)
         self.assertIsNone(rung)
         self.assertIn("not creating a cohort", reason)
 
     def test_patient_target_counts_distinct_patients(self):
+        # Verify patient target counts distinct patients.
         stats = self._stats([(35, 40, 45, 50)] * 320)
         stats["patient_id"] = [f"p{i % 100}" for i in range(320)]
         rung, _, _ = W.choose_rung(stats, self.ladder, {"min_cases": 300, "min_patients": 250, "floor_cases": 150})

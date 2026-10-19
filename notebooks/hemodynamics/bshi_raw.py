@@ -5,6 +5,7 @@ missing or non-finite are 0 in ``x`` and False in ``mask``; nothing is interpola
 same normalization as BSHI (ART fixed scale, ECG/PPG per-window robust z-score over valid samples).
 """
 from __future__ import annotations
+# Read time-domain windows for raw-waveform and spectral comparisons.
 
 from collections import OrderedDict
 from pathlib import Path
@@ -28,6 +29,7 @@ class RawCase:
     __slots__ = ("t0", "n", "data")
 
     def __init__(self, root, dataset, case_id):
+        # Read the stored table required for this calculation.
         t = pq.read_table(waveform_path(root, dataset, case_id), columns=["time_sec", "ECG", "ART", "PPG"]).to_pandas()
         ts = t.time_sec.to_numpy(dtype=np.float64)
         self.t0 = float(ts[0])
@@ -59,18 +61,21 @@ _DEFAULT = RawCache()
 
 def raw_windows(root, rows, window_sec=90, cache=None):
     """(x, mask) for index rows (needs dataset, case_id, t_end_sec): x (N,3,window_sec*100) float32 with 0 where invalid, mask bool."""
+    # Reserve output arrays and masks with explicit initial values.
     cache = cache or _DEFAULT
     rows = rows.reset_index(drop=True)
     length = int(window_sec * FS)
     n = len(rows)
     x = np.zeros((n, 3, length), dtype=np.float32)
     mask = np.zeros((n, 3, length), dtype=bool)
+    # Process each dataset, case id group separately to retain the intended grouping.
     for (ds, cid), g in rows.groupby(["dataset", "case_id"], sort=False):
         case = cache.get(root, ds, cid)
         for i, t_end in zip(g.index.to_numpy(), g.t_end_sec.to_numpy(dtype=np.float64)):
             start = int(round((t_end - window_sec - case.t0) * FS))
             lo, hi = max(start, 0), min(start + length, case.n)
             if hi > lo:
+                # Exclude or flag missing values before using these measurements.
                 seg = case.data[:, lo:hi]
                 ok = np.isfinite(seg)
                 x[i, :, lo - start:hi - start] = np.where(ok, seg, 0.0)
@@ -83,6 +88,7 @@ def normalize_raw(x, mask, cfg_or_root=None, clip=8.0):
     cfg = bshi_config(cfg_or_root) if cfg_or_root is not None else {"art_center_mmhg": 80, "art_scale_mmhg": 40}
     out = np.zeros_like(x)
     out[:, 1] = np.where(mask[:, 1], np.clip((x[:, 1] - cfg["art_center_mmhg"]) / cfg["art_scale_mmhg"], -clip, clip), 0.0)
+    # Process the selected records in order and retain their individual results.
     for c in (0, 2):
         for i in range(len(x)):
             v = x[i, c][mask[i, c]]

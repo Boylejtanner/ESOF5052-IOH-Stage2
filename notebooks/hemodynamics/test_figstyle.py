@@ -1,3 +1,4 @@
+# Check figstyle using controlled inputs and isolated files.
 import re
 import shutil
 import tempfile
@@ -21,11 +22,13 @@ class TestAudit(unittest.TestCase):
         plt.close("all")
 
     def test_labelled_figure_passes(self):
+        # Compare the result with the expected value or tolerance.
         fig, ax = plt.subplots()
         figstyle.finish_axes(ax, "time (s)", "pressure (mmHg)", "t")
         self.assertTrue(figstyle.audit_figure(fig, "ok"))
 
     def test_missing_labels_are_rejected(self):
+        # Verify missing labels are rejected.
         fig, axes = plt.subplots(1, 2)
         figstyle.finish_axes(axes[0], "x (s)", "y (mmHg)")
         axes[1].set_xlabel("only x")
@@ -34,6 +37,7 @@ class TestAudit(unittest.TestCase):
         self.assertIn("missing y label", str(cm.exception))
 
     def test_colorbar_needs_a_label_and_helpers_can_be_skipped(self):
+        # Verify colorbar needs a label and helpers can be skipped.
         fig, ax = plt.subplots()
         im = ax.imshow([[0, 1], [1, 0]])
         figstyle.finish_axes(ax, "x (samples)", "y (beats)")
@@ -47,6 +51,7 @@ class TestAudit(unittest.TestCase):
         self.assertTrue(figstyle.audit_figure(fig, "helper"))
 
     def test_eda_save_function_refuses_unlabelled_figures(self):
+        # Verify eda save function refuses unlabelled figures.
         with tempfile.TemporaryDirectory() as tmp:
             fig, ax = plt.subplots()
             ax.plot([0, 1])
@@ -57,9 +62,11 @@ class TestAudit(unittest.TestCase):
 
 class TestCapitalization(unittest.TestCase):
     def test_labels_titles_legends_and_categories_get_capitals_and_symbols(self):
+        # Verify labels titles legends and categories get capitals and symbols.
         fig, ax = plt.subplots(1, 2)
         ax[0].bar(["train", "validation"], [1, 2], label="mover")
         ax[0].set_xlabel("within-dataset split")
+        # Label the panel with the measurement names and their units.
         ax[0].set_ylabel("event prevalence (% of windows)")
         ax[0].set_title("prevalence per split")
         ax[0].legend(title="dataset")
@@ -68,16 +75,20 @@ class TestCapitalization(unittest.TestCase):
         ax[1].set_ylabel("delta MAP (mmHg*min)")
         ax[1].set_title("roc for vitaldb")
         ax[1].legend()
+        # Compare the result with the expected value or tolerance.
         fig.suptitle("baseline ladder >= G0")
         figstyle.capitalize_figure(fig, panel_letters=True)
         self.assertEqual(ax[0].get_xlabel(), "Within-dataset split")
+        # Compare the result with the expected value or tolerance.
         self.assertEqual(ax[0].get_ylabel(), "Event prevalence (% of windows)")
         self.assertEqual(ax[0].get_title(), "(a) Prevalence per split")
         self.assertEqual(ax[1].get_title(), "(b) Roc for VitalDB")
+        # Compare the result with the expected value or tolerance.
         self.assertEqual(ax[0].get_legend().get_title().get_text(), "Dataset")
         self.assertEqual(ax[0].get_legend().get_texts()[0].get_text(), "MOVER")
         self.assertEqual([t.get_text() for t in ax[0].get_xticklabels()], ["Train", "Validation"])
         self.assertEqual(ax[1].get_xlabel(), "(mmHg - 80) / 40 (ART)")
+        # Compare the result with the expected value or tolerance.
         self.assertEqual(ax[1].get_ylabel(), "\u0394MAP (mmHg\u00b7min)")
         self.assertEqual(ax[1].get_legend().get_texts()[0].get_text(), "Pooled \u2192 pooled test: MAP only, logistic")
         self.assertEqual(fig._suptitle.get_text(), "Baseline ladder \u2265 G0")
@@ -88,6 +99,7 @@ class TestCapitalization(unittest.TestCase):
                          "Selected (\u2265 30 min of analyzable windows,\n\u2265 75% valid samples each)")
 
     def test_single_panel_figures_get_no_panel_letter(self):
+        # Verify single panel figures get no panel letter.
         fig, ax = plt.subplots()
         ax.set_title("only panel")
         ax.set_xlabel("x")
@@ -99,6 +111,7 @@ class TestCapitalization(unittest.TestCase):
 
 class TestRenderFromCsvs(unittest.TestCase):
     def test_every_eda_figure_is_rendered_and_labelled_from_the_saved_csvs_only(self):
+        # Verify every eda figure is rendered and labelled from the saved csvs only.
         src = ROOT / "results" / "eda"
         if not (src / "table_baseline_ladder_all.csv").exists():
             self.skipTest("run eda_metrics.build_all first")
@@ -113,6 +126,7 @@ class TestRenderFromCsvs(unittest.TestCase):
                     if re.sub(r"^\([a-z]\)\s+", "", text)[:1].islower():
                         lowercase.append(f"{name}: {kind} {text!r}")
             return real_audit(fig, name)
+        # Keep the fixture files isolated from the actual project data.
         with tempfile.TemporaryDirectory() as tmp, mock.patch.object(figstyle, "audit_figure", side_effect=audit_and_check_capitals):
             dst = Path(tmp) / "results" / "eda"
             dst.mkdir(parents=True)

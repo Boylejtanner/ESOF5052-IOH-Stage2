@@ -9,6 +9,7 @@ Design decisions:
 * Heads: event logit; delta MAP (regression on a train-standardized target); AUT65 in two parts (logit of AUT65 > 0 and a log1p magnitude, trained only where AUT65 > 0).
 """
 from __future__ import annotations
+# Combine a beat-image encoder with numerical context and quality weighting.
 
 from dataclasses import asdict, dataclass
 
@@ -38,6 +39,7 @@ class ModelConfig:
 
 def input_masks(variant):
     """(image mask (1,7,1,200), context mask (25,)) of the groups the variant keeps: planes 0-3 whole, planes 4-6 band by band (timing 50 columns, morphology 25, SQI 50)."""
+    # Keep each enabled waveform, band, and context field in the selected input recipe.
     off = S.VARIANTS[variant]
     m = torch.zeros(1, 7, 1, S.PHASE)
     for g, plane in S.PLANE_OF_GROUP.items():
@@ -56,6 +58,7 @@ def input_masks(variant):
 class SqiGate(nn.Module):
     """Convert per-beat quality bands and validity masks into modality fusion weights."""
     def __init__(self, hidden=16):
+        # Start all quality weights at one so training learns any later up- or down-weighting.
         super().__init__()
         self.net = nn.Sequential(nn.Conv1d(7, hidden, 3, padding=1), nn.SiLU(), nn.Conv1d(hidden, 3, 3, padding=1))
         nn.init.zeros_(self.net[-1].weight)
@@ -70,6 +73,7 @@ class SqiGate(nn.Module):
 class Block(nn.Module):
     """Apply a residual convolutional block with GroupNorm and an optional projection."""
     def __init__(self, cin, cout, stride, groups):
+        # Use a projection only when the residual input and output shapes differ.
         super().__init__()
         self.c1 = nn.Conv2d(cin, cout, 3, stride, 1, bias=False)
         self.n1 = nn.GroupNorm(groups, cout)
@@ -86,6 +90,7 @@ class Block(nn.Module):
 class BshiNet(nn.Module):
     """Fuse beat-image and context encoders to predict an event, pressure drop, and burden."""
     def __init__(self, cfg: ModelConfig | None = None):
+        # Build the encoders for the selected recipe, including the context-only MAP baseline.
         super().__init__()
         self.cfg = cfg or ModelConfig()
         c = self.cfg
@@ -95,6 +100,7 @@ class BshiNet(nn.Module):
         self.use_trunk = bool(mask.sum() > 0)
         self.gate = SqiGate() if (c.gate and self.use_trunk and (mask[:, :3].sum() > 0)) else None
         if self.use_trunk:
+            # Extract local beat/phase patterns before the deeper residual blocks.
             self.stem = nn.Sequential(nn.Conv2d(7, c.widths[0], (3, 7), (1, 2), (1, 3), bias=False), nn.GroupNorm(c.groups, c.widths[0]), nn.SiLU())
             layers, cin = [], c.widths[0]
             for si, (w, nb) in enumerate(zip(c.widths, c.blocks)):
@@ -104,6 +110,7 @@ class BshiNet(nn.Module):
             self.trunk = nn.Sequential(*layers)
             img_dim = c.widths[-1]
         else:
+            # The MAP-only recipe skips image features and uses numerical context alone.
             img_dim = 0
         self.ctx = nn.Sequential(nn.Linear(N_CONTEXT, c.ctx_hidden), nn.SiLU(), nn.Dropout(c.dropout), nn.Linear(c.ctx_hidden, c.ctx_hidden), nn.SiLU())
         self.fuse = nn.Sequential(nn.Linear(img_dim + c.ctx_hidden, c.head_hidden), nn.SiLU(), nn.Dropout(c.dropout))
@@ -111,6 +118,7 @@ class BshiNet(nn.Module):
 
     def forward(self, x, context, beat_mask):
         """x (B,7,60,200), context (B,25) standardized, beat_mask (B,3,60) bool -> dict of (B,) tensors: event, delta_map, aut_logit, aut_mag."""
+        # Encode the enabled image and context inputs before combining their predictions.
         feats = []
         if self.use_trunk:
             x = x * self.image_mask.to(x.dtype)
@@ -118,6 +126,7 @@ class BshiNet(nn.Module):
                 w = self.gate(x, beat_mask)
                 x = torch.cat([x[:, :3] * w.unsqueeze(-1), x[:, 3:]], dim=1)
             feats.append(self.trunk(self.stem(x)).mean(dim=(2, 3)))
+        # Apply the context mask too, so a disabled feature cannot return through this branch.
         feats.append(self.ctx(context * self.context_mask.to(context.dtype)))
         h = self.fuse(torch.cat(feats, dim=1))
         return {"event": self.h_event(h).squeeze(1), "delta_map": self.h_delta(h).squeeze(1), "aut_logit": self.h_aut_pos(h).squeeze(1), "aut_mag": self.h_aut_mag(h).squeeze(1)}

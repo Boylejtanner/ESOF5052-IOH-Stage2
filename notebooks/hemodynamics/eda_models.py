@@ -1,5 +1,6 @@
 """Window-level beat features, the G0-G4 beat-feature baseline ladder, dataset-shift analysis (EDA metrics; these are baselines, not the CNN)."""
 from __future__ import annotations
+# Build the feature baselines and compare their behavior within and across hospitals.
 
 import concurrent.futures as cf
 import hashlib
@@ -53,6 +54,7 @@ RAW_PPG_UNITS = [f"{n}_mean" for n in PPG_DEVICE_UNIT]
 def masked_stats(v, valid):
     """Per-window mean, std and trend (mean of the last 10 minus the first 10 valid beats of the 60) over the unmasked beats. v, valid: (m, 60)."""
     cnt = valid.sum(axis=1)
+    # Calculate the mean level for the following step.
     safe = np.maximum(cnt, 1)
     vv = np.where(valid, v, 0.0)
     mean = vv.sum(axis=1) / safe
@@ -67,6 +69,7 @@ def masked_stats(v, valid):
 
 def window_features(cols, masks, lo):
     """Feature frame (one row per window) from one case's beat columns. ``cols``: name -> (n,) arrays; ``masks``: (m_ecg, m_art, m_ppg); ``lo``: first beat row per window."""
+    # Calculate window summaries from valid beats without changing their patient identity.
     idx = np.asarray(lo, dtype=np.int64)[:, None] + np.arange(S.N_BEATS)[None, :]
     mk = dict(zip(("ecg", "art", "ppg"), masks))
     out = {}
@@ -99,6 +102,7 @@ def window_features(cols, masks, lo):
 
 
 def _feat_job(root, dataset, case_id, rows, cfg):
+    # Calculate the required feature columns for the following step.
     t = P.load_beats(root, dataset, case_id, columns=BEAT_COLUMNS)
     cols = {c: t[c].to_numpy() for c in t.columns}
     masks = S.beat_masks(t.valid_beat.to_numpy(), t.sqi_ecg.to_numpy(), t.art_ok.to_numpy(), t.ppg_ok.to_numpy(), t.ptt_ecg_ppg.to_numpy(), cfg)
@@ -113,6 +117,7 @@ def features_path(root):
 
 def build_window_features(root, workers=None, force=False, progress=False):
     """data/derived/bshi/window_features_v1.parquet for every primary-eligible core window (full windows are a subset)."""
+    # Hash the content so later runs can detect changed inputs.
     root = Path(root)
     sig = hashlib.sha256((S.index_signature(root) + FEATURE_VERSION).encode()).hexdigest()
     meta = features_path(root).with_suffix(".meta.json")
@@ -126,6 +131,7 @@ def build_window_features(root, workers=None, force=False, progress=False):
     with cf.ProcessPoolExecutor(max_workers=n_workers, mp_context=multiprocessing.get_context("spawn")) as pool:
         futs = [pool.submit(_feat_job, str(root), ds, cid, g.reset_index(drop=True), cfg) for (ds, cid), g in idx.groupby(["dataset", "case_id"], sort=False)]
         frames = [f.result() for f in cf.as_completed(futs)]
+    # Write the verified values in the pipeline's Parquet table format.
     frame = pd.concat(frames, ignore_index=True).sort_values("window_id", kind="stable").reset_index(drop=True)
     tmp = Path(str(features_path(root)) + ".tmp")
     frame.to_parquet(tmp, index=False, compression="zstd")
@@ -136,6 +142,7 @@ def build_window_features(root, workers=None, force=False, progress=False):
 
 def load_ladder_frame(root):
     """Index columns + features for the primary core windows (full windows flagged by ``in_full``)."""
+    # Join related tables by window id to keep measurements aligned.
     idx = S.load_window_index(root, columns=["window_id", "dataset", "case_id", "patient_key", "split_pooled", "split_within_dataset", "y_event", "gray_zone", "time_to_event_sec",
                                              "primary_eligible", "in_core", "in_full", "ecg_dead_case"] + L.FEATURES)
     idx = idx[idx.primary_eligible & idx.in_core]
@@ -159,12 +166,14 @@ def _model(learner, seed):
 
 def fit_predict(train, tests, cols, learner, seed=5052, subsample=3):
     """Fit on every ``subsample``-th train window (windows overlap by 2/3, neighbours are near-duplicates) and score each frame in ``tests``."""
+    # Calculate predicted risk without refitting on evaluation windows.
     tr = train.iloc[::subsample] if subsample and len(train) > 60000 else train
     m = _model(learner, seed).fit(tr[cols].to_numpy(np.float64), tr["y"].to_numpy())
     return [m.predict_proba(t[cols].to_numpy(np.float64))[:, 1] for t in tests], int(len(tr))
 
 
 def evaluate(df, p, reps, seed=5052):
+    # Calculate prediction metrics from these labels and model scores.
     d = df[["patient_key", "y"]].assign(p=p)
     met = L._metrics(d.y.to_numpy(), d.p.to_numpy())
     ci = L._cluster_ci(d, "y", "p", reps, seed) if reps else {}
@@ -174,6 +183,7 @@ def evaluate(df, p, reps, seed=5052):
 
 
 def _settings(df):
+    # Calculate the spread of the observations for the following step.
     ds, sd, sp = df.dataset, df.split_within_dataset, df.split_pooled
     return {"pooled_train->pooled_test": {"train": sp == "train", "tests": {"pooled_test": sp == "test", "mover_test_only": (sp == "test") & (ds == "mover"),
                                                                            "vitaldb_test_only": (sp == "test") & (ds == "vitaldb")}},
@@ -188,6 +198,7 @@ def run_ladder(root, reps=200, seed=5052, progress=True, learners=("lr", "hgb"),
     full, core = df[df.in_full], df
     rows, preds = [], {}
     started = time.perf_counter()
+    # Process the selected records in order and retain their individual results.
     for set_name, frame, rungs in (("full", full, list(RUNGS)), ("core", core, ["G0", "G1", "G2"])):
         settings = _settings(frame)
         for sname, spec in settings.items():
@@ -195,6 +206,7 @@ def run_ladder(root, reps=200, seed=5052, progress=True, learners=("lr", "hgb"),
                 continue
             train = frame[spec["train"].to_numpy()]
             tests = {k: frame[m.to_numpy()] for k, m in spec["tests"].items()}
+            # Process the selected records in order and retain their individual results.
             for rung in rungs:
                 for learner in learners:
                     scores, n_fit = fit_predict(train, list(tests.values()), RUNGS[rung], learner, seed)
@@ -214,6 +226,7 @@ LEAD_BINS = [(0, 60), (60, 120), (120, 180), (180, 240)]        # an event needs
 
 def auroc_by_lead_time(preds, reps=100, seed=5052):
     rows = []
+    # Apply the same operation to each named field in this group.
     for (setting, rung, learner), d in preds.items():
         if learner != "hgb" and rung != "G0":
             continue
@@ -243,10 +256,12 @@ def gray_zone_table(preds, reps=100, seed=5052):
 
 def curve_tables(preds, points=200):
     roc, cal = [], []
+    # Apply the same operation to each named field in this group.
     for (setting, rung, learner), d in preds.items():
         if learner != "hgb" and rung != "G0":
             continue
         order = np.argsort(-d.p.to_numpy(), kind="stable")
+        # Summarize the records separately within each requested group.
         y = d.y.to_numpy()[order]
         tp, fp = np.cumsum(y), np.cumsum(1 - y)
         sel = np.unique(np.linspace(0, len(y) - 1, points).astype(int))

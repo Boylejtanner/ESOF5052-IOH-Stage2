@@ -6,6 +6,7 @@ projected 30-epoch time, a checkpoint reload check and the validation AUROC / AU
 The test split is never read. ``--smoke`` uses the compact sweep subset and tiny epochs (for the unit test).
 """
 from __future__ import annotations
+# Exercise the training data path and record its resource use.
 
 import argparse
 import json
@@ -49,6 +50,7 @@ def bottleneck(mon):
 
 def reload_check(trainer, d, out_dir, cfg, n_batches=4):
     """Load best.pt into a fresh network and compare its predictions on the first validation batches with the trained model's."""
+    # Restore the saved model or optimizer state for this run.
     ck = torch.load(Path(out_dir) / "best.pt", map_location="cpu", weights_only=False)
     m2 = BshiNet(trainer.model_cfg).to(trainer.device)
     m2.load_state_dict(ck["model"])
@@ -67,6 +69,7 @@ def monitor_from_progress(out_dir):
 
 def run_dry(root, out_dir, epochs=3, smoke=False, epoch_windows=None, overrides=None, log=print, finalize_only=False):
     """Train a few epochs and write ``dry_run.json``. ``finalize_only``: the training already happened in ``out_dir`` (epochs.csv, best.pt, live/progress.jsonl): redo only the checks and the report."""
+    # Create the destination directory before writing any outputs.
     root = Path(root)
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -84,6 +87,7 @@ def run_dry(root, out_dir, epochs=3, smoke=False, epoch_windows=None, overrides=
     trainer, d = R.build_trainer(root, cfg, out_dir, smoke=smoke, epoch_windows=ew, device="cuda", log=mark, progress=not finalize_only)
     t_built = time.time()
     if finalize_only:
+        # Restore the saved model or optimizer state for this run.
         hist = pd.read_csv(out_dir / "epochs.csv")
         trainer.model.load_state_dict(torch.load(out_dir / "best.pt", map_location="cpu", weights_only=False)["model"])
         samples = monitor_from_progress(out_dir)
@@ -91,9 +95,11 @@ def run_dry(root, out_dir, epochs=3, smoke=False, epoch_windows=None, overrides=
         val_s = (total - float(hist.train_seconds.sum())) / max(1, len(hist))          # validation + checkpoint writing per epoch
         epoch_wall = (hist.train_seconds + val_s).tolist()
     else:
+        # Fit the model or transform using the supplied fitting partition.
         mon.start()
         t_fit0 = time.time()
         times.clear()
+        # Fit the model or transform using the supplied fitting partition.
         times.append(t_fit0)
         res = trainer.fit(resume=False)
         t_train.append((t_fit0, time.time()))
@@ -102,10 +108,12 @@ def run_dry(root, out_dir, epochs=3, smoke=False, epoch_windows=None, overrides=
         hist = res["history"]
         epoch_wall = np.diff(np.array(times)).tolist()
         val_s = float(np.mean(trainer.progress.val_seconds)) if trainer.progress is not None and trainer.progress.val_seconds else float("nan")
+    # Summarize the observed levels and variability for this set of measurements.
     mon_stats = summarize_monitor(samples, t_train)
     rc = reload_check(trainer, d, out_dir, cfg)
     wps = float(np.median(hist.train_windows_per_s)) if len(hist) else float("nan")
     full_epoch_s = d["n_train"] / wps + val_s if wps == wps and val_s == val_s else float("nan")
+    # Calculate output values for the following step.
     out = {"config": cfg.to_dict(), "data_source": d["source"], "train_windows_full_epoch": d["n_train"], "train_windows_run_per_epoch": int(hist.windows.iloc[0]) if len(hist) else None,
            "validation_windows": d["n_val"], "steps_per_epoch_run": d["steps_per_epoch"],
            "build_seconds": round(t_built - t_start, 1), "epoch_wall_seconds": [round(x, 1) for x in epoch_wall], "epoch_train_seconds": hist.train_seconds.round(1).tolist(),
@@ -130,13 +138,16 @@ def run_dry(root, out_dir, epochs=3, smoke=False, epoch_windows=None, overrides=
 
 
 def main(argv=None):
+    # Read command-line options instead of hard-coding this run's settings.
     ap = argparse.ArgumentParser()
     ap.add_argument("--root", default=os.environ.get("BSHI_ROOT", "."))
     ap.add_argument("--epochs", type=int, default=3)
+    # Read command-line options instead of hard-coding this run's settings.
     ap.add_argument("--out", default="models/dry_run")
     ap.add_argument("--smoke", action="store_true")
     ap.add_argument("--finalize-only", action="store_true", help="the training already ran in --out: redo only the checks and the report")
     ap.add_argument("--epoch-windows", type=int, default=0)
+    # Store the settings and results as JSON for later inspection.
     ap.add_argument("--max-steps", type=int, default=0, help="optimizer steps per epoch (0 = the whole training set); the projection to full epochs is computed from windows/s")
     a = ap.parse_args(argv)
     out = run_dry(a.root, a.out, a.epochs, a.smoke, a.epoch_windows or None, overrides={"max_steps_per_epoch": a.max_steps} if a.max_steps else None, finalize_only=a.finalize_only)

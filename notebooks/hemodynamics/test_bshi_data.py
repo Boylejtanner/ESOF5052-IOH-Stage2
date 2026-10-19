@@ -1,3 +1,4 @@
+# Check bshi data using controlled inputs and isolated files.
 import tempfile
 import unittest
 from pathlib import Path
@@ -18,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def raw_batch(n=8, seed=0):
+    # Seed the generated values so this check can be repeated.
     g = torch.Generator().manual_seed(seed)
     aut = torch.tensor([0.0, 0.0, 3.0, 12.0, 0.0, 1.5, 0.0, 40.0])[:n]
     return {"x": torch.full((n, 7, 60, 200), 9.0), "context": (torch.arange(N).float() - 8).repeat(n, 1) * 5, "beat_mask": torch.rand((n, 3, 60), generator=g) > 0.2, "window_id": torch.arange(n),
@@ -27,6 +29,7 @@ def raw_batch(n=8, seed=0):
 
 class TestPreprocessor(unittest.TestCase):
     def test_clamp_standardization_and_variant_mask(self):
+        # Verify clamp standardization and variant mask.
         pre = D.Preprocessor("ea", FAKE, clamp=6.0, device="cpu", channels_last=False)
         b = pre(raw_batch())
         self.assertTrue((b["x"][:, 3:6] == 6.0).all() and (b["x"][:, 0] == 9.0).all())
@@ -37,6 +40,7 @@ class TestPreprocessor(unittest.TestCase):
             self.assertTrue((b["context"][:, S.CONTEXT_NAMES.index(name)] == 0).all(), name)    # variant-zeroed entries stay exactly 0
 
     def test_ppg_variants_use_the_eap_statistics_and_ppg_free_ones_the_ea_statistics(self):
+        # Verify PPG variants use the eap statistics and PPG free ones the ea statistics.
         stats = {"context": {"eap_full": {"center": [1.0] * N, "scale": [1.0] * N}, "ea_core": {"center": [3.0] * N, "scale": [1.0] * N}}, "target": FAKE["target"]}
         a = D.Preprocessor("eap", stats, device="cpu")
         b = D.Preprocessor("ea", stats, device="cpu")
@@ -46,6 +50,7 @@ class TestPreprocessor(unittest.TestCase):
         self.assertEqual(float(D.Preprocessor("art_only", stats, device="cpu").center[0]), 3.0)
 
     def test_targets_and_loss_masks(self):
+        # Verify targets and loss masks.
         pre = D.Preprocessor("eap", FAKE, device="cpu", channels_last=False)
         raw = raw_batch()
         raw["reg_mask"] = torch.tensor([True, True, True, True, False, True, True, True])
@@ -59,6 +64,7 @@ class TestPreprocessor(unittest.TestCase):
         self.assertAlmostEqual(float(b["aut_mag"][2]), (np.log1p(3.0) - 1.0) / 0.5, places=5)
 
     def test_two_part_aut65_round_trip_and_prediction(self):
+        # Verify two part aut65 round trip and prediction.
         pre = D.Preprocessor("eap", FAKE, device="cpu", channels_last=False)
         b = pre(raw_batch())
         back = torch.expm1(b["aut_mag"] * pre.aut_std + pre.aut_mean) * b["aut_pos"]
@@ -70,6 +76,7 @@ class TestPreprocessor(unittest.TestCase):
 
 
 def idx_frame(n=4000, seed=0):
+    # Collect the per-record values into a table for comparison.
     rng = np.random.default_rng(seed)
     ds = np.where(rng.random(n) < 0.05, "mover", "vitaldb")
     ev = rng.random(n) < np.where(ds == "mover", 0.04, 0.03)
@@ -81,6 +88,7 @@ def idx_frame(n=4000, seed=0):
 
 class TestSampling(unittest.TestCase):
     def test_resample_composition(self):
+        # Verify resample composition.
         idx = idx_frame(20000)
         r = D.resample_index(idx, 4000, mover_share=0.15, event_share=0.30, seed=1)
         self.assertEqual(len(r), 4000)
@@ -90,15 +98,18 @@ class TestSampling(unittest.TestCase):
         self.assertTrue(r.equals(D.resample_index(idx, 4000, 0.15, 0.30, 1)))        # deterministic
 
     def test_single_dataset_ignores_the_mover_share(self):
+        # Verify single dataset ignores the MOVER share.
         idx = idx_frame(5000)
         r = D.resample_index(idx[idx.dataset == "vitaldb"], 1000, 0.15, 0.3, 2)
         self.assertEqual(set(r.dataset), {"vitaldb"})
         self.assertEqual(len(r), 1000)
 
     def test_prior_shift_recovers_natural_prevalence(self):
+        # Verify prior shift recovers natural prevalence.
         idx = idx_frame(20000)
         shift = D.prior_shift_by_dataset(idx, 0.30)
         for ds, s in shift.items():
+            # Compare the result with the expected value or tolerance.
             self.assertLess(s, 0)
             p_nat = float(idx[idx.dataset == ds].y_event.mean())
             logit_sampled = np.log(0.3 / 0.7)                                         # a model that outputs the sampled prior
@@ -107,9 +118,11 @@ class TestSampling(unittest.TestCase):
 
 class TestFrames(unittest.TestCase):
     def test_experiment_frames_are_patient_disjoint_and_follow_the_definitions(self):
+        # Verify experiment frames are patient disjoint and follow the definitions.
         idx = idx_frame(8000)
         f = D.frames_for(idx, "pooled")
         pt = lambda d: set(d.patient_key)
+        # Compare the result with the expected value or tolerance.
         self.assertFalse(pt(f["train"]) & pt(f["val"]) or pt(f["train"]) & pt(f["tests"]["pooled_test"]) or pt(f["val"]) & pt(f["tests"]["pooled_test"]))
         f = D.frames_for(idx, "vitaldb")
         self.assertEqual(set(f["train"].dataset), {"vitaldb"})
@@ -121,6 +134,7 @@ class TestFrames(unittest.TestCase):
             D.frames_for(idx, "nope")
 
     def test_window_flags_attach_the_low_coverage_mask_by_window_id(self):
+        # Verify window flags attach the low coverage mask by window id.
         idx = idx_frame(500)
         fl = D.WindowFlags(idx)
         b = fl.attach({"window_id": torch.tensor([7, 3, 499, 0])})
@@ -130,10 +144,12 @@ class TestFrames(unittest.TestCase):
 
 class TestCompactDecode(unittest.TestCase):
     def test_gpu_decode_matches_the_cpu_decode(self):
+        # Verify gpu decode matches the cpu decode.
         with tempfile.TemporaryDirectory() as tmp:
             w = World(tmp)
             rows = w.sample(12, seed=5).reset_index(drop=True)
             b = S.assemble(w.root, rows, "eap", cache=S.CaseCache())
+        # Compare the result with the expected value or tolerance.
         x = b["x"]
         waves = torch.from_numpy(x[:, :3].astype(np.float16))
         scal = torch.from_numpy(np.stack([x[:, 3, :, 0]] + [x[:, p, :, s[0]] for name, (p, s) in S.SCALAR_LAYERS.items() if name != "map_beat"], axis=2).astype(np.float32))
@@ -145,6 +161,7 @@ class TestCompactDecode(unittest.TestCase):
 @unittest.skipUnless((ROOT / D.DEV_DIR).exists(), "dev subset not present")
 class TestDevSubset(unittest.TestCase):
     def test_batches_carry_weights_and_the_variant_zeroes_ppg(self):
+        # Verify batches carry weights and the variant zeroes PPG.
         for variant in ("eap", "ea"):
             ds = D.DevSubsetBatches(ROOT, "validation", variant, batch_size=64, shuffle=False, seed=0, files_per_chunk=1)
             b = next(iter(ds))

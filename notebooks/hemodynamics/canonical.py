@@ -1,5 +1,6 @@
 """Case-level physiological Parquet storage; no windows, imputation or training."""
 from __future__ import annotations
+# Validate case files and preserve signal timing, patient identity, and checksums.
 
 from contextlib import contextmanager
 import hashlib
@@ -65,14 +66,17 @@ def _json_value(value):
 
 def atomic_json(path, data):
     """Write strict JSON through an adjacent file and replace the destination atomically."""
+    # Create the destination directory before writing any outputs.
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = path.with_name(path.name + ".tmp")
     try:
         with temp.open("w", encoding="utf-8") as f:
+            # Store the settings and results as JSON for later inspection.
             json.dump(_json_value(data), f, indent=2, default=str, allow_nan=False)
             f.flush()
             os.fsync(f.fileno())
+        # Replace the destination only after the new file has been written successfully.
         os.replace(temp, path)
     finally:
         temp.unlink(missing_ok=True)
@@ -89,12 +93,14 @@ def sha256_file(path):
 
 def write_manifest(root, name, frame):
     """Write matching CSV and Parquet manifests with serialized nested metadata."""
+    # Create the destination directory before writing any outputs.
     directory = Path(root) / "data" / "manifests"
     directory.mkdir(parents=True, exist_ok=True)
     frame = frame.copy()
     for column in frame.select_dtypes(include="object"):
         if frame[column].map(lambda value: isinstance(value, (dict, list, tuple))).any():
             frame[column] = frame[column].map(lambda value: json.dumps(value, default=str, sort_keys=True) if isinstance(value, (dict, list, tuple)) else value)
+    # Process the selected records in order and retain their individual results.
     for extension in ("parquet", "csv"):
         path = directory / f"{safe_id(name)}.{extension}"
         temp = path.with_name(path.name + ".tmp")
@@ -106,6 +112,7 @@ def write_manifest(root, name, frame):
                     frame.to_parquet(handle, index=False, compression="zstd")
                 if pq.ParquetFile(temp).metadata.num_rows != len(frame):
                     raise ValueError("Manifest row count mismatch")
+            # Replace the destination only after the new file has been written successfully.
             os.replace(temp, path)
         finally:
             temp.unlink(missing_ok=True)
@@ -124,16 +131,20 @@ def _validate_frame(frame, columns):
 
 def write_case(root, dataset, case_id, waveform, map_numeric, metadata):
     """Validate and commit waveform, numeric MAP, and provenance files for one case."""
+    # Check signal schemas and the disk reserve before committing any case output.
     root = Path(root)
     dataset, case_id = safe_id(dataset), safe_id(case_id)
     _validate_frame(waveform, WAVE_COLUMNS)
+    # Create the destination directory before writing any outputs.
     _validate_frame(map_numeric, MAP_COLUMNS)
     estimate = int(waveform.memory_usage(index=False, deep=True).sum() + map_numeric.memory_usage(index=False, deep=True).sum()) * 2
     ensure_disk_space(root, int(metadata.get("min_free_space_bytes", DEFAULT_RESERVE_BYTES)), estimate)
     directory = root / "data" / "parquet" / dataset / f"case_id={case_id}"
+    # Create the destination directory before writing any outputs.
     directory.mkdir(parents=True, exist_ok=True)
     paths = []
     hashes = {}
+    # Ensure the associated files, locks, or resources are released after this operation.
     try:
         for label, frame in (("waveform", waveform), ("map", map_numeric)):
             frame = frame.astype({c: ("float64" if c == "time_sec" else "float32") for c in frame.columns})
@@ -142,15 +153,18 @@ def write_case(root, dataset, case_id, waveform, map_numeric, metadata):
             paths.append(temp)
             with temp.open("wb") as handle:
                 frame.to_parquet(handle, index=False, compression="zstd", row_group_size=65536)
+            # Read the new Parquet file back before accepting its row count and hash.
             readback = pq.ParquetFile(temp).read().to_pandas()
             _validate_frame(readback, list(frame.columns))
             if len(readback) != len(frame):
                 raise ValueError("Parquet readback row count mismatch")
+            # Record the file hash and check the total case-size budget before promotion.
             hashes[label] = sha256_file(temp)
             budget = metadata.get("max_case_output_bytes")
             previous_bytes = (directory / "waveform.parquet").stat().st_size if label == "map" else 0
             if budget is not None and previous_bytes + temp.stat().st_size > int(budget):
                 raise DiskSpaceStop("Compressed case would exceed configured total output-size ceiling; checkpoint retained")
+            # Replace the destination only after the new file has been written successfully.
             os.replace(temp, path)
         result = dict(metadata)
         result.update(dataset=dataset, case_id=case_id, storage_version=1,
@@ -170,6 +184,7 @@ def write_case(root, dataset, case_id, waveform, map_numeric, metadata):
 
 
 def _inside_root(root, relative):
+    # Reject a manifest path that would read or write outside the project directory.
     root = Path(root).resolve()
     path = (root / relative).resolve()
     if not path.is_relative_to(root):
@@ -179,12 +194,14 @@ def _inside_root(root, relative):
 
 def verify_case(root, metadata):
     """Check committed metadata, file hashes, and expected signal schemas."""
+    # Accept a stored case only when metadata, hashes, schemas, and time ordering agree.
     try:
         directory = Path(root) / "data" / "parquet" / safe_id(metadata["dataset"]) / f"case_id={safe_id(metadata['case_id'])}"
         committed = json.loads((directory / "metadata.json").read_text(encoding="utf-8"))
         for key in ("dataset", "case_id", "waveform_output_path", "map_output_path", "waveform_sha256", "map_sha256"):
             if committed.get(key) != metadata.get(key):
                 return False
+        # Process the selected records in order and retain their individual results.
         for label, columns in (("waveform", WAVE_COLUMNS), ("map", MAP_COLUMNS)):
             path = _inside_root(root, metadata[f"{label}_output_path"])
             if not path.is_file() or sha256_file(path) != metadata[f"{label}_sha256"]:
@@ -215,6 +232,7 @@ def load_case(root, dataset, case_id):
     metadata = json.loads((directory / "metadata.json").read_text(encoding="utf-8"))
     if not verify_case(root, metadata):
         raise ValueError("Case is incomplete/corrupt; resume ingestion before loading")
+    # Read the stored table required for this calculation.
     waveform = pq.ParquetFile(_inside_root(root, metadata["waveform_output_path"])).read().to_pandas()
     numeric = pq.ParquetFile(_inside_root(root, metadata["map_output_path"])).read().to_pandas()
     return {"dataset": dataset, "case_id": str(case_id), "patient_id": metadata.get("patient_id"),
@@ -227,6 +245,7 @@ def load_case(root, dataset, case_id):
 class CheckpointStore:
     """Persist case-level progress in SQLite so interrupted ingestion can resume."""
     def __init__(self, root, dataset):
+        # Create the destination directory before writing any outputs.
         self.directory = Path(root) / "data" / "checkpoints" / safe_id(dataset)
         self.directory.mkdir(parents=True, exist_ok=True)
         self.path = self.directory / "state.sqlite"
@@ -235,6 +254,7 @@ class CheckpointStore:
 
     @contextmanager
     def _connect(self):
+        # Use a transactional SQLite connection and close it even when an operation fails.
         db = sqlite3.connect(self.path, timeout=30)
         try:
             db.execute("PRAGMA journal_mode=WAL")
@@ -251,6 +271,7 @@ class CheckpointStore:
 
     def update(self, case_id, **fields):
         with self._connect() as db:
+            # Lock the checkpoint update so competing writers cannot overwrite each other.
             db.execute("BEGIN IMMEDIATE")
             row = db.execute("SELECT payload FROM cases WHERE case_id=?", (str(case_id),)).fetchone()
             record = json.loads(row[0]) if row else {"case_id": str(case_id), "status": "pending"}
@@ -270,6 +291,7 @@ def patient_splits(patient_ids, seed=5052):
         raise ValueError("True patient identifiers are required for splitting")
     if len(patients) < 3:
         raise ValueError("At least three patients required for nonempty train/validation/test")
+    # Shuffle unique patients once, keeping every surgery from one patient in the same split.
     patients = np.random.default_rng(seed).permutation(patients)
     n = len(patients)
     validation = max(1, int(round(n * .15)))

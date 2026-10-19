@@ -1,5 +1,6 @@
 """Sequential, fail-closed MOVER discovery and patient-level ingestion."""
 from __future__ import annotations
+# Audit MOVER linkage, select eligible surgeries, and verify stored outputs.
 
 from contextlib import contextmanager
 import hashlib
@@ -43,6 +44,7 @@ def _reserve(config):
 
 
 def _processing_signature(config):
+    # Store the settings and results as JSON for later inspection.
     parameters = {k: config.get(k) for k in ("target_waveform_fs", "clinical_timezone", "mover_track_map", "map_min_mmhg", "map_max_mmhg")}
     parameters["decoder_sha256"] = sha256_file(Path(__file__).with_name("mover_signals.py"))
     return hashlib.sha256(json.dumps(parameters, sort_keys=True).encode()).hexdigest()
@@ -50,11 +52,13 @@ def _processing_signature(config):
 
 @contextmanager
 def _database(root):
+    # Create the destination directory before writing any outputs.
     directory = Path(root) / "data" / "checkpoints" / "mover"
     directory.mkdir(parents=True, exist_ok=True)
     db = sqlite3.connect(directory / "inventory.sqlite", timeout=30)
     db.row_factory = sqlite3.Row
     try:
+        # Read or update the persistent checkpoint records in the active transaction.
         db.execute("PRAGMA journal_mode=WAL")
         db.execute("PRAGMA synchronous=FULL")
         db.execute("CREATE TABLE IF NOT EXISTS archives (archive TEXT PRIMARY KEY, payload TEXT NOT NULL)")
@@ -70,6 +74,7 @@ def _database(root):
 
 
 def _error(root, phase, archive, member, case_id, error):
+    # Save the comparison table so the same measurements can be inspected later.
     path = Path(root) / "data" / "manifests" / "mover_processing_errors.csv"
     frame = pd.DataFrame([{"timestamp": utc_now(), "phase": phase, "archive": archive,
                            "archive_member": member, "case_id": case_id, "error": str(error)}])
@@ -113,6 +118,7 @@ def audit_linkage(root):
         rows[field + "_utc"] = local.dt.tz_localize(config["clinical_timezone"], ambiguous="NaT", nonexistent="NaT").dt.tz_convert("UTC")
     inconsistent = set(rows.groupby("LOG_ID")[columns[1:] + ["PAT_ID"]].nunique(dropna=False).max(axis=1).loc[lambda s: s > 1].index)
     records = []
+    # Process each LOG ID group separately to retain the intended grouping.
     for case_id, group in rows.groupby("LOG_ID", sort=True):
         row = group.iloc[0]
         reasons = []
@@ -128,12 +134,14 @@ def audit_linkage(root):
             reasons.append("duration_below_minimum")
         elif duration > config["max_case_hours"] * 3600:
             reasons.append("duration_exceeds_memory_guard")
+        # Exclude or flag missing values before using these measurements.
         records.append({"dataset": "mover", "case_id": case_id, "patient_id": None if pd.isna(row.PAT_ID) or case_id in ambiguous else row.PAT_ID,
                         "start_utc": start.timestamp() if pd.notna(start) else None,
                         "end_utc": end.timestamp() if pd.notna(end) else None,
                         "duration_sec": duration, "linkage_usable": not bool(reasons),
                         "provisional_usable": False, "final_usable": False, "eligibility_status": "not_scanned",
                         "exclusion_reason": ";".join(reasons), "split": "unassigned"})
+    # Exclude or flag missing values before using these measurements.
     cases = pd.DataFrame(records)
     write_manifest(root, "mover_all_cases", cases)
     report = {"crosswalk_rows": len(linkage), "duplicate_crosswalk_rows": int(linkage.duplicated().sum()),
@@ -159,6 +167,7 @@ def _cases(root):
 
 
 def _packet_schema(payload):
+    # Read the XML packet fields before interpreting the recorded signal payload.
     tree = ET.fromstring(payload)
     groups = tree.findall(".//mg")
     rates = {}
@@ -215,10 +224,12 @@ def discover(root, members_per_archive=None, complete_scan=False, save_fragments
     config = load_config(root)
     if complete_scan and not config["allow_full_archive_scan"]:
         raise DiscoveryIncomplete("Set allow_full_archive_scan only after inspecting the bounded discovery results; this decompresses all three archives sequentially.")
+    # Summarize the records separately within each requested group.
     limit = None if complete_scan else (members_per_archive or config["discovery_members_per_archive"])
     _announce(progress, f"STARTING {'COMPLETE' if complete_scan else 'BOUNDED'} MOVER DISCOVERY: {len(config['mover_archives'])} archives. Progress is compressed bytes read, not eligible cases. Do not start a second scan in another cell.")
     _announce(progress, "Loading patient/case metadata and resume checkpoints...")
     processing_signature = _processing_signature(config)
+    # Summarize the records separately within each requested group.
     cases = _cases(root)
     by_patient = {p: g for p, g in cases.loc[cases.linkage_usable].groupby("patient_id")}
     pilot_patient_ids = set()
@@ -226,6 +237,7 @@ def discover(root, members_per_archive=None, complete_scan=False, save_fragments
     process = psutil.Process()
     peak_rss = process.memory_info().rss
     total_source_bytes = 0
+    # Keep the checkpoint reads and writes within the managed database connection.
     with _database(root) as db:
         prior = db.execute("SELECT payload FROM fragments").fetchall()
         for item in prior:
@@ -233,6 +245,7 @@ def discover(root, members_per_archive=None, complete_scan=False, save_fragments
             if info.get("map_rows", 0) and info.get("metadata", {}).get("waveform_counts", {}).get("ART", {}).get("valid_samples", 0):
                 pilot_patient_ids.add(info["patient_id"])
         for archive_number, name in enumerate(config["mover_archives"], start=1):
+            # Read or update the persistent checkpoint records in the active transaction.
             source = root / "data" / "reference" / "mover" / name
             fingerprint = {"size_bytes": source.stat().st_size, "mtime_ns": source.stat().st_mtime_ns}
             row = db.execute("SELECT payload FROM archives WHERE archive=?", (name,)).fetchone()
@@ -242,6 +255,7 @@ def discover(root, members_per_archive=None, complete_scan=False, save_fragments
             if not retry_failed and old.get("scan_completed") and old.get("gzip_crc_verified") and old.get("processing_signature") == processing_signature:
                 _announce(progress, f"[{archive_number}/{len(config['mover_archives'])}] {name}: SKIPPED — verified complete scan already cached.")
                 continue
+            # Read or update the persistent checkpoint records in the active transaction.
             _announce(progress, f"[{archive_number}/{len(config['mover_archives'])}] SCANNING {name} ({fingerprint['size_bytes'] / 1e9:.2f} GB compressed).")
             archive_progress = _ArchiveProgress(f"Archive {archive_number}/{len(config['mover_archives'])}: {name}", fingerprint["size_bytes"], progress)
             state = {"archive": name, "fingerprint": fingerprint, "processing_signature": processing_signature, "scan_completed": False, "sample_limit": limit,
@@ -250,6 +264,7 @@ def discover(root, members_per_archive=None, complete_scan=False, save_fragments
             db.commit()
             count, directory_count, failed, inspected, skipped = 0, 0, 0, 0, 0
             exhausted = True
+            # Ensure the associated files, locks, or resources are released after this operation.
             try:
                 with source.open("rb") as raw, gzip.GzipFile(fileobj=raw, mode="rb") as compressed, tarfile.open(fileobj=compressed, mode="r|") as archive:
                     for member in archive:
@@ -314,11 +329,13 @@ def discover(root, members_per_archive=None, complete_scan=False, save_fragments
                         except DiskSpaceStop:
                             raise
                         except Exception as error:
+                            # Read or update the persistent checkpoint records in the active transaction.
                             failed += 1
                             affected = by_patient.get(record["patient_id"], cases.iloc[:0])
                             record.update(status="failed", error=str(error), case_ids=affected.case_id.tolist(), retry_count=record["retry_count"] + 1)
                             db.execute("DELETE FROM case_stats WHERE archive=? AND member=?", (name, member.name))
                             for case_id in affected.case_id:
+                                # Read or update the persistent checkpoint records in the active transaction.
                                 failed_stats = {"archive": name, "member": member.name, "case_id": case_id, "decoding_error": str(error),
                                                 "groups": [], "original_fs": {}, "source_bytes": member.size,
                                                 "valid_intervals": {c: [] for c in ("ART", "ECG", "PPG")}, "map_times": [], "map_values": []}
@@ -340,6 +357,7 @@ def discover(root, members_per_archive=None, complete_scan=False, save_fragments
                              files_seen_this_pass=count, directories_seen_this_pass=directory_count, errors_this_pass=failed,
                              status="completed_with_case_errors" if exhausted and failed else "completed" if exhausted else "sampled", completed_at=utc_now())
             except (DiskSpaceStop, KeyboardInterrupt) as error:
+                # Read or update the persistent checkpoint records in the active transaction.
                 state.update(status="paused", scan_completed=False, error=str(error), last_file_count=count)
                 db.execute("INSERT OR REPLACE INTO archives VALUES (?, ?)", (name, json.dumps(state)))
                 db.commit()
@@ -361,6 +379,7 @@ def discover(root, members_per_archive=None, complete_scan=False, save_fragments
                "input_MB_per_second": total_source_bytes / 1e6 / max(time.perf_counter() - started, 1e-9),
                "free_disk_bytes": ensure_disk_space(root, _reserve(config)), "archive_count": len(config["mover_archives"]),
                "full_scan_complete": bool(inventory.scan_completed.all()), "environment": environment_record(), "config": config}
+    # Calculate the output summary for the following step.
     atomic_json(root / "results" / "mover_discovery_metrics.json", metrics)
     eligible = build_eligibility(root, progress=progress)
     _announce(progress, "Saving conservative raw-archive deletion-readiness report...")
@@ -373,6 +392,7 @@ def discover(root, members_per_archive=None, complete_scan=False, save_fragments
 
 def _assert_observed_pressure_schema(metadata):
     observed = {"INVP1": (100., .01, "GE_S5", "GE_S5"), "GE_ART": (180., .25, "AnalogWaves", "GE_Solar_8000i")}
+    # Apply the same operation to each named field in this group.
     for name, expected in observed.items():
         group = metadata.get("groups", {}).get(name)
         if not group:
@@ -390,6 +410,7 @@ def _assert_observed_pressure_schema(metadata):
 
 
 def _summarize_member(payload, case, config):
+    # Decode the measurements while retaining their signal timing.
     from .mover_signals import decode_xml
     wave, numeric, metadata = decode_xml(payload, float(case.start_utc), float(case.end_utc), config["target_waveform_fs"], track_map=config.get("mover_track_map"))
     _assert_observed_pressure_schema(metadata)
@@ -432,12 +453,14 @@ def _save_fragment(root, db, archive, member, payload, case, config):
     _assert_observed_pressure_schema(metadata)
     if waveform.empty:
         return None
+    # Create the destination directory before writing any outputs.
     digest = hashlib.sha256((archive + member).encode()).hexdigest()[:24]
     directory = Path(root) / "data" / "parquet" / "mover" / "pilot_fragments" / f"case_id={safe_id(case.case_id)}"
     directory.mkdir(parents=True, exist_ok=True)
     info = {"case_id": case.case_id, "patient_id": case.patient_id, "archive": archive, "member": member,
             "source_bytes": len(payload), "waveform_rows": len(waveform), "map_rows": len(numeric),
             "diagnostic_only": True, "processing_signature": _processing_signature(config), "metadata": metadata}
+    # Process the selected records in order and retain their individual results.
     for label, frame in (("waveform", waveform), ("map", numeric)):
         ensure_disk_space(root, _reserve(config), int(frame.memory_usage(index=False, deep=True).sum()) * 2)
         path = directory / f"{digest}_{label}.parquet"
@@ -464,10 +487,12 @@ def export_inventory(root):
     schema = {"observed_groups": {}, "observed_rates": {}, "observed_numeric_names": set()}
     with _database(root) as db:
         for row in db.execute("SELECT payload FROM archives"):
+            # Load the recorded settings or metadata for this processing step.
             state = json.loads(row[0])
             groups, rates, patients = set(), {}, set()
             files, source_bytes, errors = 0, 0, 0
             for item_row in db.execute("SELECT payload FROM members WHERE archive=?", (state["archive"],)):
+                # Load the recorded settings or metadata for this processing step.
                 item = json.loads(item_row[0])
                 files += 1
                 source_bytes += item["member_bytes"]
@@ -477,6 +502,7 @@ def export_inventory(root):
                 for group, values in item.get("original_fs", {}).items():
                     rates.setdefault(group, set()).update(values)
                 schema["observed_numeric_names"].update(item.get("numeric_names", []))
+            # Calculate the saved run state for the following step.
             schema["observed_groups"][state["archive"]] = sorted(groups)
             schema["observed_rates"][state["archive"]] = {k: sorted(v) for k, v in rates.items()}
             rows.append({"archive": state["archive"], "archive_size": state["fingerprint"]["size_bytes"],
@@ -484,6 +510,7 @@ def export_inventory(root):
                          "sampled_source_bytes": source_bytes, "sampled_errors": errors,
                          "scan_completed": bool(state.get("scan_completed")), "total_member_count": files if state.get("scan_completed") else None,
                          "status": state["status"], "observed_groups": ";".join(sorted(groups))})
+    # Collect the per-record values into a table for comparison.
     frame = pd.DataFrame(rows)
     write_manifest(root, "mover_archive_inventory", frame)
     schema["observed_numeric_names"] = sorted(schema["observed_numeric_names"])
@@ -500,6 +527,7 @@ def _assemble(root, case, fragments, config):
     numeric_parts = []
     conflicts = 0
     signature = _processing_signature(config)
+    # Inspect each source archive while preserving its individual processing state.
     for fragment in sorted(fragments, key=lambda f: (f["archive"], f["member"])):
         if fragment.get("processing_signature") != signature:
             raise ValueError("Fragment configuration/decoder changed; rerun selected-member ingestion")
@@ -513,6 +541,7 @@ def _assemble(root, case, fragments, config):
         if np.any(indexes < 0) or np.any(indexes >= n) or len(np.unique(indexes)) != len(indexes):
             raise ValueError("Fragment grid is invalid")
         for channel in ("ART", "ECG", "PPG"):
+            # Exclude or flag missing values before using these measurements.
             old = wave[channel].to_numpy()[indexes]
             new = part[channel].to_numpy()
             differing = np.isfinite(old) & np.isfinite(new) & ~np.isclose(old, new, rtol=1e-5, atol=1e-5)
@@ -537,6 +566,7 @@ def quality(case, waveform, numeric, config):
 
 
 def _quality_from_missing(case, missing, numeric, config):
+    # Exclude or flag missing values before using these measurements.
     valid = numeric.loc[np.isfinite(numeric.MAP) & numeric.MAP.between(config["map_min_mmhg"], config["map_max_mmhg"])].drop_duplicates("time_sec").sort_values("time_sec")
     gaps = np.diff(valid.time_sec.to_numpy())
     # Long unobserved spans do not count as MAP coverage, and are not forward-filled.
@@ -568,10 +598,12 @@ def build_eligibility(root, *, progress=False):
     records = []
     signature = _processing_signature(config)
     with _database(root) as db:
+        # Read or update the persistent checkpoint records in the active transaction.
         states = [json.loads(row[0]) for row in db.execute("SELECT payload FROM archives")]
         complete = len(states) == len(config["mover_archives"]) and all(s.get("scan_completed") and s.get("gzip_crc_verified") and s.get("processing_signature") == signature for s in states)
         case_rows = tqdm(cases.iterrows(), total=len(cases), desc="Checking surgery eligibility", unit="case", mininterval=1, disable=not progress, leave=True)
         for _, case in case_rows:
+            # Read or update the persistent checkpoint records in the active transaction.
             record = case.to_dict()
             record["processing_signature"] = signature
             found = [json.loads(r[0]) for r in db.execute("SELECT payload FROM case_stats WHERE case_id=?", (case.case_id,))]
@@ -605,6 +637,7 @@ def build_eligibility(root, *, progress=False):
             elif case.linkage_usable and complete:
                 record["exclusion_reason"] = "no_waveform_members_linked"
             records.append(record)
+    # Collect the per-record values into a table for comparison.
     _announce(progress, "Eligibility checks finished. Writing CSV/Parquet manifests...")
     cases = pd.DataFrame(records)
     write_manifest(root, "mover_all_cases", cases)
@@ -620,12 +653,14 @@ def ingest_members(root, case_ids):
     config = load_config(root)
     if not config["allow_full_archive_scan"]:
         raise DiscoveryIncomplete("Full selected-member retrieval decompresses source archives; enable only after bounded discovery and safety tests")
+    # Summarize the records separately within each requested group.
     cases = _cases(root)
     requested_ids = set(case_ids)
     requested = cases.loc[cases.case_id.isin(requested_ids) & cases.linkage_usable]
     by_patient = {p: group for p, group in requested.groupby("patient_id")}
     store = CheckpointStore(root, "mover")
     started, source_bytes, processed_members = time.perf_counter(), 0, 0
+    # Keep the checkpoint reads and writes within the managed database connection.
     with _database(root) as db:
         required_archives = set(a for value in requested.source_archive for a in str(value).split(";") if a)
         for name in config["mover_archives"]:
@@ -637,6 +672,7 @@ def ingest_members(root, case_ids):
                 raise DiscoveryIncomplete("Complete metadata enumeration is required before selected-case retrieval")
             state = json.loads(state_row[0])
             state["selected_ingestion_completed"] = False
+            # Ensure the associated files, locks, or resources are released after this operation.
             try:
                 with gzip.open(source, "rb") as compressed, tarfile.open(fileobj=compressed, mode="r|") as archive:
                     for member in archive:
@@ -656,6 +692,7 @@ def ingest_members(root, case_ids):
                             continue
                         payload = archive.extractfile(member).read()
                         source_bytes += len(payload)
+                        # Apply this calculation to each row in the selected table.
                         for _, case in by_patient[patient].loc[by_patient[patient].case_id.isin(matching_ids)].iterrows():
                             previous = store.get(case.case_id) or {}
                             if previous.get("status") == "completed" and previous.get("processing_signature") == _processing_signature(config) and verify_case(root, previous):
@@ -705,6 +742,7 @@ def _pilot_case_ids(eligible, config, limit):
 
 def pilot(root, limit=None):
     """Validate a bounded set of discovered cases before enabling full processing."""
+    # Read the stored table required for this calculation.
     root = Path(root)
     config = load_config(root)
     cases = _cases(root)
@@ -714,6 +752,7 @@ def pilot(root, limit=None):
     pilot_ids = None
     eligible_count = None
     if len(inventory) == len(config["mover_archives"]) and inventory.scan_completed.all():
+        # Read the stored table required for this calculation.
         eligible = pd.read_parquet(root / "data" / "manifests" / "mover_eligible_cohort.parquet")
         eligible_count = len(eligible)
         pilot_ids = _pilot_case_ids(eligible, config, limit or config["pilot_cases"])
@@ -727,6 +766,7 @@ def pilot(root, limit=None):
     rows = []
     started = time.perf_counter()
     for case_id in candidates:
+        # Store the settings and results as JSON for later inspection.
         case = cases.loc[cases.case_id.eq(case_id)].iloc[0]
         case_fragments = grouped.get(case_id, [])
         input_signature = hashlib.sha256(json.dumps({"processing": _processing_signature(config), "quality_config": {k: v for k, v in config.items() if k.startswith("map_") or k in ("maximum_waveform_missingness", "minimum_duration_sec")}, "case_start": case.start_utc, "case_end": case.end_utc,
@@ -743,6 +783,7 @@ def pilot(root, limit=None):
                 row = store.update(case_id, status="excluded", **assessment, patient_id=case.patient_id,
                                    diagnostic_only=True, completed_at=utc_now(), duration_sec=float(case.duration_sec))
             else:
+                # Calculate the case metadata for the following step.
                 metadata = {**assessment, **extra, "processing_signature": _processing_signature(config), "patient_id": case.patient_id, "split": "unassigned", "pilot_only": True,
                             "duration_sec": float(case.duration_sec), "start_utc": float(case.start_utc), "end_utc": float(case.end_utc),
                             "art_final_fs": config["target_waveform_fs"], "ecg_final_fs": config["target_waveform_fs"], "ppg_final_fs": config["target_waveform_fs"],
@@ -762,6 +803,7 @@ def pilot(root, limit=None):
             failed_row = store.update(case_id, status="failed", error=str(error), retry_count=(previous or {}).get("retry_count", 0) + 1)
             rows.append(failed_row)
             _error(root, "pilot", None, None, case_id, error)
+    # Collect the per-record values into a table for comparison.
     frame = pd.DataFrame(rows)
     write_manifest(root, "mover_pilot_cases", frame)
     complete = [r for r in rows if r.get("status") == "completed"]
@@ -783,6 +825,7 @@ def pilot(root, limit=None):
 
 def select_cohort(root):
     """Freeze eligible surgeries and patient-level partitions after discovery and validation."""
+    # Load the recorded settings or metadata for this processing step.
     root = Path(root)
     config = load_config(root)
     inventory = pd.read_parquet(root / "data" / "manifests" / "mover_archive_inventory.parquet")
@@ -808,6 +851,7 @@ def select_cohort(root):
             if size + estimate <= config["target_mover_size_gb"] * 1e9:
                 selected_patients.add(patient)
                 size += estimate
+    # Assign whole groups to separate fitting and evaluation partitions.
     selected = eligible.loc[eligible.patient_id.isin(selected_patients)].copy()
     splits = patient_splits(selected.patient_id, config["patient_split_seed"])
     selected = selected.drop(columns="split").merge(splits, on="patient_id", how="left", validate="many_to_one")
@@ -841,6 +885,7 @@ def process_selected(root):
     previously_verified = {r["case_id"]: r for r in store.rows() if r.get("status") == "completed" and r.get("processing_signature") == signature and r.get("case_id") in set(selected.case_id) and verify_case(root, r)}
     total_bytes = sum(r["processed_bytes"] for r in previously_verified.values())
     ingest_members(root, selected.case_id)
+    # Keep the checkpoint reads and writes within the managed database connection.
     with _database(root) as db:
         for index, case in selected.iterrows():
             previous = store.get(case.case_id)
@@ -860,6 +905,7 @@ def process_selected(root):
                 remaining = int(config["max_mover_size_gb"] * 1e9) - total_bytes + previous_bytes
                 if remaining <= 0:
                     raise DiskSpaceStop("Maximum MOVER output limit reached; preserve checkpoint and revise patient-level size estimate")
+                # Calculate the case metadata for the following step.
                 metadata = {**extra, **assessment, "processing_signature": _processing_signature(config), "max_case_output_bytes": remaining, "patient_id": case.patient_id, "split": case.split,
                             "duration_sec": case.duration_sec, "start_utc": case.start_utc, "end_utc": case.end_utc,
                             "source_archive": sorted({f["archive"] for f in fragments}), "source_member": [f["member"] for f in fragments],
@@ -889,6 +935,7 @@ def process_selected(root):
 
 def deletion_readiness(root):
     """Report whether verified case outputs cover each archive; do not delete raw data."""
+    # Read the stored table required for this calculation.
     root = Path(root)
     config = load_config(root)
     selected_path = root / "data" / "manifests" / "mover_selected_cohort.parquet"
@@ -905,6 +952,7 @@ def deletion_readiness(root):
                     expected_by_archive[name].add(row[0])
     splits_pass = bool(len(selected)) and not any(assert_patient_independence(selected).values())
     rows = []
+    # Inspect each source archive while preserving its individual processing state.
     for name in config["mover_archives"]:
         expected = expected_by_archive[name]
         completed = [records[c] for c in expected if records.get(c, {}).get("status") == "completed"]
@@ -940,9 +988,11 @@ def deletion_readiness(root):
 
 def write_schema_audit(root):
     """Document observed linkage, waveform schemas, and processing evidence."""
+    # Load the recorded settings or metadata for this processing step.
     root = Path(root)
     config = load_config(root)
     linkage = json.loads((root / "data/manifests/mover_patient_linkage_audit.json").read_text())
+    # Load the recorded settings or metadata for this processing step.
     inventory = pd.read_parquet(root / "data/manifests/mover_archive_inventory.parquet")
     schema = json.loads((root / "data/manifests/mover_schema_inventory.json").read_text())
     pilot_path = root / "results/mover_pilot_metrics.json"
@@ -961,6 +1011,7 @@ def write_schema_audit(root):
     text += "### Bounded waveform inventory\n\n| Archive | Compressed bytes | XML files observed | Patients observed | Uncompressed member bytes inspected | Complete scan |\n|---|---:|---:|---:|---:|---|\n"
     for _, row in inventory.iterrows():
         text += f"| {row.archive} | {int(row.archive_size):,} | {int(row.sampled_file_count):,} | {int(row.sampled_patient_count):,} | {int(row.sampled_source_bytes):,} | {bool(row.scan_completed)} |\n"
+    # Store the settings and results as JSON for later inspection.
     text += "\n## INFERENCES / ASSUMPTIONS AND UNRESOLVED QUESTIONS\n\n"
     text += "- A bounded prefix is schema discovery, not a representative final patient cohort or a complete archive census. Total archive member counts and whether patients/surgeries span archives remain unknown until complete enumeration. No estimate is presented as an observed total.\n"
     text += "- Native arterial MAP is preferred to avoid flowsheet timing/coverage ambiguity. Six-pressure-channel ordering must be validated for any newly observed device/schema. Nonzero gain offsets and unknown encodings are not inferred.\n"
@@ -972,6 +1023,7 @@ def write_schema_audit(root):
     if diagnostic_path.exists():
         text += "### Actual diagnostic physiological data (not eligible full cases)\n\n```json\n" + diagnostic_path.read_text() + "\n```\n\n"
         text += "The 13 bounded diagnostic surgeries did not meet full-case waveform coverage. This is NOT an estimate of the global eligible count. 59 member fragments from 8 surgeries nevertheless contain actual finite ART/ECG/PPG/arterial MAP; every fragment was read back and hash-verified. Stored grid-hours can overlap and include missing rows, so they are not unique valid four-signal hours. Local PPG flat periods were observed; no advanced SQI or imputation was applied. A 120 GB patient-count estimate and real complete-case cross-dataset loader verification remain blocked until eligible full surgeries are processed.\n\n"
+    # Promote the completed file only after its write has succeeded.
     text += f"Configuration: seed {config['random_seed']}; patient split seed {config['patient_split_seed']}; target {config['target_mover_size_gb']} decimal GB, maximum {config['max_mover_size_gb']} GB, reserve {config['min_free_space_gb']} GB. FULL_PROCESS is disabled until real-case pilot and complete discovery pass.\n"
     path = root / "data/manifests/mover_schema_audit.md"
     temporary = path.with_name(path.name + ".tmp")
@@ -986,6 +1038,7 @@ def eda(root):
     records = pd.DataFrame(CheckpointStore(root, "mover").rows())
     if records.empty:
         return {"processed_cases": 0, "status": "no completed cohort"}
+    # Calculate the output summary for the following step.
     completed = records.loc[records.status.eq("completed")].copy()
     write_manifest(root, "mover_processing_summary", records)
     result = {"selected_patients_processed": int(completed.patient_id.nunique()) if len(completed) else 0,
@@ -993,6 +1046,7 @@ def eda(root):
               "processed_bytes": int(completed.processed_bytes.sum()) if len(completed) else 0,
               "failures": int(records.status.eq("failed").sum()), "exclusions": int(records.status.eq("excluded").sum())}
     if len(completed):
+        # Summarize the records separately within each requested group.
         result["patients_per_split"] = completed.groupby("split").patient_id.nunique().to_dict()
         result["surgeries_per_split"] = completed.split.value_counts().to_dict()
         result["maximum_surgeries_per_patient"] = int(completed.groupby("patient_id").size().max())
@@ -1002,6 +1056,7 @@ def eda(root):
         import matplotlib.pyplot as plt
         plot_columns = [c for c in ("duration_sec", "art_missingness", "ecg_missingness", "ppg_missingness", "map_coverage") if c in completed]
         if plot_columns:
+            # Create the destination directory before writing any outputs.
             completed[plot_columns].hist(figsize=(12, 8))
             plt.tight_layout()
             (root / "figures").mkdir(exist_ok=True)

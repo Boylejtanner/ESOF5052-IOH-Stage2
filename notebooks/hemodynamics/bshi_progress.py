@@ -13,6 +13,7 @@ Watching it, from anywhere that can read the folder (or reach the desktop throug
 In a notebook the status line and the picture update in place (``Progress(..., notebook=True)`` is chosen automatically inside Jupyter).
 """
 from __future__ import annotations
+# Record training progress and make the saved metrics easy to inspect.
 
 import argparse
 import html
@@ -81,6 +82,7 @@ def status_line(st, stale_after=180.0):
 
 class Progress:
     def __init__(self, out_dir, label="run", every_s=10.0, log_every_s=30.0, plot_every_s=60.0, console=True, console_every_s=30.0, notebook=None, html_page=True, gpu=True):
+        # Create the destination directory before writing any outputs.
         self.dir = Path(out_dir)
         self.dir.mkdir(parents=True, exist_ok=True)
         self.label, self.every_s, self.log_every_s, self.plot_every_s = label, every_s, log_every_s, plot_every_s
@@ -123,6 +125,7 @@ class Progress:
                 time.sleep(0.2)
 
     def write(self, force_plot=False):
+        # Store the settings and results as JSON for later inspection.
         st = self.state
         st["updated"] = time.strftime("%Y-%m-%d %H:%M:%S")
         st["elapsed_s"] = round(time.monotonic() - self.t0, 1)
@@ -258,11 +261,13 @@ def read_jsonl(path):
 def render_png(out_dir):
     import matplotlib
     matplotlib.use("Agg")
+    # Load the recorded settings or metadata for this processing step.
     import matplotlib.pyplot as plt
 
     from . import figstyle as F
     out_dir = Path(out_dir)
     rows = read_jsonl(out_dir / "progress.jsonl")
+    # Load the recorded settings or metadata for this processing step.
     st = json.loads((out_dir / "progress.json").read_text(encoding="utf-8"))
     live = [r for r in rows if "event" not in r and r.get("loss") is not None and r.get("steps_per_epoch")]
     spe = st.get("steps_per_epoch") or 1
@@ -273,6 +278,7 @@ def render_png(out_dir):
     F.finish_axes(ax[0], "training progress (epochs completed)", "loss (running mean, dimensionless)", "training loss")
     hist = [h for h in st.get("history", []) if h.get("val_auprc") is not None]
     if hist:
+        # Plot the observed results, including uncertainty where it is available.
         e = [h["epoch"] + 1 for h in hist]
         ax[1].plot(e, [h["val_auprc"] for h in hist], marker="o", color="#2ca02c")
         ax[2].plot(e, [h["val_auroc"] for h in hist], marker="s", color="#d62728")
@@ -282,6 +288,7 @@ def render_png(out_dir):
         t = [r["elapsed_s"] / 60 for r in live if r.get("windows_per_s")]
         if t:
             ax[3].plot(t, [r["windows_per_s"] for r in live if r.get("windows_per_s")], color="#9467bd", lw=1.2)
+    # Save the labeled figure for the analysis report.
     F.finish_axes(ax[3], "wall time since start (min)", "throughput (windows/s)", "training speed")
     fig.suptitle(status_line(st)[:170], fontsize=8)
     fig.tight_layout()
@@ -298,6 +305,7 @@ def render_png(out_dir):
 
 
 def render_html(st):
+    # Calculate the required feature columns for the following step.
     rows = "".join(f"<tr><td>{html.escape(str(k))}</td><td>{html.escape(str(v))}</td></tr>" for k, v in st.items() if k not in ("history", "info", "summary", "loss_parts"))
     hist = st.get("history", [])[-12:]
     cols = [c for c in ("epoch", "total", "val_auprc", "val_auroc", "train_windows_per_s", "train_seconds") if hist and c in hist[0]]
@@ -316,6 +324,7 @@ def read_status(d):
 
 
 def main(argv=None):
+    # Read command-line options instead of hard-coding this run's settings.
     ap = argparse.ArgumentParser(description="watch a BSHI training run")
     ap.add_argument("cmd", choices=("status", "watch", "serve"))
     ap.add_argument("dir")

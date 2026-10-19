@@ -18,6 +18,7 @@ or numeric stream is an empty DataFrame. Explicit gaps/conflicts remain NaN.
 """
 
 from __future__ import annotations
+# Decode waveform packets and numeric MAP using the observed monitor format.
 
 import base64
 import binascii
@@ -116,6 +117,7 @@ def _wave(group: ET.Element) -> tuple[np.ndarray, float, dict]:
         raise ValueError(f"Malformed base64 Wave for {name}") from exc
     if len(raw_bytes) != points * width:
         raise ValueError(f"Wave byte length disagrees with Points for {name}")
+    # Decode the stored bytes with the expected array type and shape.
     raw = np.frombuffer(raw_bytes, dtype="<i2")
     missing = raw == _MISSING
     values = raw.astype(np.float64) * gain
@@ -149,6 +151,7 @@ def _number(text: str | None) -> float:
 
 
 def _read(payload: bytes, keep_wave: bool) -> tuple[dict, list[_Packet], list[tuple]]:
+    # Decode each packet according to its recorded signal group and timestamp.
     packets: list[_Packet] = []
     numeric: list[tuple] = []
     groups: dict[str, dict] = {}
@@ -164,12 +167,14 @@ def _read(payload: bytes, keep_wave: bool) -> tuple[dict, list[_Packet], list[tu
     numeric_attrs: dict[str, list[dict]] = defaultdict(list)
     ibp_layouts: set[tuple[str, ...]] = set()
     ibp_devices: set[tuple[str | None, ...]] = set()
+    # Process the selected records in order and retain their individual results.
     for attrs, cpc in _cpcs(payload):
         if not root_attrs:
             root_attrs = attrs
         time = _utc(cpc.get("datetime"))
         timestamps.append(time)
         member_end = max(member_end or time, time + 1.0)
+        # Process the selected records in order and retain their individual results.
         for device in cpc.findall("device"):
             for ms in device.findall("measurements"):
                 direct = ms.findall("m")
@@ -199,6 +204,7 @@ def _read(payload: bytes, keep_wave: bool) -> tuple[dict, list[_Packet], list[tu
                 waves = [g for g in ms.findall("mg") if g.find("m[@name='Wave']") is not None]
                 if gap and waves:
                     gap_packets += 1
+                # Process the selected records in order and retain their individual results.
                 for group in waves:
                     name = group.get("name")
                     if not name:
@@ -217,6 +223,7 @@ def _read(payload: bytes, keep_wave: bool) -> tuple[dict, list[_Packet], list[tu
                     variant["device"] = {k: device.get(k) for k in ("make", "model", "bid")}
                     if variant not in info["variants"]:
                         info["variants"].append(variant)
+                    # Exclude or flag missing values before using these measurements.
                     info["packets"] += 1
                     info["missing_samples"] += int(np.isnan(values).sum())
                     info["gap_samples"] += len(values) if gap else 0
@@ -244,6 +251,7 @@ def _read(payload: bytes, keep_wave: bool) -> tuple[dict, list[_Packet], list[tu
             "missing_samples": sum(groups[g]["missing_samples"] for g in candidates),
             "gap_samples": sum(groups[g]["gap_samples"] for g in candidates),
         }
+    # Calculate the case metadata for the following step.
     metadata = {
         "patient": root_attrs.get("PAT_ID") or root_attrs.get("patient"),
         "archive_attributes": root_attrs,
@@ -276,6 +284,7 @@ def _read(payload: bytes, keep_wave: bool) -> tuple[dict, list[_Packet], list[tu
             and ibp_devices == {tuple(v["device"][k] for k in ("make", "model", "bid"))
                                 for v in invp["variants"]}
             and ibp_layouts == {("IBP_SYS", "IBP_MEAN", "IBP_DIA") * 6}):
+        # Calculate the case metadata for the following step.
         metadata["map_mapping_evidence"] = {
             "source_group": "INVP1", "supported_explicit_selector": "IBP_MEAN:1",
             "scope": "GE_S5 with six ordered native SYS/MEAN/DIA triplets; site not recorded",
@@ -304,6 +313,7 @@ def _selection(metadata: dict, track_map: dict | None) -> dict:
     if unknown:
         raise ValueError(f"Unknown track_map keys: {sorted(unknown)}")
     selected = {}
+    # Apply the same operation to each named field in this group.
     for track, aliases in _ALIASES.items():
         if track in supplied:
             if supplied[track] is not None and not isinstance(supplied[track], str):
@@ -342,6 +352,7 @@ def _deduplicate(packets: list[_Packet], metadata: dict) -> list[_Packet]:
     by_time: dict[float, list[_Packet]] = defaultdict(list)
     for packet in packets:
         by_time[packet.time].append(packet)
+    # Process the selected records in order and retain their individual results.
     for time in sorted(by_time):
         same = by_time[time]
         first = same[0]
@@ -367,6 +378,7 @@ def _segments(packets: list[_Packet]):
     pieces = []
     start = end = fs = None
     for packet in sorted(packets, key=lambda p: (p.time, p.order)):
+        # Exclude or flag missing values before using these measurements.
         valid = np.isfinite(packet.values)
         edges = np.diff(np.r_[False, valid, False].astype(np.int8))
         runs = list(zip(np.flatnonzero(edges == 1), np.flatnonzero(edges == -1)))
@@ -394,6 +406,7 @@ def _ceil_grid(value: float) -> int:
 
 def _fill_track(packets: list[_Packet], times: np.ndarray, origin: float,
                 target_fs: float, metadata: dict) -> np.ndarray:
+    # Reserve output arrays and masks with explicit initial values.
     result = np.full(len(times), np.nan)
     covered = np.zeros(len(times), dtype=bool)
     conflicts = np.zeros(len(times), dtype=bool)
@@ -414,15 +427,18 @@ def _fill_track(packets: list[_Packet], times: np.ndarray, origin: float,
     ends = np.array([right for _, right in merged])
     forbidden = np.zeros(len(times), dtype=bool)
     for left, right in merged:
+        # Locate the requested interval within the sorted sample times.
         a = np.searchsorted(times, left - 1e-7)
         b = np.searchsorted(times, right - 1e-7)
         forbidden[a:b] = True
     masked_packets = []
     for p in packets:
+        # Locate the requested interval within the sorted sample times.
         relative = p.time - origin
         first = np.searchsorted(ends, relative, side="right")
         values = p.values
         copied = False
+        # Process the selected records in order and retain their individual results.
         for left, right in merged[first:]:
             if left >= relative + len(values) / p.fs:
                 break
@@ -435,6 +451,7 @@ def _fill_track(packets: list[_Packet], times: np.ndarray, origin: float,
                 values[a:b] = np.nan
         masked_packets.append(_Packet(p.time, p.group, p.fs, values, p.gap, p.order))
     for start, source_fs, values in _segments(masked_packets):
+        # Locate the requested interval within the sorted sample times.
         relative = start - origin
         stop = relative + len(values) / source_fs
         a = np.searchsorted(times, relative - 1e-7)
@@ -449,6 +466,7 @@ def _fill_track(packets: list[_Packet], times: np.ndarray, origin: float,
         if ratio == 1:
             filtered = values
         else:
+            # Resample the available measurements onto the required time or phase grid.
             filtered = resample_poly(values, ratio.numerator, ratio.denominator,
                                      padtype="line" if len(values) > 1 else "constant",
                                      **({} if len(values) > 1 else {"cval": float(values[0])}))
@@ -457,6 +475,7 @@ def _fill_track(packets: list[_Packet], times: np.ndarray, origin: float,
         indices = np.arange(a, b)[valid_grid]
         if not len(indices):
             continue
+        # Resample the available measurements onto the required time or phase grid.
         placed = np.interp(times[indices], native_out_times, filtered)
         overlap = covered[indices]
         disagree = overlap & ~np.isclose(result[indices], placed, rtol=1e-9, atol=1e-9)
@@ -482,10 +501,12 @@ def decode_xml(payload: bytes, start_utc: float, end_utc: float,
     masked and counted. MAP is native IBP_MEAN in absolute pressure units, with
     no temporal filling, baseline subtraction, or cuff substitution.
     """
+    # Select the observed signal channels, decode their samples, and preserve numeric MAP separately.
     if not all(math.isfinite(x) for x in (start_utc, end_utc, target_fs)):
         raise ValueError("Bounds and target_fs must be finite")
     if end_utc <= start_utc or target_fs <= 0:
         raise ValueError("Require end_utc > start_utc and target_fs > 0")
+    # Calculate the case metadata for the following step.
     metadata, packets, numeric = _read(payload, keep_wave=True)
     selected = _selection(metadata, track_map)
     metadata.update(selected_tracks=selected, target_fs=float(target_fs),
@@ -494,6 +515,7 @@ def decode_xml(payload: bytes, start_utc: float, end_utc: float,
                     conflicting_map_timestamps=0,
                     gap_policy="Mask WaveDataGap packets; split every native missing span/time discontinuity",
                     duplicate_policy="Equal duplicates collapse; conflicts are NaN, not last-writer wins")
+    # Collect the per-record values into a table for comparison.
     waveform = pd.DataFrame(columns=_COLUMNS, dtype=float)
     chosen = {track: [p for p in packets if p.group == group]
               for track, group in selected.items() if track != "MAP" and group is not None}

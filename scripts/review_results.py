@@ -1,4 +1,5 @@
 """Print the report's principal aggregate results without loading clinical data."""
+# Read the saved aggregate evidence without loading patient data.
 from pathlib import Path
 import csv
 import json
@@ -13,6 +14,7 @@ def rows(relative_path):
 
 
 def main():
+    # Load the recorded settings or metadata for this processing step.
     selection = json.loads((ROOT / "configs" / "selected_features.json").read_text(encoding="utf-8"))
     print("STAGE 2: SELECTED PHYSIOLOGICAL CONTEXT")
     print(selection["integration_status"])
@@ -33,6 +35,7 @@ def main():
     for row in rows("results/train/trials_20261009_111433.csv"):
         print(f"{row['name']:30} AUROC={float(row['val_auroc']):.4f} AUPRC={float(row['val_auprc']):.4f}")
 
+    # Store the settings and results as JSON for later inspection.
     print("\nSELECTED OPTIMIZER")
     print(json.dumps(selection["optimizer"], indent=2))
     sweep = rows("results/train/sweep_trials.csv")

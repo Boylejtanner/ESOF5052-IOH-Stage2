@@ -1,3 +1,4 @@
+# Check bshi variants using controlled inputs and isolated files.
 import tempfile
 import unittest
 
@@ -11,6 +12,7 @@ from hemodynamics.test_bshi import World
 class TestRecipes(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        # Build the requested beat images, numerical context, and beat masks.
         cls.tmp = tempfile.TemporaryDirectory()
         cls.w = World(cls.tmp.name)
         cls.rows = cls.w.sample(60, seed=21)
@@ -21,6 +23,7 @@ class TestRecipes(unittest.TestCase):
         cls.tmp.cleanup()
 
     def test_every_recipe_equals_eap_with_its_groups_zeroed(self):
+        # Verify every recipe equals eap with its groups zeroed.
         for v in S.VARIANTS:
             direct = S.assemble(self.w.root, self.rows, v, cache=S.CaseCache())
             derived = S.apply_variant(self.eap, v)
@@ -28,6 +31,7 @@ class TestRecipes(unittest.TestCase):
                 self.assertTrue(np.array_equal(direct[k], derived[k]), f"{v}:{k}")
 
     def test_recipes_are_nested_as_the_proposal_ladder(self):
+        # Verify recipes are nested as the proposal ladder.
         on = lambda v: set(S.GROUPS) - S.VARIANTS[v]
         self.assertTrue(on("wave") < on("wave_map") < on("wave_couple") < on("eap"))
         self.assertTrue(on("map_only") == set())
@@ -36,6 +40,7 @@ class TestRecipes(unittest.TestCase):
             self.assertIn(v, S.VARIANTS, model)
 
     def test_zeroed_planes_and_bands(self):
+        # Verify zeroed planes and bands.
         x = {v: S.apply_variant(self.eap, v)["x"] for v in S.VARIANTS}
         self.assertTrue((x["wave"][:, 3:] == 0).all() and np.abs(x["wave"][:, :3]).max() > 0)
         self.assertTrue((x["wave_map"][:, 4:] == 0).all() and np.abs(x["wave_map"][:, 3]).max() > 0)
@@ -49,6 +54,7 @@ class TestRecipes(unittest.TestCase):
             self.assertEqual(bool(np.abs(band).max() > 0), name in S.ART_ONLY_ON, name)
 
     def test_context_keeps_only_the_label_features_for_map_only(self):
+        # Verify context keeps only the label features for MAP only.
         ctx = S.apply_variant(self.eap, "map_only")["context"]
         keep = [S.CONTEXT_NAMES.index(c) for c in S.LABEL_CONTEXT]
         rest = np.setdiff1d(np.arange(ctx.shape[1]), keep)
@@ -57,6 +63,7 @@ class TestRecipes(unittest.TestCase):
         self.assertTrue(set(S.context_off(S.VARIANTS["eap"])) == set())
 
     def test_return_times_gives_beat_starts_before_t0(self):
+        # Verify return times gives beat starts before t0.
         out = S.assemble(self.w.root, self.rows, "eap", cache=S.CaseCache(), return_times=True)
         self.assertEqual(out["t_rel"].shape, (len(self.rows), 60))
         self.assertTrue((out["t_rel"] + out["rr"] <= 1e-3).all())                      # whole cycles end by t0
@@ -67,6 +74,7 @@ class TestRecipes(unittest.TestCase):
 
 class TestExactCorruption(unittest.TestCase):
     def test_extra_mask_equals_beats_missing_in_the_files(self):
+        # Verify extra mask equals beats missing in the files.
         with tempfile.TemporaryDirectory() as tmp:
             w = World(tmp)
             rows = w.sample(40, seed=22).reset_index(drop=True)
@@ -87,9 +95,11 @@ class TestExactCorruption(unittest.TestCase):
                 self.assertTrue(np.array_equal(masked[k], files_dropped[k]), k)
 
     def test_extra_mask_ppg_only_touches_ppg(self):
+        # Verify extra mask PPG only touches PPG.
         with tempfile.TemporaryDirectory() as tmp:
             w = World(tmp)
             rows = w.sample(40, seed=23).reset_index(drop=True)
+            # Compare the result with the expected value or tolerance.
             base = S.assemble(w.root, rows, "eap", cache=S.CaseCache())
             extra = np.ones((len(rows), 60), dtype=bool)
             extra[:, ::5] = False
@@ -101,6 +111,7 @@ class TestExactCorruption(unittest.TestCase):
             self.assertTrue((out["beat_mask"][:, 2][:, ::5] == 0).all())
 
     def test_all_true_extra_mask_changes_nothing(self):
+        # Verify all true extra mask changes nothing.
         with tempfile.TemporaryDirectory() as tmp:
             w = World(tmp)
             rows = w.sample(30, seed=24).reset_index(drop=True)

@@ -8,6 +8,7 @@ subset, the DataLoader worker count that maximizes windows/s, what this machine'
 time for 1, 4, 16 and 64 MB tensors in both directions plus the round-trip latency. ``scaling_estimate`` combines the two probe files.
 """
 from __future__ import annotations
+# Measure a machine and its link before assigning distributed workloads.
 
 import argparse
 import json
@@ -85,6 +86,7 @@ def step_throughput(free_gb):
 
 
 def h2d_gb_s(mb=256, repeats=5):
+    # Wait for GPU work to finish before measuring the elapsed time.
     x = torch.empty(mb * 1024 * 256, dtype=torch.float32).pin_memory()
     y = torch.empty_like(x, device="cuda")
     y.copy_(x, non_blocking=True)
@@ -121,6 +123,7 @@ def data_speed(store, max_workers=16):
 
 def comm_probe(rank, world, master, sizes_mb=(1, 4, 16, 64), repeats=4, timeout_s=120):
     """Gloo link between the two machines: for each size the median seconds of an all-reduce (sum) and of a broadcast from each rank, and the round-trip latency of a 4-byte all-reduce."""
+    # Reserve output arrays and masks with explicit initial values.
     import torch.distributed as dist
     from .bshi_ddp import guarded, init_group
     init_group(rank, world, master, timeout_s)
@@ -132,6 +135,7 @@ def comm_probe(rank, world, master, sizes_mb=(1, 4, 16, 64), repeats=4, timeout_
         guarded(lambda: dist.all_reduce(tiny), "latency probe")
         lat.append(time.perf_counter() - t0)
     out["latency_ms"] = round(statistics.median(lat[5:]) * 1000, 3)
+    # Process the selected records in order and retain their individual results.
     for mb in sizes_mb:
         x = torch.randn(mb * 1024 * 256)
         row = {"mb": mb}
@@ -182,13 +186,16 @@ def run_probe(store=None, out_dir=".", comm=None, quick=False, log=print):
 
 
 def main(argv=None):
+    # Read command-line options instead of hard-coding this run's settings.
     ap = argparse.ArgumentParser()
     ap.add_argument("--store", default="")
     ap.add_argument("--out", default="results/probe")
+    # Read command-line options instead of hard-coding this run's settings.
     ap.add_argument("--quick", action="store_true")
     ap.add_argument("--rank", type=int, default=-1)
     ap.add_argument("--world-size", type=int, default=2)
     ap.add_argument("--master", default="")
+    # Read command-line options instead of hard-coding this run's settings.
     ap.add_argument("--timeout", type=int, default=120)
     a = ap.parse_args(argv)
     comm = comm_probe(a.rank, a.world_size, a.master, timeout_s=a.timeout) if a.rank >= 0 and a.master else None

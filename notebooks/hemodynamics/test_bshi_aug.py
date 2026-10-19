@@ -1,3 +1,4 @@
+# Check bshi aug using controlled inputs and isolated files.
 import tempfile
 import unittest
 
@@ -12,6 +13,7 @@ STATS = {"valid_run_quantiles_s": np.linspace(4.0, 8.0, 101).tolist(), "gap_quan
 
 
 def synth_batch(b=32, seed=0):
+    # Seed the generated values so this check can be repeated.
     g = torch.Generator().manual_seed(seed)
     x = torch.randn((b, 7, 60, 200), generator=g)
     rr = torch.full((b, 60), 0.8)
@@ -21,6 +23,7 @@ def synth_batch(b=32, seed=0):
 
 class TestGaps(unittest.TestCase):
     def test_masked_beat_share_matches_mover_one_boundary_beat_per_run(self):
+        # Verify masked beat share matches MOVER one boundary beat per run.
         b = synth_batch(256)
         keep = A.gap_keep_mask(b["rr"], STATS, torch.Generator().manual_seed(1))
         lost = 1.0 - float(keep.float().mean())
@@ -30,6 +33,7 @@ class TestGaps(unittest.TestCase):
         self.assertGreater(float(keep.float().mean(dim=1).min()), 0.6)
 
     def test_deterministic_given_the_generator_and_different_across_seeds(self):
+        # Verify deterministic given the generator and different across seeds.
         b = synth_batch(16)
         k1 = A.gap_keep_mask(b["rr"], STATS, torch.Generator().manual_seed(3))
         k2 = A.gap_keep_mask(b["rr"], STATS, torch.Generator().manual_seed(3))
@@ -38,6 +42,7 @@ class TestGaps(unittest.TestCase):
         self.assertFalse(torch.equal(k1, k3))
 
     def test_drop_beats_zeroes_planes_masks_and_counts(self):
+        # Verify drop beats zeroes planes masks and counts.
         b = synth_batch(8)
         keep = torch.rand((8, 60), generator=torch.Generator().manual_seed(0)) > 0.4
         out = A.drop_beats(b, keep)
@@ -54,13 +59,16 @@ class TestGaps(unittest.TestCase):
 
 class TestCorruptions(unittest.TestCase):
     def test_ppg_dropout_only_touches_ppg_groups(self):
+        # Verify PPG dropout only touches PPG groups.
         b = synth_batch(32)
         out = A.ppg_dropout(b, 0.3, 0.2, torch.Generator().manual_seed(5))
         drop = out["dropped"]
+        # Compare the result with the expected value or tolerance.
         self.assertGreater(int(drop.sum()), 0)
         self.assertTrue(torch.equal(out["x"][:, [0, 1, 3]], b["x"][:, [0, 1, 3]]))
         self.assertTrue((out["x"][:, 2].permute(0, 1, 2)[drop] == 0).all())
         plane, sl = A.band_slice("sqi", "sqi_ppg")
+        # Compare the result with the expected value or tolerance.
         self.assertTrue((out["x"][:, plane, :, sl][drop] == 0).all())
         plane, sl = A.band_slice("sqi", "sqi_ecg")
         self.assertTrue(torch.equal(out["x"][:, plane, :, sl], b["x"][:, plane, :, sl]))
@@ -68,6 +76,7 @@ class TestCorruptions(unittest.TestCase):
         self.assertTrue((out["beat_mask"][:, 2][drop] == 0).all())
 
     def test_ecg_noise_has_the_requested_snr(self):
+        # Verify ECG noise has the requested snr.
         b = synth_batch(64)
         out = A.ecg_noise(b, 10.0, torch.Generator().manual_seed(6))
         noise = out["x"][:, 0] - b["x"][:, 0]
@@ -76,12 +85,14 @@ class TestCorruptions(unittest.TestCase):
         self.assertTrue(torch.equal(out["x"][:, 1:], b["x"][:, 1:]))
 
     def test_art_damping_reduces_waveform_variation_and_keeps_other_planes(self):
+        # Verify ART damping reduces waveform variation and keeps other planes.
         b = synth_batch(8)
         out = A.art_damping(b, 9)
         self.assertLess(float(out["x"][:, 1].std()), 0.6 * float(b["x"][:, 1].std()))
         self.assertTrue(torch.equal(out["x"][:, [0, 2, 3, 4, 5, 6]], b["x"][:, [0, 2, 3, 4, 5, 6]]))
 
     def test_flatline_makes_selected_beats_constant(self):
+        # Verify flatline makes selected beats constant.
         b = synth_batch(16)
         out = A.art_flatline(b, 0.3, torch.Generator().manual_seed(7))
         flat = out["flat"]
@@ -90,6 +101,7 @@ class TestCorruptions(unittest.TestCase):
         self.assertTrue(torch.equal(out["x"][:, 1][~flat], b["x"][:, 1][~flat]))
 
     def test_timing_jitter_zero_is_identity_and_only_waveform_planes_move(self):
+        # Verify timing jitter zero is identity and only waveform planes move.
         b = synth_batch(8)
         same = A.timing_jitter(b, 0.0, torch.Generator().manual_seed(8))
         self.assertTrue(torch.equal(same["x"], b["x"]))
@@ -106,14 +118,17 @@ class TestCorruptions(unittest.TestCase):
 
 class TestAgainstTheAssembler(unittest.TestCase):
     def test_exact_gap_path_and_batch_times_work_together(self):
+        # Verify exact gap path and batch times work together.
         with tempfile.TemporaryDirectory() as tmp:
             w = World(tmp)
             rows = w.sample(24, seed=31).reset_index(drop=True)
+            # Compare the result with the expected value or tolerance.
             base = S.assemble(w.root, rows, "eap", cache=S.CaseCache(), return_times=True)
             batch = A.to_torch(base)
             keep = A.gap_keep_mask(batch["rr"], STATS, torch.Generator().manual_seed(9))
             exact = S.assemble(w.root, rows, "eap", cache=S.CaseCache(), extra_mask=keep.numpy())
             approx = A.drop_beats(batch, keep)
+            # Compare the result with the expected value or tolerance.
             self.assertTrue(np.array_equal(exact["beat_mask"], approx["beat_mask"].numpy()))
             gone = ~keep.numpy()
             self.assertTrue((exact["x"].transpose(0, 2, 1, 3)[gone] == 0).all())

@@ -6,6 +6,7 @@
 The audit never reads the test split for a decision: test windows appear only in the distribution-agreement check of the context (a diagnostic, nothing is tuned on it).
 """
 from __future__ import annotations
+# Check that model inputs, labels, and patient partitions are consistent.
 
 import concurrent.futures as cf
 import json
@@ -58,12 +59,14 @@ def protocol_rows(idx, protocol):
 # 1. inputs
 def audit_inputs(root, idx, per_stratum=500, seed=5052):
     """Assemble ``6 x per_stratum`` core windows (both datasets, all splits; random cases, at most 10 windows per case): finiteness, plane variance, share of scalar-plane values with |z| > 6."""
+    # Summarize the records separately within each requested group.
     core = protocol_rows(idx, "ea_core")
     rows = pd.concat([_sample_by_case(g, per_stratum, seed, 10) for _, g in core.groupby(["dataset", "split_pooled"])])
     rows = rows.sort_values(["dataset", "case_id", "beat_lo"]).reset_index(drop=True)
     out = {"windows": int(len(rows)), "per_stratum": {f"{d}/{s}": int(n) for (d, s), n in rows.groupby(["dataset", "split_pooled"]).size().items()}, "variants": {}}
     cache = S.CaseCache()
     for variant, sel in (("ea", rows), ("eap", rows[rows.in_full])):
+        # Exclude or flag missing values before using these measurements.
         sel = sel.reset_index(drop=True)
         t0 = time.perf_counter()
         b = S.assemble(root, sel, variant, cache=cache)
@@ -72,9 +75,11 @@ def audit_inputs(root, idx, per_stratum=500, seed=5052):
         res = {"windows": int(len(sel)), "assemble_windows_per_s": round(len(sel) / secs, 1), "x_finite": bool(np.isfinite(x).all()), "context_finite": bool(np.isfinite(ctx).all()),
                "labels_finite_where_expected": bool(np.isfinite(b["delta_map"]).all() and np.isfinite(b["aut65"]).all()), "planes": {}, "scalar_bands": {}}
         for p, name in enumerate(S.PLANES):
+            # Summarize the observed levels and variability for this set of measurements.
             plane = x[:, p]
             res["planes"][name] = {"std_across_windows": float(plane.std(axis=0).mean()), "all_zero_windows": int((~plane.reshape(len(sel), -1).any(axis=1)).sum()),
                                    "abs_max": float(np.abs(plane).max())}
+        # Apply the same operation to each named field in this group.
         for name, (plane, sl) in S.SCALAR_LAYERS.items():
             if plane == 6:
                 continue
@@ -87,6 +92,7 @@ def audit_inputs(root, idx, per_stratum=500, seed=5052):
                 res["scalar_bands"][f"{name}/{ds}"] = {"values": int(vals.size), "share_abs_gt6": float((vals > CLAMP).mean()) if vals.size else None,
                                                         "share_abs_gt4": float((vals > 4).mean()) if vals.size else None, "abs_max": float(vals.max()) if vals.size else None}
         out["variants"][variant] = res
+    # Calculate output values for the following step.
     bands = out["variants"]["eap"]["scalar_bands"]
     worst = max(((k, v["share_abs_gt6"]) for k, v in bands.items() if v["share_abs_gt6"] is not None), key=lambda kv: kv[1])
     out["worst_scalar_band"] = {"band": worst[0], "share_abs_gt6": worst[1]}
@@ -99,6 +105,7 @@ def audit_inputs(root, idx, per_stratum=500, seed=5052):
 def loss_masks(df):
     """Explicit loss masks on an index frame: event (all windows of the protocol; the 65-75 mmHg gray zone stays in and is only reported), regression (delta MAP, AUT65 are
     defined for every eligible window; windows with low horizon observation are excluded because their minimum / integral are biased low), time-to-event (events only)."""
+    # Exclude or flag missing values before using these measurements.
     ok = ~df.aut65_low_coverage.to_numpy()
     return {"event": np.ones(len(df), dtype=bool), "delta_map": np.isfinite(df.delta_map.to_numpy()) & ok, "delta_map_robust": np.isfinite(df.delta_map_robust.to_numpy()) & ok,
             "aut65": np.isfinite(df.aut65.to_numpy()) & ok, "time_to_event": df.y_event.to_numpy() & np.isfinite(df.time_to_event_sec.to_numpy())}
@@ -108,9 +115,11 @@ def audit_targets(root, idx, write=True):
     out = {"tables": [], "loss_masks": {"event": "all windows of the protocol (gray zone kept, reported separately)",
                                          "delta_map, delta_map_robust, aut65": "finite and not aut65_low_coverage (observed fraction of the horizon below the label rule)",
                                          "time_to_event": "event windows only (auxiliary, not trained by default)"}}
+    # Process the selected records in order and retain their individual results.
     for proto in ("eap_full", "ea_core"):
         pr = protocol_rows(idx, proto)
         for (ds, sp), g in pr.groupby(["dataset", "split_pooled"]):
+            # Exclude or flag missing values before using these measurements.
             m = loss_masks(g)
             ev = g[g.y_event]
             out["tables"].append({"protocol": proto, "dataset": ds, "split": sp, "windows": len(g), "patients": g.patient_key.nunique(), "events": int(g.y_event.sum()),
@@ -119,13 +128,16 @@ def audit_targets(root, idx, write=True):
                                   "tte_nan_share_nonevents": float(g.loc[~g.y_event, "time_to_event_sec"].isna().mean()), "tte_max_s": float(ev.time_to_event_sec.max()),
                                   "gray_zone": int(g.gray_zone.sum()), "aut65_low_coverage": int(g.aut65_low_coverage.sum()), "delta_map_zero_share": float((g.delta_map == 0).mean()),
                                   "aut65_zero_share": float((g.aut65 == 0).mean()), "reg_mask_share": float(m["delta_map"].mean())})
+    # Calculate the working array for the following step.
     tr = protocol_rows(idx, "eap_full")
     tr = tr[tr.split_pooled == "train"]
     m = loss_masks(tr)
     d, dr = tr.delta_map.to_numpy()[m["delta_map"]], tr.delta_map_robust.to_numpy()[m["delta_map_robust"]]
+    # Summarize the records separately within each requested group.
     a = tr.aut65.to_numpy()[m["aut65"]]
     pos = a > 0
     la = np.log1p(a[pos])
+    # Summarize the records separately within each requested group.
     stats = {"source": "train split of eap_full (pooled), loss masks applied", "windows": int(len(tr)),
              "delta_map": {"center": 0.0, "scale": float(d.std()), "mean": float(d.mean()), "median": float(np.median(d)), "p99": float(np.quantile(d, 0.99)), "zero_share": float((d == 0).mean()),
                            "rule": "target = delta_map / scale (one-sided, >= 0, so no centering); Huber delta 1.0 in scaled units"},
@@ -160,6 +172,7 @@ def _smd(a, b):
 def _sample_by_case(df, n, seed, per_case):
     """Up to ``n`` windows from random cases, at most ``per_case`` random windows per case: every case is read once, which makes the context pass about 20x faster than
     drawing windows uniformly (one case load per window)."""
+    # Summarize the records separately within each requested group.
     rng = np.random.default_rng(seed)
     groups = list(df.groupby(["dataset", "case_id"], sort=False).indices.values())
     parts, got = [], 0
@@ -178,6 +191,7 @@ def _patient_means(rows, ctx, names):
 
 
 def audit_context(root, idx, pooled=40000, per_cell=8000, reps=500, seed=5052, write=True):
+    # Calculate project paths and output values for the following step.
     root = Path(root)
     names = S.CONTEXT_NAMES
     out = {"names": names, "sampling": f"pooled train statistics: random cases, at most 40 windows per case ({pooled} windows); split agreement: every patient of a cell contributes up to 24 windows "
@@ -187,9 +201,11 @@ def audit_context(root, idx, pooled=40000, per_cell=8000, reps=500, seed=5052, w
                          "standardize first, then multiply by the variant context mask", "code_version": S.BSHI_CODE_VERSION}
     cells = {}
     for proto in ("eap_full", "ea_core"):
+        # Exclude or flag missing values before using these measurements.
         variant, _ = S.PROTOCOLS[proto]
         pr = protocol_rows(idx, proto)
         tr = pr[pr.split_pooled == "train"]
+        # Exclude or flag missing values before using these measurements.
         rows, ctx = _assemble_context(root, _sample_by_case(tr, pooled, seed, 40), variant)
         out["context_finite_" + proto] = bool(np.isfinite(ctx).all())
         q1, med, q3 = np.quantile(ctx, [0.25, 0.5, 0.75], axis=0)
@@ -198,9 +214,11 @@ def audit_context(root, idx, pooled=40000, per_cell=8000, reps=500, seed=5052, w
         scale = np.where(scale > 1e-8, scale, 1.0)
         zero = np.array([n in S.context_off(S.VARIANTS[variant]) for n in names])
         center = np.where(zero, 0.0, med)
+        # Summarize the observed levels and variability for this set of measurements.
         scale = np.where(zero, 1.0, scale)
         z = np.clip((ctx - center) / scale, -CLAMP, CLAMP)
         beyond = (np.abs((ctx - center) / scale) > CLAMP).mean(axis=0)
+        # Summarize the observed levels and variability for this set of measurements.
         stats_doc[proto] = {"n": int(len(ctx)), "center": center.tolist(), "scale": scale.tolist(), "mean": ctx.mean(axis=0).tolist(), "std": std.tolist(),
                             "share_beyond_clamp": beyond.tolist(), "zeroed_by_variant": [n for n, zf in zip(names, zero) if zf]}
         out["stats"][proto] = {"n": int(len(ctx)), "max_share_beyond_clamp": float(beyond.max()), "feature_of_max": names[int(beyond.argmax())], "standardized_std_range":
@@ -212,9 +230,11 @@ def audit_context(root, idx, pooled=40000, per_cell=8000, reps=500, seed=5052, w
         cells[(ds, sp)] = _assemble_context(root, g.sample(frac=1, random_state=seed).groupby("patient_key").head(per), "eap")
     out["smd_within_dataset"] = {}
     rng = np.random.default_rng(seed)
+    # Process the selected records in order and retain their individual results.
     for ds in ("mover", "vitaldb"):
         pa = _patient_means(*cells[(ds, "train")], names)
         for sp in ("validation", "test"):
+            # Reserve output arrays and masks with explicit initial values.
             pb = _patient_means(*cells[(ds, sp)], names)
             s = _smd(pa.to_numpy(), pb.to_numpy())
             pool = np.vstack([pa.to_numpy(), pb.to_numpy()])
@@ -243,6 +263,7 @@ def audit_balance(idx):
     for ds, g in tr.groupby("dataset"):
         n = g.groupby("patient_key").size()
         out["windows_per_patient_train"][ds] = {"patients": int(len(n)), "mean": float(n.mean()), "median": float(n.median()), "max": int(n.max()), "max_share_of_dataset": float(n.max() / n.sum())}
+    # Summarize the records separately within each requested group.
     out["mover_share_natural_batch_train"] = float((tr.dataset == "mover").mean())
     nat = {ds: float(g.y_event.mean()) for ds, g in tr.groupby("dataset")}
     rec = {"batch_composition": {"mover_share": 0.15, "event_share_within_dataset": 0.30},
@@ -281,13 +302,16 @@ def audit_recipes(root, idx, n=64, seed=5052):
 
 def audit_raw(root, idx, n=200, seed=5052):
     """bshi_raw.raw_windows against an independent read of the waveform files (valid samples must be identical, masks must equal the finite pattern)."""
+    # Order the measurements before matching intervals or comparing rows.
     import pyarrow.parquet as pq
     from . import bshi_raw as R
     rows = protocol_rows(idx, "eap_full").sample(n, random_state=seed).sort_values(["dataset", "case_id", "t_end_sec"]).reset_index(drop=True)
+    # Summarize the records separately within each requested group.
     t0 = time.perf_counter()
     x, m = R.raw_windows(root, rows, cache=R.RawCache(maxsize=8))
     secs = time.perf_counter() - t0
     big = protocol_rows(idx, "eap_full")
+    # Join matching records before combining their measurements.
     big = big[big.groupby(["dataset", "case_id"]).window_id.transform("size") >= 100]
     cases = big.drop_duplicates(["dataset", "case_id"]).groupby("dataset").sample(3, random_state=seed)[["dataset", "case_id"]]
     grouped = big.merge(cases).groupby(["dataset", "case_id"]).head(100).reset_index(drop=True)
@@ -295,6 +319,7 @@ def audit_raw(root, idx, n=200, seed=5052):
     R.raw_windows(root, grouped, cache=R.RawCache(maxsize=8))
     grouped_rate = len(grouped) / (time.perf_counter() - t1)
     bad, checked, files = 0, 0, {}
+    # Apply this calculation to each row in the selected table.
     for i, r in rows.iterrows():
         key = (r.dataset, r.case_id)
         if key not in files:
@@ -302,6 +327,7 @@ def audit_raw(root, idx, n=200, seed=5052):
         t = files[key]
         w = t[(t.time_sec >= r.t_end_sec - 90 - 0.005) & (t.time_sec < r.t_end_sec - 0.005)]
         for c, col in enumerate(("ECG", "ART", "PPG")):
+            # Exclude or flag missing values before using these measurements.
             v = w[col].to_numpy(dtype=np.float32)
             pos = np.rint((w.time_sec.to_numpy() - (r.t_end_sec - 90)) * R.FS).astype(int)
             keep = (pos >= 0) & (pos < 9000) & np.isfinite(v)
@@ -316,6 +342,7 @@ def audit_raw(root, idx, n=200, seed=5052):
 def audit_aug(root, idx, n=64, seed=5052):
     import torch
     from . import bshi_aug as A
+    # Load the recorded settings or metadata for this processing step.
     rows = protocol_rows(idx, "eap_full").sample(n, random_state=seed).reset_index(drop=True)
     b = A.to_torch(S.assemble(root, rows, "eap", cache=S.CaseCache(), return_times=True))
     stats = json.loads((Path(root) / "results" / "bshi_gap_stats.json").read_text(encoding="utf-8"))
@@ -339,11 +366,13 @@ def audit_aug(root, idx, n=64, seed=5052):
 def build_case_meta(root, idx, write=True):
     root = Path(root)
     cq = pd.read_parquet(root / S.OUT_DIR / "case_quality.parquet", columns=["dataset", "case_id", "patient_key", "split_pooled", "split_within_dataset", "ecg_dead"])
+    # Join related tables by case key to keep measurements aligned.
     clin = pd.read_csv(root / "data" / "reference" / "vitaldb" / "clinical_data.csv", usecols=lambda c: c in {"caseid", "department", "age", "sex", "asa", "emop", "optype", "opname"})
     clin["case_key"] = clin.caseid.astype(int)
     meta = cq.copy()
     meta["case_key"] = pd.to_numeric(meta.case_id, errors="coerce")
     meta = meta.merge(clin.drop(columns=["caseid"]), on="case_key", how="left").drop(columns=["case_key"])
+    # Join related tables by dataset, case id to keep measurements aligned.
     meta.loc[meta.dataset == "mover", ["department", "age", "sex", "asa", "emop", "optype", "opname"]] = np.nan
     flags = idx.assign(core=idx.primary_eligible & idx.in_core, full=idx.primary_eligible & idx.in_full)
     cases = flags.groupby(["dataset", "case_id"]).agg(windows_core=("core", "sum"), windows_full=("full", "sum")).reset_index()
@@ -352,6 +381,7 @@ def build_case_meta(root, idx, write=True):
     meta = meta.merge(cases, on=["dataset", "case_id"], how="left").fillna({"windows_core": 0, "windows_full": 0, "events_full": 0})
     if write:
         meta.to_parquet(root / CASE_META, index=False)
+    # Exclude or flag missing values before using these measurements.
     v = meta[(meta.dataset == "vitaldb")]
     by = v.groupby("department", dropna=False).agg(cases=("case_id", "size"), cases_in_full=("windows_full", lambda s: int((s > 0).sum())), windows_full=("windows_full", "sum"),
                                                    events_full=("events_full", "sum"), patients=("patient_key", "nunique")).reset_index().sort_values("cases", ascending=False)
@@ -364,10 +394,12 @@ def build_case_meta(root, idx, write=True):
 def audit_evaluation(idx, stride_sec=30.0, cap_sec=240.0):
     out = {"tables": []}
     for proto in ("eap_full", "ea_core"):
+        # Summarize the records separately within each requested group.
         pr = protocol_rows(idx, proto).sort_values(["dataset", "case_id", "t_end_sec"])
         d = pr.groupby(["dataset", "case_id"]).t_end_sec.diff().dropna()
         span = pr.groupby(["dataset", "split_pooled", "patient_key", "case_id"]).t_end_sec.agg(lambda s: s.max() - s.min()).rename("span_s")
         for (ds, sp), g in pr.groupby(["dataset", "split_pooled"]):
+            # Summarize the records separately within each requested group.
             sp_s = span.loc[ds, sp]
             out["tables"].append({"protocol": proto, "dataset": ds, "split": sp, "patients": g.patient_key.nunique(), "windows": len(g), "window_hours_at_30s": len(g) * stride_sec / 3600,
                                   "span_hours": float(sp_s.sum() / 3600), "median_hours_per_patient": float(sp_s.groupby(level="patient_key").sum().median() / 3600)})
@@ -381,6 +413,7 @@ def audit_evaluation(idx, stride_sec=30.0, cap_sec=240.0):
 
 
 def audit_storage(root, idx, train_stride=2):
+    # Load the recorded settings or metadata for this processing step.
     meta = json.loads((Path(root) / "results" / "bshi_dev_subset.json").read_text(encoding="utf-8"))
     dev_dir = Path(root) / S.OUT_DIR / "dev_subset"
     dev_bytes = sum(p.stat().st_size for p in dev_dir.rglob("*.parquet"))
@@ -407,6 +440,7 @@ def run_audit(root=".", write=True, only=None):
     steps = (("inputs", lambda: audit_inputs(root, idx)), ("targets", lambda: audit_targets(root, idx, write)), ("context", lambda: audit_context(root, idx, write=write)),
              ("balance", lambda: audit_balance(idx)), ("recipes", lambda: audit_recipes(root, idx)), ("raw", lambda: audit_raw(root, idx)), ("augmentation", lambda: audit_aug(root, idx)),
              ("case_meta", lambda: build_case_meta(root, idx, write)), ("evaluation", lambda: audit_evaluation(idx)), ("storage", lambda: audit_storage(root, idx)))
+    # Process the selected records in order and retain their individual results.
     for name, fn in steps:
         if only and name not in only:
             continue
@@ -458,6 +492,7 @@ def _f(v, d=1):
 
 def write_readiness_doc(root=".", res=None):
     """docs/bshi_training_readiness.md from the audit JSON (at most 90 lines)."""
+    # Load the recorded settings or metadata for this processing step.
     root = Path(root).resolve()
     res = res or json.loads((root / RESULT).read_text(encoding="utf-8"))
     g, inp, tg, ctx, bal, rec, raw, aug, meta, ev, sto = (res[k] for k in ("gates", "inputs", "targets", "context", "balance", "recipes", "raw", "augmentation", "case_meta", "evaluation", "storage"))
@@ -518,6 +553,7 @@ def print_gates(res):
 
 
 if __name__ == "__main__":
+    # Store the settings and results as JSON for later inspection.
     import sys
     r = run_audit(".", only=sys.argv[1:] or None)
     print(json.dumps(r["gates"], indent=1), r["seconds"])

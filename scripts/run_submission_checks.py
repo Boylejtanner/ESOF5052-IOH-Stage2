@@ -1,4 +1,5 @@
 """Run focused, data-free checks of the submitted processing and modeling code."""
+# Run the selected synthetic and fixture-based tests without cohort processing.
 from pathlib import Path
 import os
 import sys
@@ -35,6 +36,7 @@ TESTS = [
 
 def main():
     """Load a cross-pipeline test subset without starting acquisition or a cohort run."""
+    # Run the selected checks through Python's unittest runner.
     suite = unittest.defaultTestLoader.loadTestsFromNames(TESTS)
     result = unittest.TextTestRunner(verbosity=2).run(suite)
     return 0 if result.wasSuccessful() else 1

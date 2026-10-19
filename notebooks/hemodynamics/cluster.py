@@ -12,6 +12,7 @@ depends on the desktop's absolute paths, so the laptop works with its own copy o
 so a firewall script can open exactly them. Spark WRITES to local Windows paths need winutils (not used): results travel back through Spark, files are written from Python.
 """
 from __future__ import annotations
+# Configure Spark workers and run independent processing or training tasks.
 
 import hashlib
 import json
@@ -104,6 +105,7 @@ def find_jdk(cfg=None):
 
 
 def ensure_env(root="."):
+    # Calculate the run settings for the following step.
     cfg = load_config(root)
     os.environ["JAVA_HOME"] = find_jdk(cfg)
     os.environ["PATH"] = os.path.join(os.environ["JAVA_HOME"], "bin") + os.pathsep + os.environ.get("PATH", "")
@@ -150,6 +152,7 @@ def derive_conf(profile, workers, cfg, host, app_name="bshi", python_exe=None):
     """Spark configuration (a dict) for a profile from the master's worker table. Pure function: unit-tested without Spark."""
     if not workers:
         raise RuntimeError("no ALIVE worker registered with the master")
+    # Calculate the window boundary for the following step.
     min_cores = min(int(w["cores"]) for w in workers)
     min_mem_mb = min(int(w["memory"]) for w in workers)
     lo, hi = cfg["block_manager_port_range"]
@@ -179,6 +182,7 @@ def ensure_fs_patch(root="."):
     out = Path(tempfile.gettempdir()) / "bshi_spark_fs"
     cls = out / "bshi" / "NoPermLocalFileSystem.class"
     if not cls.exists() or cls.stat().st_mtime < src.stat().st_mtime:
+        # Create the destination directory before writing any outputs.
         import glob
         api = glob.glob(os.path.join(os.environ["SPARK_HOME"], "jars", "hadoop-client-api-*.jar"))[0]
         out.mkdir(parents=True, exist_ok=True)
@@ -344,6 +348,7 @@ VERSION_KEYS = ("python", "pyspark", "numpy", "pandas", "pyarrow", "torch", "cud
 
 def cluster_report(spark, tasks=None):
     """Workers (the master's view) and what actually runs on them (a tiny task per slot): one row per distinct worker, plus a list of version MISMATCHES between workers."""
+    # Calculate the run settings and the observation count for the following step.
     cfg = load_config(os.environ.get("BSHI_ROOT", "."))
     sc = spark.sparkContext
     view = master_view(master_host(cfg), cfg["master_ui"]) or {}

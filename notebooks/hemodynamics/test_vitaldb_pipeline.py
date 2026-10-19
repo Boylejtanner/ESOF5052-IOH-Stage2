@@ -1,5 +1,6 @@
 """Focused, network-free checks; test scratch stays inside the project."""
 from __future__ import annotations
+# Check vitaldb pipeline using controlled inputs and isolated files.
 
 from concurrent.futures import ThreadPoolExecutor, wait as real_wait
 from concurrent.futures.process import BrokenProcessPool
@@ -41,6 +42,7 @@ def _mock_spawn_worker(job):
     scenario = options.get("test_scenario", "normal")
     if scenario == "crash" and job["case_id"] == 1:
         os._exit(13)
+    # Collect the per-record values into a table for comparison.
     wave = pd.DataFrame({"time_sec": np.arange(10) * .01, "ART": np.full(10, 80.0),
                          "ECG": np.linspace(.1, .2, 10), "PPG": np.linspace(1., 2., 10)})
     numeric = pd.DataFrame({"time_sec": [.01, .07], "MAP": [75., 74.]})
@@ -66,13 +68,16 @@ def _mock_spawn_worker(job):
 
 class VitalDBPipelineTests(unittest.TestCase):
     def setUp(self):
+        # Load the recorded settings or metadata for this processing step.
         self.root = PROJECT / "data" / "checkpoints" / "vitaldb" / ("test-" + uuid.uuid4().hex)
         self.root.mkdir(parents=True)
         (self.root / "configs").mkdir()
+        # Load the recorded settings or metadata for this processing step.
         shutil.copyfile(PROJECT / "configs" / "hemodynamics.json", self.root / "configs" / "hemodynamics.json")
         path = self.root / "configs" / "hemodynamics.json"
         settings = json.loads(path.read_text())
         settings["allow_full_vitaldb_download"] = False
+        # Store the settings and results as JSON for later inspection.
         settings["vitaldb"].update(download_workers=2, progress_interval_seconds=0.05, stop_grace_seconds=1.0)
         path.write_text(json.dumps(settings))
         self.executor_patch = patch.object(pipeline, "_create_executor", side_effect=lambda workers, events, settings: ThreadPoolExecutor(max_workers=workers))
@@ -82,14 +87,17 @@ class VitalDBPipelineTests(unittest.TestCase):
         self.hook_patch.start()
 
     def tearDown(self):
+        # Clean up the working files owned by this operation.
         self.hook_patch.stop()
         self.executor_patch.stop()
         shutil.rmtree(self.root)
 
     def test_patient_linkage_is_not_surgery_identity_and_no_leakage(self):
+        # Verify patient linkage is not surgery identity and no leakage.
         cohort = pd.DataFrame({"caseid": range(1, 21)})
         clinical = pd.DataFrame({"caseid": range(1, 21), "subjectid": [200 + i // 2 for i in range(20)]})
         first = pipeline.patient_splits(cohort, clinical)
+        # Check first and second against the expected result.
         second = pipeline.patient_splits(cohort.sample(frac=1, random_state=9), clinical)
         pd.testing.assert_frame_equal(first, second)
         self.assertTrue(first.patient_id.gt(20).all())
@@ -102,12 +110,14 @@ class VitalDBPipelineTests(unittest.TestCase):
             pipeline.patient_splits(pd.DataFrame({"caseid": [1]}), pd.DataFrame({"caseid": [1], "subjectid": [np.nan]}))
 
     def test_pilot_selection_is_three_deterministic_outcome_blind_cases(self):
+        # Verify pilot selection is three deterministic outcome blind cases.
         cohort = pd.DataFrame({"caseid": range(11, 111), "duration_seconds": range(100)})
         expected = [20, 60, 100]
         self.assertEqual(pipeline.pilot_case_ids(cohort), expected)
         self.assertEqual(pipeline.pilot_case_ids(cohort.sample(frac=1, random_state=7)), expected)
 
     def test_exact_map_preference_and_missing_channel_fail(self):
+        # Verify exact MAP preference and missing channel fail.
         names = list(pipeline.TRACKS.values()) + list(pipeline.MAP_PRIORITY)
         index = pd.DataFrame({"caseid": [4] * len(names), "tname": names})
         self.assertEqual(pipeline.resolve_tracks(index, 4)["MAP"], "Solar8000/ART_MBP")
@@ -115,13 +125,16 @@ class VitalDBPipelineTests(unittest.TestCase):
             pipeline.resolve_tracks(index.loc[index.tname.ne("SNUADC/PLETH")], 4)
 
     def test_native_timestamps_and_long_gaps_preserved(self):
+        # Verify native timestamps and long gaps preserved.
         tracks = {**pipeline.TRACKS, "MAP": pipeline.MAP_PRIORITY[0]}
         waveform = SimpleNamespace(type=1, srate=500.0, fmt=3, gain=0.25, offset=0.0,
                                    recs=[{"dt": 100.02, "val": np.full(20, 8, dtype=np.int16)},
                                          {"dt": 100.20, "val": np.full(10, 8, dtype=np.int16)}])
+        # Check time sec against the expected result.
         numeric = SimpleNamespace(type=2, recs=[{"dt": 100.023, "val": 75.0}, {"dt": 100.201, "val": 70.0}])
         vf = SimpleNamespace(dtstart=100.0, dtend=100.25,
                              trks={**{name: waveform for name in pipeline.TRACKS.values()}, tracks["MAP"]: numeric})
+        # Check time sec against the expected result.
         wave, map_frame, rates = pipeline.native_to_frames(vf, tracks)
         np.testing.assert_allclose(map_frame.time_sec, [0.023, 0.201])
         np.testing.assert_allclose(map_frame.MAP, [75.0, 70.0])
@@ -139,6 +152,7 @@ class VitalDBPipelineTests(unittest.TestCase):
         return vf, names
 
     def test_antialias_rejects_120hz_before_100hz_downsample(self):
+        # Verify antialias rejects 120hz before 100hz downsample.
         times = np.arange(5000) / 500.0
         source = np.sin(2 * np.pi * 120 * times)
         vf, tracks = self._native_fixture([{"dt": 100.0, "val": source}], 10.0)
@@ -148,13 +162,16 @@ class VitalDBPipelineTests(unittest.TestCase):
         self.assertLess(float(np.sqrt(np.mean(wave.loc[interior, "ART"] ** 2))), 0.01)
 
     def test_contiguous_record_boundary_and_phase_alignment(self):
+        # Verify contiguous record boundary and phase alignment.
         start = 0.006
         source_times = start + np.arange(1000) / 500.0
         source = np.sin(2 * np.pi * 10 * source_times)
+        # Decode the measurements while retaining their signal timing.
         records = [{"dt": 100.0 + start, "val": source[:500]},
                    {"dt": 101.0 + start, "val": source[500:]}]
         vf, tracks = self._native_fixture(records, 2.5)
         split, _, _ = pipeline.native_to_frames(vf, tracks)
+        # Check ART against the expected result.
         vf.trks[tracks["ART"]].recs = [{"dt": 100.0 + start, "val": source}]
         full, _, _ = pipeline.native_to_frames(vf, tracks)
         np.testing.assert_allclose(split.ART, full.ART, atol=1e-6, equal_nan=True)
@@ -165,6 +182,7 @@ class VitalDBPipelineTests(unittest.TestCase):
         np.testing.assert_allclose(np.diff(split.time_sec), 0.01, atol=1e-8)
 
     def test_filter_never_bridges_internal_nan_run(self):
+        # Verify filter never bridges internal nan run.
         source = np.r_[np.full(100, 80.0), np.full(25, np.nan), np.full(375, 20.0)]
         vf, tracks = self._native_fixture([{"dt": 100.0, "val": source}], 1.0)
         wave, _, _ = pipeline.native_to_frames(vf, tracks)
@@ -173,6 +191,7 @@ class VitalDBPipelineTests(unittest.TestCase):
         self.assertAlmostEqual(float(wave.loc[np.isclose(wave.time_sec, 0.25), "ART"].iloc[0]), 20.0, places=4)
 
     def test_retry_backoff_is_bounded(self):
+        # Verify retry backoff is bounded.
         calls = []
         def operation():
             calls.append(1)
@@ -185,12 +204,14 @@ class VitalDBPipelineTests(unittest.TestCase):
         self.assertEqual(len(calls), 3)
 
     def test_atomic_json_has_no_partial_file(self):
+        # Verify atomic json has no partial file.
         path = self.root / "audit.json"
         pipeline._atomic_json(path, {"test": 1})
         self.assertEqual(json.loads(path.read_text()), {"test": 1})
         self.assertFalse(path.with_name(path.name + ".part").exists())
 
     def test_canonical_validated_resume_and_corruption_rejected(self):
+        # Verify canonical validated resume and corruption rejected.
         wave = pd.DataFrame({"time_sec": [0.0, 0.01], "ART": [80.0, 81.0], "ECG": [0.2, 0.3], "PPG": [1.0, 2.0]})
         numeric = pd.DataFrame({"time_sec": [0.005, 0.9], "MAP": [75.0, 74.0]})
         metadata = canonical.write_case(self.root, "vitaldb", 9, wave, numeric, {"patient_id": 200, "split": "train", "min_free_space_bytes": 0,
@@ -198,6 +219,7 @@ class VitalDBPipelineTests(unittest.TestCase):
                                                                                   "time_reference": "seconds_since_recording_start",
                                                                                   "art_final_fs": 100, "ecg_final_fs": 100, "ppg_final_fs": 100})
         self.assertEqual(metadata["time_reference"], "seconds_since_recording_start")
+        # Compare the result with the expected value or tolerance.
         self.assertTrue(all(metadata[key] == 100 for key in ("art_final_fs", "ecg_final_fs", "ppg_final_fs")))
         metadata["status"] = "complete"
         self.assertTrue(pipeline._completed(self.root, metadata))
@@ -209,6 +231,7 @@ class VitalDBPipelineTests(unittest.TestCase):
         self.assertFalse(pipeline._completed(self.root, metadata))
 
     def test_full_download_blocked_without_pilot(self):
+        # Verify full download blocked without pilot.
         self._prepare_pipeline_inputs()
         path = self.root / "configs" / "hemodynamics.json"
         settings = json.loads(path.read_text())
@@ -219,6 +242,7 @@ class VitalDBPipelineTests(unittest.TestCase):
                 pipeline.run_pipeline(self.root, "FULL_DOWNLOAD")
 
     def test_full_download_blocked_by_explicit_config_even_after_pilot(self):
+        # Verify full download blocked by explicit config even after pilot.
         with patch.object(pipeline, "audit_project", return_value={"pilot_passed": True, "pilot_case_ids": [1, 2, 3]}):
             with self.assertRaisesRegex(RuntimeError, "allow_full_vitaldb_download=true"):
                 pipeline.run_pipeline(self.root, "FULL_DOWNLOAD")
@@ -226,21 +250,26 @@ class VitalDBPipelineTests(unittest.TestCase):
                 pipeline.run_pipeline(self.root, "RESUME", resume_target="FULL_DOWNLOAD")
 
     def test_patient_seed_and_parameters_come_from_shared_config(self):
+        # Verify patient seed and parameters come from shared config.
         settings = pipeline.load_settings(self.root)
         self.assertEqual(settings["patient_split_seed"], 5052)
         self.assertEqual(settings["random_seed"], 5052)
+        # Check target waveform fs against the expected result.
         self.assertEqual(settings["target_waveform_fs"], 100)
         cohort = pd.DataFrame({"caseid": range(1, 21)})
         clinical = pd.DataFrame({"caseid": range(1, 21), "subjectid": [200 + i // 2 for i in range(20)]})
         linked = pipeline.patient_splits(cohort, clinical, settings=settings)
+        # Compare the result with the expected value or tolerance.
         self.assertTrue(linked.seed.eq(settings["patient_split_seed"]).all())
         self.assertEqual(settings["vitaldb"]["quality_thresholds"]["map_measurements_per_minute_min"], 10)
         self.assertEqual(settings["map_min_points_per_min"], 5)
 
     def test_resume_rejects_legacy_filter_or_changed_split_seed(self):
+        # Verify resume rejects legacy filter or changed split seed.
         settings = pipeline.load_settings(self.root)
         state = {"status": "complete", "processing_signature": pipeline.processing_signature(settings)}
         with patch.object(canonical, "verify_case", return_value=True):
+            # Compare the result with the expected value or tolerance.
             self.assertTrue(pipeline._completed(self.root, state))
             self.assertFalse(pipeline._completed(self.root, {"status": "complete"}))
             settings["patient_split_seed"] = 2026
@@ -248,9 +277,11 @@ class VitalDBPipelineTests(unittest.TestCase):
             self.assertFalse(pipeline._completed(self.root, state))
 
     def _prepare_pipeline_inputs(self, count=3):
+        # Save the comparison table so the same measurements can be inspected later.
         manifests = self.root / "data" / "manifests"
         manifests.mkdir(parents=True)
         cases = list(range(1, count + 1))
+        # Save the comparison table so the same measurements can be inspected later.
         pd.DataFrame({"caseid": cases, "duration_seconds": [1800.0] * count}).to_csv(manifests / "usable_cohort.csv", index=False)
         reference = self.root / "data" / "reference" / "vitaldb"
         reference.mkdir(parents=True)
@@ -268,6 +299,7 @@ class VitalDBPipelineTests(unittest.TestCase):
         return {"pilot_case_ids": [1, 2, 3], "pilot_passed": False}
 
     def test_pipeline_disk_stop_is_checkpointed_before_network(self):
+        # Verify pipeline disk stop is checkpointed before network.
         audit = self._prepare_pipeline_inputs()
         with patch.object(pipeline, "audit_project", return_value=audit), \
              patch.object(pipeline, "load_track_index", return_value=pd.DataFrame()), \
@@ -283,6 +315,7 @@ class VitalDBPipelineTests(unittest.TestCase):
         self.assertEqual(manifest.iloc[0].status, "disk_stopped")
 
     def test_failed_cases_exhaust_retries_and_continue(self):
+        # Verify failed cases exhaust retries and continue.
         audit = self._prepare_pipeline_inputs()
         with patch.object(pipeline, "audit_project", return_value=audit), \
              patch.object(pipeline, "load_track_index", return_value=pd.DataFrame()), \
@@ -297,12 +330,14 @@ class VitalDBPipelineTests(unittest.TestCase):
         self.assertTrue(all(row["status"] == "failed" and row["attempts"] == 3 for row in states))
 
     def test_invalid_mode_rejected(self):
+        # Verify invalid mode rejected.
         with self.assertRaises(ValueError):
             pipeline.run_pipeline(self.root, "FULL")
         with self.assertRaises(ValueError):
             pipeline.run_pipeline(self.root, max_attempts=0)
 
     def test_disk_reserve_is_decimal_100gb(self):
+        # Verify disk reserve is decimal 100gb.
         self.assertEqual(pipeline.RESERVE_BYTES, 100_000_000_000)
         with patch.object(canonical.shutil, "disk_usage", return_value=SimpleNamespace(free=99_999_999_999)):
             with self.assertRaises(canonical.DiskSpaceStop):
@@ -310,6 +345,7 @@ class VitalDBPipelineTests(unittest.TestCase):
 
 
     def _mock_run_context(self, scenario="normal", delay=.03, real_spawn=False, count=3, pilot_passed=False):
+        # Load the recorded settings or metadata for this processing step.
         audit = self._prepare_pipeline_inputs(count)
         audit["pilot_passed"] = pilot_passed
         path = self.root / "configs" / "hemodynamics.json"
@@ -318,6 +354,7 @@ class VitalDBPipelineTests(unittest.TestCase):
         path.write_text(json.dumps(settings))
         if real_spawn:
             self.executor_patch.stop()
+        # Collect the per-record values into a table for comparison.
         stack = ExitStack()
         stack.enter_context(patch.object(pipeline, "audit_project", return_value=audit))
         stack.enter_context(patch.object(pipeline, "load_track_index", return_value=pd.DataFrame()))
@@ -327,6 +364,7 @@ class VitalDBPipelineTests(unittest.TestCase):
         return stack
 
     def test_bounded_concurrency_and_sorted_dispatch(self):
+        # Verify bounded concurrency and sorted dispatch.
         with self._mock_run_context(delay=.1):
             result = pipeline.run_pipeline(self.root, download_workers=2)
         self.assertEqual(result["dispatch_order"], [1,2,3])
@@ -335,6 +373,7 @@ class VitalDBPipelineTests(unittest.TestCase):
         self.assertEqual(result["summary_status"], "COMPLETE")
 
     def test_progress_heartbeat_while_workers_idle(self):
+        # Verify progress heartbeat while workers idle.
         output = io.StringIO()
         with self._mock_run_context(delay=.3), redirect_stdout(output):
             result = pipeline.run_pipeline(self.root, download_workers=2, progress=True)
@@ -346,6 +385,7 @@ class VitalDBPipelineTests(unittest.TestCase):
         self.assertEqual(result["summary_status"], "COMPLETE")
 
     def test_one_failing_case_does_not_stop_other_cases(self):
+        # Verify one failing case does not stop other cases.
         with self._mock_run_context(scenario="one_failure"):
             result = pipeline.run_pipeline(self.root, download_workers=2, backoff_seconds=.01)
         self.assertEqual(result["processed"], [1,3])
@@ -354,6 +394,7 @@ class VitalDBPipelineTests(unittest.TestCase):
         self.assertEqual(canonical.CheckpointStore(self.root,"vitaldb").get(2)["attempts"],3)
 
     def test_interrupt_pauses_and_resume_skips_durable_cases(self):
+        # Verify interrupt pauses and resume skips durable cases.
         calls = [0]
         def interrupt_after_first(*args, **kwargs):
             calls[0] += 1
@@ -372,6 +413,7 @@ class VitalDBPipelineTests(unittest.TestCase):
         self.assertEqual(second["summary_status"],"COMPLETE")
 
     def test_actual_windows_spawn_with_mocked_vitalfile(self):
+        # Verify actual windows spawn with mocked vitalfile.
         with self._mock_run_context(real_spawn=True):
             result = pipeline.run_pipeline(self.root,download_workers=2)
         self.assertEqual(result["processed"],[1,2,3])
@@ -382,6 +424,7 @@ class VitalDBPipelineTests(unittest.TestCase):
         self.assertEqual(os.environ["OPENBLAS_NUM_THREADS"],"1")
 
     def test_broken_process_pool_stops_cleanly(self):
+        # Verify broken process pool stops cleanly.
         with self._mock_run_context(scenario="crash", delay=.3, real_spawn=True):
             result = pipeline.run_pipeline(self.root,download_workers=2)
         self.assertIn("BrokenProcessPool",result["stopped_reason"])
@@ -390,6 +433,7 @@ class VitalDBPipelineTests(unittest.TestCase):
         self.assertTrue(all(row["status"] in ("failed","complete") for row in canonical.CheckpointStore(self.root,"vitaldb").rows()))
 
     def test_forced_interrupt_joins_owned_workers_and_cleans_temps(self):
+        # Verify forced interrupt joins owned workers and cleans temps.
         with self._mock_run_context(delay=20,real_spawn=True):
             path = self.root / "configs" / "hemodynamics.json"
             settings=json.loads(path.read_text());settings["vitaldb"]["stop_grace_seconds"]=.1
@@ -404,6 +448,7 @@ class VitalDBPipelineTests(unittest.TestCase):
         self.assertTrue(all(row["status"]=="interrupted" for row in canonical.CheckpointStore(self.root,"vitaldb").rows()))
 
     def test_download_only_settings_do_not_change_pilot_signature(self):
+        # Verify download only settings do not change pilot signature.
         settings=pipeline.load_settings(self.root)
         original=pipeline.processing_signature(settings)
         settings["vitaldb"].update(download_workers=8,max_inflight_ram_gb=16,progress_interval_seconds=.2,stop_grace_seconds=2,arrow_cpu_threads=2)
@@ -411,6 +456,7 @@ class VitalDBPipelineTests(unittest.TestCase):
         self.assertEqual(pipeline.processing_signature(),"a65f00d54f20f17b9d957c1be93e70bdbf2ecfaa0261a3652300ef9098fa1c01")
 
     def test_worker_hard_limit_and_optin_message(self):
+        # Verify worker hard limit and optin message.
         with self.assertRaisesRegex(ValueError,"hard maximum12"):
             pipeline.run_pipeline(self.root,download_workers=13)
         self.assertEqual(pipeline.MAX_DOWNLOAD_WORKERS,12)
@@ -422,6 +468,7 @@ class VitalDBPipelineTests(unittest.TestCase):
         self.assertIn("RUN VITALDB DOWNLOAD - START HERE",str(error.exception))
 
     def test_interrupt_during_audit_returns_paused_before_dispatch(self):
+        # Verify interrupt during audit returns paused before dispatch.
         self._prepare_pipeline_inputs()
         with patch.object(pipeline,"audit_project",side_effect=KeyboardInterrupt()), \
              patch.object(pipeline,"_create_executor") as executor:
@@ -431,6 +478,7 @@ class VitalDBPipelineTests(unittest.TestCase):
         self.assertEqual(result["processed"],[])
 
     def test_ram_budget_pauses_before_dispatch(self):
+        # Verify ram budget pauses before dispatch.
         with self._mock_run_context():
             path=self.root/"configs"/"hemodynamics.json";settings=json.loads(path.read_text())
             settings["vitaldb"]["max_inflight_ram_gb"]=.01;path.write_text(json.dumps(settings))
@@ -440,6 +488,7 @@ class VitalDBPipelineTests(unittest.TestCase):
         self.assertIn("RAM budget",result["stopped_reason"])
 
     def test_max_cases_and_fixed_batch_repeat(self):
+        # Verify max cases and fixed batch repeat.
         with self._mock_run_context():
             first=pipeline.run_pipeline(self.root,download_workers=2,max_cases=2)
             second=pipeline.run_pipeline(self.root,mode="RESUME",case_ids=first["dispatch_order"],max_cases=2)
@@ -451,19 +500,23 @@ class VitalDBPipelineTests(unittest.TestCase):
 
     def _full_context(self, count=12, scenario="normal", delay=.01, fail_case=5):
         """Pilot cases 1-3 verified by a real mocked PILOT run; later FULL runs use the gate as passed."""
+        # Load the recorded settings or metadata for this processing step.
         stack = self._mock_run_context(scenario="normal", delay=delay, count=count)
         stack.__enter__()
         self.addCleanup(stack.close)
+        # Load the recorded settings or metadata for this processing step.
         pipeline.run_pipeline(self.root, "PILOT", download_workers=2)
         settings_path = self.root / "configs" / "hemodynamics.json"
         settings = json.loads(settings_path.read_text())
         settings["allow_full_vitaldb_download"] = True
+        # Store the settings and results as JSON for later inspection.
         settings["vitaldb"].update(test_scenario=scenario, test_fail_case=fail_case)
         settings_path.write_text(json.dumps(settings))
         stack.enter_context(patch.object(pipeline, "audit_project", return_value={"pilot_case_ids": [1, 2, 3], "pilot_passed": True}))
         return pd.read_csv(self.root / "data" / "manifests" / "vitaldb_patient_splits.csv")
 
     def test_full_download_uses_representative_order_and_max_cases_applies_after_it(self):
+        # Verify full download uses representative order and max cases applies after it.
         links = self._full_context()
         expected = pipeline.representative_order(links, 5052, done={1, 2, 3})
         self.assertNotEqual(expected, sorted(expected))
@@ -474,9 +527,11 @@ class VitalDBPipelineTests(unittest.TestCase):
         self.hook.assert_not_called()
 
     def test_full_resume_skips_verified_cases_without_redownloading(self):
+        # Verify full resume skips verified cases without redownloading.
         links = self._full_context()
         first = pipeline.run_pipeline(self.root, "FULL_DOWNLOAD", download_workers=2, max_cases=4)
         attempts = {row["case_id"]: row["attempts"] for row in canonical.CheckpointStore(self.root, "vitaldb").rows()}
+        # Check dispatch order against the expected result.
         second = pipeline.run_pipeline(self.root, "RESUME", resume_target="FULL_DOWNLOAD", download_workers=2)
         self.assertEqual(second["dispatch_order"], pipeline.representative_order(links, 5052, done={1, 2, 3, *first["processed"]}))
         self.assertTrue(set(first["processed"]).issubset(second["skipped"]))
@@ -492,11 +547,13 @@ class VitalDBPipelineTests(unittest.TestCase):
         self.assertEqual(third["summary_status"], "COMPLETE")
 
     def test_explicit_case_ids_keep_sorted_order_in_full_mode(self):
+        # Check dispatch order against the expected result.
         self._full_context()
         result = pipeline.run_pipeline(self.root, "FULL_DOWNLOAD", download_workers=1, case_ids=[9, 5, 7, 11])
         self.assertEqual(result["dispatch_order"], [5, 7, 9, 11])
 
     def test_startup_messages_are_timestamped_per_phase(self):
+        # Verify startup messages are timestamped per phase.
         output = io.StringIO()
         self._full_context()
         with redirect_stdout(output):
@@ -507,6 +564,7 @@ class VitalDBPipelineTests(unittest.TestCase):
             self.assertRegex(text, r"\[\d\d:\d\d:\d\d \+ *\d+\.\ds\] " + phrase)
 
     def test_live_progress_reports_verified_rate_eta_network_phases_and_commit_time(self):
+        # Verify live progress reports verified rate eta network phases and commit time.
         self._full_context(delay=.3)
         output = io.StringIO()
         with redirect_stdout(output):
@@ -517,25 +575,31 @@ class VitalDBPipelineTests(unittest.TestCase):
             self.assertIn(phrase, text)
 
     def test_attempt_log_and_report_record_phases_failures_and_retries(self):
+        # Verify attempt log and report record phases failures and retries.
         self._full_context(scenario="one_failure")
         output = io.StringIO()
         with redirect_stdout(output):
             result = pipeline.run_pipeline(self.root, "FULL_DOWNLOAD", download_workers=2, backoff_seconds=.01, progress=True)
+        # Check logs against the expected result.
         logs = sorted((self.root / "logs").glob("vitaldb_download_*.jsonl"))
         self.assertTrue(logs)
         lines = [json.loads(line) for path in logs for line in path.read_text().splitlines()]
         lines = [line for line in lines if line["case_id"] > 3]
+        # Check attempts against the expected result.
         self.assertEqual(len(lines), result["attempts"])
         failing = [line for line in lines if line["case_id"] == 5]
         self.assertEqual([line["status"] for line in failing], ["retry", "retry", "failed"])
+        # Check failed phase against the expected result.
         self.assertEqual(failing[0]["failed_phase"], "network")
         self.assertIn("mock network timeout", failing[-1]["error"])
         done = [line for line in lines if line["status"] == "complete"]
         self.assertEqual(sorted(line["case_id"] for line in done), sorted(result["processed"]))
         for line in done:
+            # Compare the result with the expected value or tolerance.
             self.assertEqual(set(line["phase_seconds"]), {"network", "resampling", "writing", "readback"})
             self.assertGreater(line["output_bytes"], 0)
             self.assertIn(line["split"], ("train", "validation", "test"))
+        # Compare the result with the expected value or tolerance.
         self.assertEqual((result["retries"], result["failed"], result["summary_status"]), (2, [5], "INCOMPLETE"))
         report = json.loads((self.root / "results" / "vitaldb_download_report.json").read_text())
         self.assertEqual(report["summary_status"], "INCOMPLETE")
@@ -550,6 +614,7 @@ class VitalDBPipelineTests(unittest.TestCase):
         self.assertIn("extrapolation", report["eta_note"].lower())
 
     def test_http_429_is_counted_from_attempt_telemetry(self):
+        # Verify http 429 is counted from attempt telemetry.
         self._full_context(scenario="http429")
         result = pipeline.run_pipeline(self.root, "FULL_DOWNLOAD", download_workers=2, backoff_seconds=.01)
         self.assertEqual(result["http_429"], 3)
@@ -558,6 +623,7 @@ class VitalDBPipelineTests(unittest.TestCase):
         self.assertEqual([line["http_status"] for line in lines if line["case_id"] == 5], [429, 429, 429])
 
     def test_failure_telemetry_survives_the_process_boundary(self):
+        # Verify failure telemetry survives the process boundary.
         with self._mock_run_context(scenario="http429", real_spawn=True):
             result = pipeline.run_pipeline(self.root, download_workers=2, backoff_seconds=.01)
         self.assertEqual((result["failed"], result["http_429"], result["retries"]), ([2], 3, 2))
@@ -568,11 +634,13 @@ class VitalDBPipelineTests(unittest.TestCase):
         self.assertTrue(all(line["phase_seconds"]["network"] >= 0 for line in failing))
 
     def test_portable_error_keeps_type_and_attaches_telemetry(self):
+        # Verify portable error keeps type and attaches telemetry.
         class Odd(OSError):
             def __init__(self):
                 super().__init__("odd")
                 self.lock = threading.Lock()
 
+        # Check converted and RuntimeError against the expected result.
         converted = pipeline._portable(Odd(), {"phase_seconds": {}})
         self.assertIsInstance(converted, RuntimeError)
         self.assertIn("Odd: odd", str(converted))
@@ -584,6 +652,7 @@ class VitalDBPipelineTests(unittest.TestCase):
         self.assertEqual(pipeline._portable(throttled, {}).attempt_info["http_status"], 429)
 
     def test_report_is_written_for_paused_run(self):
+        # Verify report is written for paused run.
         with self._mock_run_context(delay=.2):
             with patch.object(pipeline, "wait", side_effect=KeyboardInterrupt()):
                 result = pipeline.run_pipeline(self.root, download_workers=1)
@@ -592,6 +661,7 @@ class VitalDBPipelineTests(unittest.TestCase):
         self.assertEqual(report["download_workers"], 1)
 
     def test_report_is_written_when_interrupted_before_dispatch(self):
+        # Verify report is written when interrupted before dispatch.
         self._prepare_pipeline_inputs()
         with patch.object(pipeline, "audit_project", side_effect=KeyboardInterrupt()):
             pipeline.run_pipeline(self.root)
@@ -600,6 +670,7 @@ class VitalDBPipelineTests(unittest.TestCase):
         self.assertEqual(report["completed_this_run"], 0)
 
     def test_run_lock_is_held_during_run_and_released_after(self):
+        # Verify run lock is held during run and released after.
         lock = self.root / pipeline.LOCK_RELATIVE
         seen = []
         real = pipeline._run_pipeline_impl
@@ -612,6 +683,7 @@ class VitalDBPipelineTests(unittest.TestCase):
         self.assertFalse(lock.exists())
 
     def test_second_live_run_warns_but_does_not_abort(self):
+        # Verify second live run warns but does not abort.
         lock = self.root / pipeline.LOCK_RELATIVE
         pipeline._atomic_json(lock, {"pid": os.getpid() + 1, "mode": "FULL_DOWNLOAD", "started_utc": "then"})
         output = io.StringIO()
@@ -626,6 +698,7 @@ class VitalDBPipelineTests(unittest.TestCase):
         self.assertNotIn("another VitalDB run", output.getvalue())
 
     def test_unified_index_hook_runs_both_steps_with_stub(self):
+        # Verify unified index hook runs both steps with stub.
         calls = []
         stub = SimpleNamespace(index_ready_windows=lambda root, dataset="vitaldb", workers=None, progress=True: calls.append(("index", Path(root), dataset, progress)) or {},
                                build_unified_index=lambda root, progress=True: calls.append(("unified", Path(root), progress)) or pd.DataFrame({"x": [1, 2, 3]}))
@@ -636,6 +709,7 @@ class VitalDBPipelineTests(unittest.TestCase):
         self.assertEqual(calls, [("index", self.root, "vitaldb", True), ("unified", self.root, True)])
 
     def test_unified_index_hook_failure_or_absence_never_fails_the_download(self):
+        # Verify unified index hook failure or absence never fails the download.
         output = io.StringIO()
         with patch.dict(sys.modules, {"hemodynamics.unified": None}), redirect_stdout(output):
             self.assertEqual(_REAL_INDEX_HOOK(self.root)["status"], "skipped")
@@ -659,6 +733,7 @@ class VitalDBPipelineTests(unittest.TestCase):
         self.assertEqual(report["unified_index"]["status"], "failed")
 
     def test_unified_index_hook_only_after_complete_full_run(self):
+        # Verify unified index hook only after complete full run.
         with self._mock_run_context():
             pipeline.run_pipeline(self.root, "PILOT", download_workers=2)
             self.hook.assert_not_called()
@@ -666,6 +741,7 @@ class VitalDBPipelineTests(unittest.TestCase):
         self.hook.assert_not_called()
 
     def test_checkpoint_verification_threads_match_sequential_result(self):
+        # Verify checkpoint verification threads match sequential result.
         states = {case: {"status": "complete", "case": case} for case in range(1, 21)}
         good = {case for case in states if case % 3}
         with patch.object(pipeline, "_completed", side_effect=lambda root, state, settings=None: state["case"] in good):
@@ -673,6 +749,7 @@ class VitalDBPipelineTests(unittest.TestCase):
         self.assertEqual(pipeline._verify_cases(self.root, {}, [1, 2], {}), set())
 
     def test_interrupt_during_checkpoint_verification_does_not_wait_for_queued_cases(self):
+        # Verify interrupt during checkpoint verification does not wait for queued cases.
         states = {case: {"status": "complete"} for case in range(1, 101)}
         with patch.object(pipeline, "_completed", side_effect=lambda *args, **kwargs: time.sleep(.2) or True), \
              patch.object(pipeline, "as_completed", side_effect=KeyboardInterrupt()):
@@ -682,6 +759,7 @@ class VitalDBPipelineTests(unittest.TestCase):
         self.assertLess(time.monotonic() - started, 2.0)
 
     def test_checkpoint_verification_detects_corrupted_case(self):
+        # Verify checkpoint verification detects corrupted case.
         with self._mock_run_context():
             pipeline.run_pipeline(self.root, "PILOT", download_workers=2)
         settings = pipeline.load_settings(self.root)
@@ -693,6 +771,7 @@ class VitalDBPipelineTests(unittest.TestCase):
         self.assertEqual(pipeline._verify_cases(self.root, states, [1, 2, 3], settings, workers=2), {1, 3})
 
     def test_track_lookup_is_built_once_for_the_cached_index(self):
+        # Verify track lookup is built once for the cached index.
         directory = self.root / "data" / "checkpoints" / "vitaldb"
         directory.mkdir(parents=True, exist_ok=True)
         pd.DataFrame({"caseid": [1, 1, 2], "tid": ["a", "b", "c"], "tname": ["SNUADC/ART", "SNUADC/ECG_II", "SNUADC/ART"]}).to_csv(directory / "track_index.csv", index=False)
@@ -702,6 +781,7 @@ class VitalDBPipelineTests(unittest.TestCase):
         self.assertEqual(pipeline.track_lookup(first), {1: {"SNUADC/ART", "SNUADC/ECG_II"}, 2: {"SNUADC/ART"}})
 
     def test_network_bytes_are_counted_from_the_http_stream(self):
+        # Verify network bytes are counted from the http stream.
         import http.server
         tracks = {"ART": "SNUADC/ART", "MAP": "Solar8000/ART_MBP"}
         vf = vitaldb.VitalFile()
@@ -741,6 +821,7 @@ class NotebookStructureTests(unittest.TestCase):
         cls.code = ["".join(cell["source"]) for cell in cls.notebook["cells"] if cell["cell_type"] == "code"]
 
     def test_setup_cell_is_import_light_and_keeps_its_contract(self):
+        # Verify setup cell is import light and keeps its contract.
         setup = self.code[0]
         top_level = {line.split()[1].split(".")[0] for line in setup.splitlines() if line.startswith(("import ", "from "))}
         self.assertFalse(top_level & {"numpy", "pandas", "vitaldb", "scipy", "hemodynamics", "pyarrow", "matplotlib", "requests"}, top_level)
@@ -750,6 +831,7 @@ class NotebookStructureTests(unittest.TestCase):
             self.assertIn(phrase, setup)
 
     def test_timed_load_step_lives_in_the_download_cell(self):
+        # Verify timed load step lives in the download cell.
         download = next(source for source in self.code if source.startswith("# RUN VITALDB DOWNLOAD - START HERE"))
         for phrase in ("import numpy as np", "import pandas as pd", "from hemodynamics import canonical, vitaldb_pipeline", "Library load", "time.perf_counter()",
                        "run_pipeline(ROOT", "progress=True"):
@@ -757,6 +839,7 @@ class NotebookStructureTests(unittest.TestCase):
         self.assertLess(download.index("Library load"), download.index("run_pipeline(ROOT"))
 
     def test_every_code_cell_compiles_without_syntax_warnings(self):
+        # Verify every code cell compiles without syntax warnings.
         import warnings
         with warnings.catch_warnings():
             warnings.simplefilter("error")
@@ -769,6 +852,7 @@ class NotebookStructureTests(unittest.TestCase):
                 self.assertEqual((cell["outputs"], cell["execution_count"]), ([], None))
 
     def test_final_cell_builds_the_unified_manifest_lazily(self):
+        # Verify final cell builds the unified manifest lazily.
         final = self.code[-1]
         self.assertTrue(final.startswith("# 5. Build ready-window index and unified manifest"))
         self.assertIn('index_ready_windows(ROOT, "vitaldb", progress=True)', final)
@@ -782,6 +866,7 @@ class NotebookStructureTests(unittest.TestCase):
 class RepresentativeOrderTests(unittest.TestCase):
     @staticmethod
     def _links(patients=600, seed=3):
+        # Seed the generated values so this check can be repeated.
         rng = np.random.default_rng(seed)
         labels = np.array(["train"] * int(patients * .7) + ["validation"] * int(patients * .15))
         labels = np.r_[labels, ["test"] * (patients - len(labels))]
@@ -794,6 +879,7 @@ class RepresentativeOrderTests(unittest.TestCase):
         return frame
 
     def test_order_is_deterministic_complete_and_independent_of_row_order(self):
+        # Verify order is deterministic complete and independent of row order.
         links = self._links()
         first = pipeline.representative_order(links, 5052)
         self.assertEqual(first, pipeline.representative_order(links.sample(frac=1, random_state=11), 5052))
@@ -802,11 +888,13 @@ class RepresentativeOrderTests(unittest.TestCase):
         self.assertNotEqual(first, sorted(first))
 
     def test_every_prefix_is_about_seventy_fifteen_fifteen(self):
+        # Verify every prefix is about seventy fifteen fifteen.
         links = self._links()
         order = pipeline.representative_order(links, 5052)
         splits = links.set_index("case_id").split.loc[order].to_numpy()
         target = {"train": .70, "validation": .15, "test": .15}
         for name, share in target.items():
+            # Compare the result with the expected value or tolerance.
             running = np.cumsum(splits == name)
             lengths = np.arange(1, len(order) + 1)
             self.assertLess(np.abs(running[99:] / lengths[99:] - share).max(), .03, name)
@@ -814,6 +902,7 @@ class RepresentativeOrderTests(unittest.TestCase):
             self.assertLess(np.abs(running[first_tier] - share * lengths[first_tier]).max(), 1.5, name)
 
     def test_one_surgery_per_patient_before_any_repeat(self):
+        # Verify one surgery per patient before any repeat.
         links = self._links()
         order = pipeline.representative_order(links, 5052)
         patient = links.set_index("case_id").patient_id.loc[order].to_numpy()
@@ -822,9 +911,11 @@ class RepresentativeOrderTests(unittest.TestCase):
         self.assertTrue(set(patient[unique:]).issubset(set(patient[:unique])))
 
     def test_verified_cases_are_skipped_and_their_patients_count_as_covered(self):
+        # Verify verified cases are skipped and their patients count as covered.
         links = self._links()
         multi = links.groupby("patient_id").case_id.apply(list)
         multi = multi[multi.map(len) > 1]
+        # Compare the result with the expected value or tolerance.
         done = {int(cases[0]) for cases in multi.iloc[:25]}
         order = pipeline.representative_order(links, 5052, done=done)
         self.assertFalse(set(order) & done)
@@ -839,6 +930,7 @@ class RepresentativeOrderTests(unittest.TestCase):
         self.assertEqual(len({int(by_case[case]) for case in order[:uncovered]}), uncovered)
 
     def test_subset_empty_and_duplicate_inputs(self):
+        # Verify subset empty and duplicate inputs.
         links = self._links(60)
         subset = list(links.case_id[:20])
         self.assertEqual(sorted(pipeline.representative_order(links, 5052, cases=subset)), sorted(subset))
@@ -849,6 +941,7 @@ class RepresentativeOrderTests(unittest.TestCase):
 
 def real_smoke_once():
     """Explicit operator diagnostic: exactly four next cases, never full ingestion."""
+    # Load the recorded settings or metadata for this processing step.
     root = PROJECT
     path = root / "data" / "manifests" / "vitaldb_project_audit.json"
     previous_audit = json.loads(path.read_text(encoding="utf-8"))
@@ -858,10 +951,12 @@ def real_smoke_once():
     before = {int(row["case_id"]): row for row in canonical.CheckpointStore(root,"vitaldb").rows()}
     if set(before) != {3585,2305,4865} or not all(pipeline._completed(root,row,settings) for row in before.values()):
         raise RuntimeError("Smoke requires exactly the original three verified pilots; inspect changes rather than selecting additional cases.")
+    # Read the saved table and retain its named columns.
     cohort = pd.read_csv(root/"data"/"manifests"/"usable_cohort.csv")
     cases = [int(case) for case in sorted(cohort.caseid) if int(case) not in before][:4]
     print("ONE REAL SMOKE; exact next four case_ids:",cases,flush=True)
     start=time.perf_counter()
+    # Calculate the output summary and valid-sample flags for the following step.
     result=pipeline.run_pipeline(root,"FULL_DOWNLOAD",download_workers=4,max_cases=4,case_ids=cases,progress=True)
     wall=time.perf_counter()-start
     resume=pipeline.run_pipeline(root,"RESUME",resume_target="FULL_DOWNLOAD",download_workers=4,max_cases=4,case_ids=cases,progress=True)
@@ -884,6 +979,7 @@ def real_smoke_once():
              "old_audit_seconds":1.6416164003312588,"old_startup_to_dispatch_seconds":2.0272450000047684,
              "root_cause":"The full opt-in guard raised before audit/case loop; only the three original pilots existed. No six-hour full download occurred.",
              "tests_passed":31,"processing_signature":pipeline.processing_signature(settings)}
+    # Check root against the expected result.
     audit=json.loads(path.read_text(encoding="utf-8"));audit["download_speed_smoke"]=metrics
     pipeline._atomic_json(path,audit);pipeline.write_audit_markdown(root,audit)
     pipeline.assert_originals_unchanged(root)

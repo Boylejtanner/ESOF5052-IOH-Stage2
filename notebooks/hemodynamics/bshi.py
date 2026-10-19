@@ -24,6 +24,7 @@ Ablation protocol (``PROTOCOLS``): EA on the core set, EAP on the full set, and 
 ``variant_mask`` (one 0/1 entry per group in ``GROUPS``) is returned with every sample. No dataset indicator is part of the inputs unless explicitly requested.
 """
 from __future__ import annotations
+# Turn the latest complete beats into aligned image planes and numerical context.
 
 import concurrent.futures as cf
 import hashlib
@@ -87,6 +88,7 @@ def bshi_config(root_or_settings):
 
 
 def variant_mask(variant):
+    # Use the recipe mask to remove disabled groups from both inputs and their summaries.
     off = VARIANTS[variant]
     return np.array([0.0 if g in off else 1.0 for g in GROUPS], dtype=np.float32)
 
@@ -105,6 +107,7 @@ def beat_masks(valid, sqi_ecg, art_ok, ppg_ok, ptt_ecg_ppg, cfg):
 
 def index_windows(t_r, rr, valid, sqi_ecg, art_ok, ppg_ok, ptt_ecg_ppg, t_end, cfg):
     """Rows of the beat table that make each window's image, and the usable-beat counts (pure function of one case)."""
+    # Reserve output arrays and masks with explicit initial values.
     t_end = np.asarray(t_end, dtype=float)
     n = len(t_r)
     out = {k: np.zeros(len(t_end), dtype=np.int32) for k in ("beat_lo", "beat_hi", "n_beats_avail", "n_ecg_ok", "n_art_ok", "n_ppg_ok")}
@@ -129,6 +132,7 @@ def index_windows(t_r, rr, valid, sqi_ecg, art_ok, ppg_ok, ptt_ecg_ppg, t_end, c
 
 
 def _case_sig(global_sig, root, dataset, case_id, win, flags):
+    # Hash the content so later runs can detect changed inputs.
     meta = P.case_dir(root, dataset, case_id) / "beats_meta.json"
     h = hashlib.sha256(global_sig.encode())
     h.update(meta.read_bytes() if meta.exists() else b"")
@@ -145,6 +149,7 @@ def _part_sig(path):
 
 
 def _index_job(root, dataset, case_id, win, cfg, flags, part, global_sig):
+    # Attach beat counts and usability rules to each labeled window of this case.
     try:
         sig = _case_sig(global_sig, root, dataset, case_id, win, flags)
         if Path(part).exists() and _part_sig(part) == sig:
@@ -162,10 +167,12 @@ def _index_job(root, dataset, case_id, win, cfg, flags, part, global_sig):
         f["primary_eligible"] = (f.eligible_onset & ~f.label_ambiguous & (f.min_valid_frac >= 0.7 - 1e-6)).to_numpy()
         f["ecg_dead_case"], f["ppg_suspect_case"] = bool(flags[0]), bool(flags[1])
         f["beat_rule_core"] = f.has60 & (f.n_art_ok >= cfg["min_usable_beats"])
+        # Create the destination directory before writing any outputs.
         f["beat_rule_full"] = f.has60 & (f.n_ppg_ok >= cfg["min_usable_beats"])
         f["in_core"] = f.beat_rule_core & ~f.ecg_dead_case
         f["in_full"] = f.beat_rule_full & ~f.ecg_dead_case
         table = pa.Table.from_pandas(f, preserve_index=False)
+        # Write the verified values in the pipeline's Parquet table format.
         table = table.replace_schema_metadata({**(table.schema.metadata or {}), b"sig": sig.encode()})
         Path(part).parent.mkdir(parents=True, exist_ok=True)
         tmp = Path(str(part) + ".tmp")
@@ -185,6 +192,7 @@ def _meta_path(root):
 
 
 def index_signature(root):
+    # Load the recorded settings or metadata for this processing step.
     from . import case_quality as CQ, labels as L
     settings = json.loads((Path(root) / "configs" / "hemodynamics.json").read_text(encoding="utf-8"))
     cfg = {k: v for k, v in settings["bshi"].items() if k not in ("dev_subset", "workers")}
@@ -203,10 +211,12 @@ def build_window_index(root, workers=None, progress=True, force=False):
     sig = index_signature(root)
     if not force and index_path(root).exists() and _meta_path(root).exists() and json.loads(_meta_path(root).read_text())["signature"] == sig:
         return {"status": "current", "rows": json.loads(_meta_path(root).read_text())["rows"]}
+    # Summarize the records separately within each requested group.
     quality = CQ.load_case_quality(root).set_index(["dataset", "case_id"])
     labels = L.load_labels(root)
     labels["case_id"] = labels.case_id.astype(str)
     labels = labels.sort_values(["dataset", "case_id", "t_end_sec"], kind="stable")
+    # Summarize the records separately within each requested group.
     groups = list(labels.groupby(["dataset", "case_id"], sort=False))
     n_workers = max(1, min(int(workers or cfg["workers"]), (os.cpu_count() or 8) - 2))
     parts_dir = root / OUT_DIR / "index_parts"
@@ -216,9 +226,11 @@ def build_window_index(root, workers=None, progress=True, force=False):
     if progress:
         from tqdm.auto import tqdm
         bar = tqdm(total=len(groups), desc="window index", unit="case")
+    # Limit worker lifetime to this block and collect their processing results.
     with cf.ProcessPoolExecutor(max_workers=n_workers, mp_context=multiprocessing.get_context("spawn")) as pool:
         futs = []
         for (ds, cid), win in groups:
+            # Submit bounded jobs and collect completed work without losing pending tasks.
             q = quality.loc[(ds, cid)]
             futs.append(pool.submit(_index_job, str(root), ds, cid, win.reset_index(drop=True), cfg, (bool(q.ecg_dead), bool(q.ppg_suspect_case)),
                                     str(parts_dir / ds / f"{cid}.parquet"), sig))
@@ -232,13 +244,16 @@ def build_window_index(root, workers=None, progress=True, force=False):
     bar and bar.close()
     if errors:
         raise RuntimeError(f"{len(errors)} case(s) failed, first: {errors[0]}")
+    # Read the stored table required for this calculation.
     tables = [pq.read_table(parts_dir / ds / f"{cid}.parquet") for (ds, cid), _ in groups]
     frame = pa.concat_tables(tables).replace_schema_metadata(None).to_pandas()
     frame = frame.sort_values(["dataset", "case_id", "t_end_sec"], kind="stable").reset_index(drop=True)
     frame.insert(0, "window_id", np.arange(len(frame), dtype=np.int64))
+    # Write the verified values in the pipeline's Parquet table format.
     check_index(frame)
     index_path(root).parent.mkdir(parents=True, exist_ok=True)
     tmp = Path(str(index_path(root)) + ".tmp")
+    # Write the verified values in the pipeline's Parquet table format.
     frame.to_parquet(tmp, index=False, compression="zstd")
     os.replace(tmp, index_path(root))
     atomic_json(_meta_path(root), {"signature": sig, "rows": int(len(frame)), "at": utc_now(), "stats": stats, "version": BSHI_CODE_VERSION})
@@ -247,6 +262,7 @@ def build_window_index(root, workers=None, progress=True, force=False):
 
 def check_index(df):
     """Assertions every index must satisfy (raises AssertionError)."""
+    # Summarize the records separately within each requested group.
     assert df.window_id.is_unique, "window_id must be unique"
     spl = df.groupby("patient_key").split_pooled.nunique()
     assert (spl == 1).all(), f"{int((spl > 1).sum())} patient(s) appear in more than one pooled split"
@@ -283,10 +299,12 @@ def _cell(g):
 
 def index_summary(root, write=True):
     """Funnel (all windows -> primary-eligible -> 60 beats -> core -> full) by dataset and split, reconciled with the earlier ad-hoc counts."""
+    # Count each eligibility stage by hospital and patient split.
     df = load_window_index(root)
     steps = {"all_labeled": df, "primary_eligible": df[df.primary_eligible], "primary_has60": df[df.primary_eligible & df.has60],
              "primary_core": df[df.primary_eligible & df.in_core], "primary_full": df[df.primary_eligible & df.in_full]}
     out = {"version": BSHI_CODE_VERSION, "windows_total": int(len(df)), "funnel": {}, "reconciliation": {}}
+    # Process the selected records in order and retain their individual results.
     for split_col in ("split_pooled", "split_within_dataset"):
         rows = []
         for step, g in steps.items():
@@ -302,6 +320,7 @@ def index_summary(root, write=True):
     out["removed_by_dead_ecg_rule"] = {"core_windows": int(len(dead)), "full_windows": int((df.beat_rule_full & df.ecg_dead_case & df.primary_eligible).sum())}
     out["windows_without_60_beats_among_primary"] = int((df.primary_eligible & ~df.has60).sum())
     for name, key in (("core", "primary_core"), ("full", "primary_full")):
+        # Calculate the feature name and output values for the following step.
         g = steps[key]
         got = {"windows": int(len(g)), "events": int(g.y_event.sum()), "mover_windows": int((g.dataset == "mover").sum()), "mover_events": int(g.y_event[g.dataset == "mover"].sum()),
                "mover_patients": int(g.loc[g.dataset == "mover", "patient_key"].nunique()), "vitaldb_windows": int((g.dataset == "vitaldb").sum()),
@@ -372,6 +391,7 @@ def _robust_z(block, valid, clip):
 
 
 def _scalar_z(values, valid):
+    # Calculate the mean level for the following step.
     cnt = valid.sum(axis=1)
     safe = np.maximum(cnt, 1)
     v = np.where(valid, values, 0.0)
@@ -383,6 +403,7 @@ def _scalar_z(values, valid):
 
 def _assemble_case(cb, lo, ctx_labels, variant, cfg, extra=None, extra_ppg=None):
     m = len(lo)
+    # Use the recipe mask to remove disabled groups from both inputs and their summaries.
     off = VARIANTS[variant]
     idx = lo[:, None] + np.arange(N_BEATS)[None, :]
     mask = {k: cb.m[k][idx] for k in ("ecg", "art", "ppg")}
@@ -393,6 +414,7 @@ def _assemble_case(cb, lo, ctx_labels, variant, cfg, extra=None, extra_ppg=None)
         mask["ppg"] = mask["ppg"] & extra_ppg
     if "ppg" in off:
         mask["ppg"] = np.zeros_like(mask["ppg"])
+    # Exclude or flag missing values before using these measurements.
     x = np.zeros((m, 7, N_BEATS, PHASE), dtype=np.float32)
     clip = float(cfg["ecg_robust_clip"])
     e = cb.waves["ecg"][idx].astype(np.float32)
@@ -408,12 +430,14 @@ def _assemble_case(cb, lo, ctx_labels, variant, cfg, extra=None, extra_ppg=None)
         return cb.cols[name][idx].astype(np.float64)
 
     ctx = np.zeros((m, len(CONTEXT_NAMES)), dtype=np.float32)
+    # Retain the MAP baseline in context even when a waveform group is disabled.
     ctx[:, :len(LABEL_CONTEXT)] = ctx_labels
     pos = {n: i for i, n in enumerate(CONTEXT_NAMES)}
     z, _, _ = _scalar_z(scalar("map_beat"), mask["art"] & np.isfinite(scalar("map_beat")))
     x[:, 3] = z[:, :, None]
 
     def band(plane, name, k, width):
+        # Exclude or flag missing values before using these measurements.
         group_off = name in off
         v = scalar(name)
         valid = mask[MASK_OF[name]] & np.isfinite(v)
@@ -436,6 +460,7 @@ def _assemble_case(cb, lo, ctx_labels, variant, cfg, extra=None, extra_ppg=None)
     for k, name in enumerate(SQI_BANDS):
         band(6, name, k, 50)
     for name, mk, col in (("hr_mean", "ecg", "hr_bpm"), ("sbp_mean", "art", "sbp"), ("dbp_mean", "art", "dbp")):
+        # Exclude or flag missing values before using these measurements.
         v = scalar(col)
         valid = mask[mk] & np.isfinite(v)
         ctx[:, pos[name]] = np.where(valid, v, 0.0).sum(axis=1) / np.maximum(valid.sum(axis=1), 1)
@@ -451,18 +476,22 @@ def assemble(root, rows, variant="eap", cache=None, include_dataset_flag=False, 
     ``return_times`` adds ``t_rel`` (beat start relative to t0, s) and ``rr`` (s), both (N,60), which the compact store needs for gap augmentation.
     ``extra_mask`` / ``extra_mask_ppg``: optional (N,60) bool arrays (aligned with ``rows``) of beats that count as NOT captured (all signals / PPG only): exact corruption,
     applied before normalization like a real gap."""
+    # Reserve output arrays and masks with explicit initial values.
     cfg = bshi_config(root)
     cache = cache or _DEFAULT_CACHE
     rows = rows.reset_index(drop=True)
+    # Reserve output arrays and masks with explicit initial values.
     n = len(rows)
     base = variant if variant in ("eap", "ea") else ("ea" if "ppg" in VARIANTS[variant] else "eap")
     x = np.zeros((n, 7, N_BEATS, PHASE), dtype=np.float32)
     ctx = np.zeros((n, len(CONTEXT_NAMES) + (1 if include_dataset_flag else 0)), dtype=np.float32)
+    # Reserve output arrays and masks with explicit initial values.
     bmask = np.zeros((n, 3, N_BEATS), dtype=bool)
     t_rel = np.zeros((n, N_BEATS), dtype=np.float32) if return_times else None
     rr = np.zeros((n, N_BEATS), dtype=np.float32) if return_times else None
     if (rows.beat_hi - rows.beat_lo != N_BEATS).any():
         raise ValueError("every requested window must have 60 beats (has60)")
+    # Process each dataset, case id group separately to retain the intended grouping.
     for (ds, cid), g in rows.groupby(["dataset", "case_id"], sort=False):
         pos = g.index.to_numpy()
         cb = cache.get(root, ds, cid, cfg)
@@ -503,6 +532,7 @@ def context_off(off):
 def apply_variant(batch, variant):
     """Derive a variant from an assembled batch (e.g. EA from stored EAP): zero the variant's groups in the tensor and the context. Equals ``assemble(..., variant)``
     for every window whose non-PPG groups use the ART mask, i.e. all of them."""
+    # Use the recipe mask to remove disabled groups from both inputs and their summaries.
     off = VARIANTS[variant]
     out = dict(batch)
     x = np.array(batch["x"], copy=True)
@@ -526,6 +556,7 @@ def apply_variant(batch, variant):
 
 def to_planes(x):
     """Named views of a batch (N,7,60,200): the three waveform planes plus the decoded per-beat scalars (N,60) for every band."""
+    # Calculate the input array for the following step.
     x = np.asarray(x)
     planes = {name: x[:, i] for i, name in enumerate(PLANES[:4])}
     planes["scalars"] = {name: x[:, 4, :, k * 50] for k, name in enumerate(TIMING_BANDS)}
@@ -536,6 +567,7 @@ def to_planes(x):
 
 def window_batch_iter(root, index, variant="eap", batch_size=256, shuffle=True, seed=0, cases_per_chunk=4, cache=None, include_dataset_flag=False, case_subset=None):
     """Case-grouped batches: shuffle the order of cases, gather ``cases_per_chunk`` cases, shuffle their windows, yield batches. Locality keeps the loaded-case cache hot."""
+    # Summarize the records separately within each requested group.
     rng = np.random.default_rng(seed)
     keys = index.groupby(["dataset", "case_id"], sort=False).indices
     names = sorted(keys)
@@ -571,6 +603,7 @@ SCALAR_LAYERS = {"map_beat": (3, None), **{n: (4, (k * 50, 50)) for k, n in enum
 
 def encode_compact(batch):
     """Per window: planes 0-2 as float16 bytes, the (60 x 17) per-beat scalar matrix as float32 bytes, masks, context. Planes 3-6 are exact broadcasts of the scalars."""
+    # Calculate the input array and the observation count for the following step.
     x = batch["x"]
     n = len(x)
     scal = np.stack([x[:, 3, :, 0]] + [x[:, p, :, s[0]] for name, (p, s) in SCALAR_LAYERS.items() if name != "map_beat"], axis=2).astype(np.float32)
@@ -582,10 +615,12 @@ def encode_compact(batch):
 
 def decode_compact(rows):
     """Inverse of ``encode_compact`` for a dict of lists/arrays (e.g. a pandas frame converted with to_dict('list')): returns the batch dict (planes 0-2 are float16-precise)."""
+    # Decode the stored bytes with the expected array type and shape.
     n = len(rows["window_id"])
     x = np.zeros((n, 7, N_BEATS, PHASE), dtype=np.float32)
     ctx = np.stack([np.frombuffer(b, dtype=np.float32) for b in rows["context_f32"]])
     for i in range(n):
+        # Decode the stored bytes with the expected array type and shape.
         x[i, :3] = np.frombuffer(rows["waveforms_f16"][i], dtype=np.float16).reshape(3, N_BEATS, PHASE)
         scal = np.frombuffer(rows["scalars_f32"][i], dtype=np.float32).reshape(N_BEATS, len(SCALAR_ORDER))
         x[i, 3] = scal[:, 0:1]

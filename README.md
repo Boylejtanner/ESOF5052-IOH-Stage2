@@ -1,65 +1,52 @@
 # Quality-Aware Intraoperative Hypotension Forecasting
 
-**ESOF5052: Big Data Machine Learning | Stage 2 | Tanner Boyle | Lakehead University**
+**Tanner Boyle | ESOF5052 | Lakehead University**
 
-This repository contains the Stage 2 implementation and evidence for forecasting intraoperative hypotension from VitalDB and MOVER. The project combines patient-level cohort construction, causal physiological feature extraction, exploratory analysis, and a Beat-Synchronous Hemodynamic Image (BSHI) training framework.
+This project predicts low blood pressure during surgery using ECG, arterial pressure (ART), and optional photoplethysmography (PPG). It uses the VitalDB and MOVER datasets to study whether a model learns useful physiological changes rather than differences between hospitals.
 
-## Start here
+## How it works
 
-| Grading item | Location |
+1. Select eligible surgeries and keep each patient's recordings in the same data split.
+2. Resample waveforms to 100 Hz, preserve missing intervals, and create future-MAP labels.
+3. Detect beats, measure waveform shape and signal quality, and build beat-synchronous images.
+4. Compare feature sets and train models to predict hypotension risk, pressure drop, and burden.
+5. Compare pooled learning with training on VitalDB and evaluating on MOVER.
+
+## Completed work
+
+Cohort selection, signal processing, labels, BSHI construction, EDA, feature selection, optimizer comparisons, and short neural input-recipe experiments are implemented. Spark processing and replay utilities are also included.
+
+The recorded neural experiments use the existing seven-plane image and 25-value context. **The newly selected eight-parameter context has not yet been integrated into or trained with BSHI.** Its next-stage specification is in [selected_features.json](configs/selected_features.json).
+
+The selected additions describe ECG beat-interval variability and ART pressure slope, pulse decay, short/long variability, pulse-pressure variation, and recent pressure drift. The planned input contains five MAP values, eight selected measurements, and eight availability flags. AdamW with learning rate 0.0011, beta2 0.95, batch size 128, and cosine decay is the selected optimizer configuration.
+
+## Files
+
+| Location | Contents |
 |---|---|
-| IEEE report with embedded LaTeX figures and bibliography | [report/main.tex](report/main.tex) |
-| Implementation overview and module responsibilities | [docs/CODE_GUIDE.md](docs/CODE_GUIDE.md) |
-| Installation and reproducible execution order | [docs/REPRODUCING.md](docs/REPRODUCING.md) |
-| Dataset access, cohort rules, and excluded files | [docs/DATA_ACCESS.md](docs/DATA_ACCESS.md) |
-| Measured EDA, optimizer, and neural trial results | [docs/RESULTS.md](docs/RESULTS.md) |
-| GitHub publication and grader access | [docs/SUBMISSION.md](docs/SUBMISSION.md) |
+| [notebooks/](notebooks/) | Cohort, processing, EDA, and training workflows |
+| [notebooks/hemodynamics/](notebooks/hemodynamics/) | Reusable Python modules and tests |
+| [configs/](configs/) | Processing settings and selected features |
+| [results/](results/) | Saved aggregate results |
+| [report/main.tex](report/main.tex) | Full methodology, results, references, and embedded figures |
+| [docs/CODE_GUIDE.md](docs/CODE_GUIDE.md) | Short guide to the code |
 
-## Stage 2 scope
+## Run the project
 
-Implemented and evaluated:
-- MOVER archive discovery, patient linkage, window-level eligibility, and resumable ingestion.
-- VitalDB modality selection, waveform retrieval, resampling, and quality checks.
-- Patient-disjoint splits, numeric-MAP forecasting labels, beat extraction, morphology, and signal-quality indices.
-- BSHI construction, input masking, model-side preprocessing, multi-task training, checkpointing, and evaluation utilities.
-- Cohort EDA, baseline comparisons, single-signal feature screening, and the multiscale-context comparison.
-- Optimizer selection and six-epoch BSHI input-recipe experiments using the implemented seven-plane image and 25-value context.
-- Spark aggregation, feature-extraction, streaming-replay, and throughput utilities.
+Use Python 3.12. From the repository root in PowerShell:
 
-**The eight newly selected parameters have not yet been integrated into or trained with the BSHI network.** Their selection and the planned 21-value context are recorded in [configs/selected_features.json](configs/selected_features.json). The existing neural trial results must not be interpreted as results from that new input configuration. The report's training methodology specifies the next model integration.
-
-## Selected design
-
-The primary waveform inputs are ECG and ART. PPG is a matched ablation rather than a requirement for cohort inclusion. Within-signal morphology and per-signal quality are retained; cross-signal delays are excluded from the selected primary design.
-
-The eight engineered parameters are:
-1. ECG SDNN over 300 seconds.
-2. Native ART mean-pressure slope over 60 seconds.
-3. Median minimum post-peak ART pressure derivative over 60 seconds.
-4. Native ART mean-pressure standard deviation over 300 seconds.
-5. Native ART mean-pressure standard deviation over 60 seconds.
-6. Pulse-pressure coefficient of variation over 300 seconds.
-7. Recent minus five-minute pulse-mean-pressure median.
-8. Native ART mean-pressure slope over 300 seconds.
-
-Five MAP-baseline values plus these eight values and eight availability indicators form the planned 21-value context. The selected optimizer is AdamW with beta2 0.95, peak learning rate 0.0011, weight decay 0.01, batch size 128, and cosine decay with one warm-up epoch.
-
-## Repository structure
-
-```text
-configs/                  Processing settings and selected feature specification
-notebooks/                Ordered cohort, EDA, extraction, and training workflows
-  hemodynamics/           Reusable processing/model modules and unit tests
-environment/              Pinned analysis, training, CUDA, and Spark dependencies
-scripts/                  Data-free result review, checks, and Spark launch scripts
-results/                  Selected aggregate tables supporting the report
-report/main.tex           Self-contained IEEE source with 14 vector figures
-docs/                     Code guide, reproduction, results, and submission guidance
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r environment\requirements-training.txt
+.\.venv\Scripts\python.exe scripts\review_results.py
 ```
 
-Raw archives, clinical reference files, patient linkage, waveform/beat stores, patient-level predictions, trained weights, logs, machine settings, and development backups are deliberately excluded. The same dataset-relative directory layout is used when authorized data are provisioned locally.
+The result viewer needs no clinical data. To run the synthetic checks:
 
+```powershell
+.\.venv\Scripts\python.exe scripts\run_submission_checks.py
+```
 
-## Scientific and access boundaries
+For the data-processing notebooks, obtain the datasets under their access terms and follow [REPRODUCING.md](docs/REPRODUCING.md). Raw data, patient identifiers, weights, logs, and notebook outputs are excluded from Git. Read [DATA_ACCESS.md](docs/DATA_ACCESS.md) for the expected local files.
 
-Patients, not overlapping windows, are the split and uncertainty unit. Parameter selection is based on development data; historical test evaluations are identified separately. MOVER access requires the repository provider's authorization. Neither a private GitHub repository nor a course submission permits redistribution of restricted data. The implementation is research software, not a clinical decision-support device.
+Upload [report/main.tex](report/main.tex) as `main.tex` to compile the report in Overleaf. All figures and bibliography entries are embedded; no external images are needed. This is retrospective research software, not a clinical decision-support device.

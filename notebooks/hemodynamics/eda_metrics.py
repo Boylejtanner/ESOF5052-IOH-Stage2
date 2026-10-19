@@ -4,6 +4,7 @@
 ladder, lead time, dataset shift; the slow one), readiness, summary.
 """
 from __future__ import annotations
+# Summarize cohort, label, quality, and model behavior for the report.
 
 import hashlib
 import importlib.metadata as md
@@ -30,6 +31,7 @@ FIG_DPI = 150
 
 
 def _paths(root):
+    # Create the destination directory before writing any outputs.
     root = Path(root)
     (root / "results" / "eda").mkdir(parents=True, exist_ok=True)
     (root / "figures" / "eda").mkdir(parents=True, exist_ok=True)
@@ -37,12 +39,14 @@ def _paths(root):
 
 
 def _table(root, name, frame):
+    # Save the comparison table so the same measurements can be inspected later.
     d, _ = _paths(root)
     frame.to_csv(d / f"{name}.csv", index=False)
     return f"results/eda/{name}.csv"
 
 
 def _figure(root, name, fig):
+    # Save the labeled figure for the analysis report.
     import matplotlib.pyplot as plt
     from . import figstyle
     figstyle.capitalize_figure(fig, panel_letters=True)   # capital first letters, proper symbols, panel letters (a), (b), ...
@@ -70,6 +74,7 @@ def _read_json(root, rel):
 
 
 def _stage_signature(root, name, extra=""):
+    # Store the settings and results as JSON for later inspection.
     s = _settings(root)
     return hashlib.sha256(json.dumps({"v": EDA_VERSION, "stage": name, "index": S.index_signature(root), "eda": s["eda"], "bshi": {k: v for k, v in s["bshi"].items() if k != "workers"},
                                       "extra": extra}, sort_keys=True).encode()).hexdigest()
@@ -97,13 +102,16 @@ def _window_index(root, columns=None):
 
 
 def stage_cohort(root):
+    # Read the stored table required for this calculation.
     root = Path(root)
     idx = _unified(root)
     summ = _read_json(root, "results/bshi_index_summary.json")
+    # Summarize the records separately within each requested group.
     fin = _read_json(root, "results/mover_fast_finalize.json")
     audit = _read_json(root, "data/manifests/vitaldb_project_audit.json")
     mover_all = pd.read_parquet(root / "data" / "manifests" / "mover_all_cases.parquet", columns=["case_id", "has_ppg_observed", "has_art", "eligibility_status", "exclusion_reason"])
     stats = pd.read_parquet(root / "data" / "manifests" / "mover_case_window_stats.parquet", columns=["case_id", "final_usable"])
+    # Summarize the records separately within each requested group.
     win = pd.read_parquet(root / S.OUT_DIR / S.INDEX_NAME, columns=["dataset", "case_id", "patient_key", "primary_eligible", "in_core", "in_full"])
     cases_with = {k: win[win[k] & win.primary_eligible].groupby("dataset").agg(cases=("case_id", "nunique"), patients=("patient_key", "nunique")) for k in ("in_core", "in_full")}
     rows = [
@@ -121,6 +129,7 @@ def stage_cohort(root):
         ("vitaldb", 5, "with at least one BSHI full window", int(cases_with["in_full"].loc["vitaldb", "cases"]), int(cases_with["in_full"].loc["vitaldb", "patients"]))]
     for r in fin["window_eligibility"]["funnel"]:
         rows.append(("mover", 10, f"ladder {r['rung']}: theta {r['theta']}, >= {r['min_ready_span_min']} ready min", int(r["cases"]), int(r["patients"])))
+    # Collect the per-record values into a table for comparison.
     funnel = pd.DataFrame(rows, columns=["dataset", "step", "description", "cases", "patients"])
     s = _settings(root)
     wr, vq = s["window_rule"], s["vitaldb"]["quality_thresholds"]
@@ -147,13 +156,16 @@ def stage_cohort(root):
     for col in ("split_pooled", "split_within_dataset"):
         m = sp.split_type == col
         sp.loc[m, "patient_share_of_dataset_pct"] = sp[m].groupby("dataset").patients.transform(lambda x: 100 * x / x.sum()).round(2)
+    # Summarize the records separately within each requested group.
     pooled = idx.groupby("split_pooled").agg(patients=("patient_key", "nunique"), cases=("case_id", "size"))
     pooled["patient_share_pct"] = (100 * pooled.patients / pooled.patients.sum()).round(2)
     pm = idx.groupby(["split_pooled", "dataset"]).patient_key.nunique().unstack(fill_value=0)
     pooled["mover_patient_share_pct"] = (100 * pm["mover"] / (pm["mover"] + pm["vitaldb"])).round(2)
+    # Summarize the records separately within each requested group.
     pooled = pooled.reset_index()
     win_split = summ["funnel"]["split_pooled"]
     wtab = pd.DataFrame([r for r in win_split if r["dataset"] != "all" and r["split"] != "all" and r["step"] in ("primary_eligible", "primary_core", "primary_full")])
+    # Summarize the records separately within each requested group.
     leak = int((idx.groupby("patient_key").split_pooled.nunique() > 1).sum()) + int((idx.groupby("patient_key").split_within_dataset.nunique() > 1).sum())
     out = [_table(root, "table_cohort_funnel", funnel), _table(root, "table_selection_criteria", criteria), _table(root, "table_split_cases_patients", sp),
            _table(root, "table_split_pooled_summary", pooled), _table(root, "table_split_windows", wtab),
@@ -171,13 +183,16 @@ def _gap_profile(root, per_dataset=24, seed=5052):
     rows, runs = [], {"mover": [], "vitaldb": []}
     for ds, g in idx.groupby("dataset"):
         for _, r in g.iloc[rng.choice(len(g), min(per_dataset, len(g)), replace=False)].iterrows():
+            # Exclude or flag missing values before using these measurements.
             t = pq.read_table(root / r.waveform_path, columns=["time_sec", "ART", "ECG", "PPG"]).to_pandas()
             n = int(round((t.time_sec.iloc[-1] - t.time_sec.iloc[0]) * 100)) + 1
             pos = np.rint((t.time_sec.to_numpy() - t.time_sec.iloc[0]) * 100).astype(np.int64)
+            # Exclude or flag missing values before using these measurements.
             ok = np.zeros(n, dtype=bool)
             ok[pos] = np.isfinite(t[["ART", "ECG", "PPG"]].to_numpy()).all(axis=1)
             edges = np.flatnonzero(np.diff(np.r_[False, ok, False].astype(np.int8)))
             starts, ends = edges[0::2], edges[1::2]
+            # Summarize the observed levels and variability for this set of measurements.
             valid_runs = (ends - starts) / 100.0
             gaps = (starts[1:] - ends[:-1]) / 100.0
             runs[ds].append(valid_runs)
@@ -191,22 +206,27 @@ def _gap_profile(root, per_dataset=24, seed=5052):
 
 
 def stage_signal(root):
+    # Join related tables by dataset, case id to keep measurements aligned.
     root = Path(root)
     idx = _unified(root)
     man = pd.read_parquet(root / "data" / "manifests" / "beats_manifest.parquet").astype({"case_id": str}).merge(
         CQ.load_case_quality(root)[["dataset", "case_id", "ppg_late_share", "ppg_suspect_case", "ecg_dead", "ppg_dead", "bshi_core_possible", "bshi_full_possible"]], on=["dataset", "case_id"])
+    # Summarize the records separately within each requested group.
     labels = _window_index(root, ["dataset", "min_valid_frac"])
     cov = idx.groupby("dataset").agg(cases=("case_id", "size"), waveform_hours=("duration_sec", lambda x: x.sum() / 3600), ready_hours_theta50=("ready_span_min_theta_50", lambda x: x.sum() / 60)).round(1)
     cov["ready_share_pct"] = (100 * cov.ready_hours_theta50 / cov.waveform_hours).round(1)
+    # Summarize the records separately within each requested group.
     lw = labels.groupby("dataset").min_valid_frac.agg(labeled_windows="size", mean_min_valid_frac="mean", share_ge_0_7=lambda x: (x >= 0.7).mean()).round(3)
     cov = cov.join(lw).reset_index()
     gaps, runs = _gap_profile(root)
+    # Summarize the records separately within each requested group.
     bq = man.groupby("dataset").agg(cases=("case_id", "size"), beats=("n_beats", "sum"), valid_beats=("n_valid", "sum"), art_ok_case_mean=("art_ok_frac", "mean"), ppg_ok_case_mean=("ppg_ok_frac", "mean"),
                                     sqi_ecg_median=("sqi_ecg_median", "median"), sqi_art_median=("sqi_art_median", "median"), sqi_ppg_median=("sqi_ppg_median", "median"), hr_median=("hr_median", "median"),
                                     ptt_ecg_art_median=("ptt_ecg_art_median", "median"), ptt_ecg_ppg_median=("ptt_ecg_ppg_median", "median"),
                                     ptt_ecg_ppg_p10=("ptt_ecg_ppg_median", lambda x: x.quantile(.1)), ptt_ecg_ppg_p90=("ptt_ecg_ppg_median", lambda x: x.quantile(.9)),
                                     ppg_late_share_mean=("ppg_late_share", "mean"), cases_ppg_suspect=("ppg_suspect_case", "sum"), cases_ecg_dead=("ecg_dead", "sum"), cases_ppg_dead=("ppg_dead", "sum"),
                                     cases_core_possible=("bshi_core_possible", "sum"), cases_full_possible=("bshi_full_possible", "sum")).reset_index()
+    # Collect the per-record values into a table for comparison.
     bq["valid_beat_pct"] = (100 * bq.valid_beats / bq.beats).round(2)
     qc = _read_json(root, "results/beats_qc.json")
     out = [_table(root, "table_signal_coverage", cov), _table(root, "table_gap_profile", gaps), _table(root, "table_beat_quality", bq.round(4)),
@@ -215,6 +235,7 @@ def stage_signal(root):
     edges = np.logspace(-2, 4, 61)
     gap_rows = []
     for ds in ("vitaldb", "mover"):
+        # Count observations in the selected bins to describe the distribution.
         v = np.concatenate(runs[ds]) if runs[ds] else np.array([1.0])
         dens, _ = np.histogram(np.clip(v, 0.01, 1e5), bins=edges, density=True)
         gap_rows += [{"dataset": ds, "bin_lo_s": float(lo), "bin_hi_s": float(hi), "density_per_s": float(d)} for lo, hi, d in zip(edges[:-1], edges[1:], dens)]
@@ -239,6 +260,7 @@ def stage_labels(root):
     for ds, g in p.groupby("dataset"):
         prev.append({"dataset": ds, "split": "all", "windows": int(len(g)), "event_windows": int(g.y.sum()), "prevalence_pct": round(100 * g.y.mean(), 2), "patients": int(g.patient_key.nunique()),
                      "patients_with_event": int(g[g.y].patient_key.nunique())})
+    # Summarize the records separately within each requested group.
     prev.append({"dataset": "all", "split": "all", "windows": int(len(p)), "event_windows": int(p.y.sum()), "prevalence_pct": round(100 * p.y.mean(), 2), "patients": int(p.patient_key.nunique()),
                  "patients_with_event": int(p[p.y].patient_key.nunique())})
     ev = p[p.y].assign(onset=lambda d: (d.t_end_sec + d.time_to_event_sec).round(0))
@@ -291,6 +313,7 @@ def stage_models(root, progress=True):
         m, ci = e["model"], e["model_ci95"]
         brows.append({"setting": name, "windows_set": "all primary windows (baseline A, as saved)", "test_patients": e["test_patients"], "test_windows": e["test_windows"], "prevalence_pct": round(100 * e["prevalence"], 2),
                       "auroc": m["auroc"], "auroc_lo": ci["auroc"][0], "auroc_hi": ci["auroc"][1], "auprc": m["auprc"], "auprc_lo": ci["auprc"][0], "auprc_hi": ci["auprc"][1], "brier": m["brier"], "cal_slope": m["cal_slope"]})
+    # Collect the per-record values into a table for comparison.
     dead = _read_json(root, "results/dead_ecg_decision.json")["evidence"]["baseline_A_style_auroc"]
     dtab = pd.DataFrame([{"subset": k, **{c: v.get(c) for c in ("windows", "events", "patients", "prevalence", "auroc", "auprc")}, "auroc_lo": (v.get("auroc_ci95") or [None, None])[0],
                           "auroc_hi": (v.get("auroc_ci95") or [None, None])[1]} for k, v in dead.items() if isinstance(v, dict)])
@@ -309,6 +332,7 @@ def stage_models(root, progress=True):
 
 def stage_shift(root):
     """Domain classifier per feature family and standardized mean differences (cheap: about 10 s)."""
+    # Calculate project paths and output values for the following step.
     root = Path(root)
     s = _settings(root)
     domain, smd = M.dataset_shift(root, seed=int(s["eda"]["seed"]), reps=min(int(s["eda"]["bootstrap_reps"]), 100))
@@ -340,6 +364,7 @@ def _fig_cohort(root, plt):
     funnel = _csv(root, "table_cohort_funnel")
     fig, axes = plt.subplots(1, 2, figsize=(15, 4.6))
     for ax, ds in zip(axes, ("vitaldb", "mover")):
+        # Plot the observed results, including uncertainty where it is available.
         f = funnel[(funnel.dataset == ds) & (funnel.step < 10)]
         ax.barh(range(len(f)), f.cases, color=DS_COLOR[ds])
         ax.set_yticks(range(len(f)))
@@ -358,6 +383,7 @@ def _fig_split_windows(root, plt):
     wtab = _csv(root, "table_split_windows")
     fig, axes = plt.subplots(1, 3, figsize=(13, 3.8))
     for ax, step, ttl in zip(axes, ("primary_eligible", "primary_core", "primary_full"), ("eligible windows", "BSHI core windows (ECG+ART)", "BSHI full windows (ECG+ART+PPG)")):
+        # Label the panel with the measurement names and their units.
         t = wtab[wtab.step == step].pivot(index="split", columns="dataset", values="windows").reindex(["train", "validation", "test"])
         t[["mover", "vitaldb"]].plot(kind="bar", ax=ax, color=[DS_COLOR["mover"], DS_COLOR["vitaldb"]], logy=True, rot=0)
         ax.legend(title="dataset", fontsize=7)
@@ -367,6 +393,7 @@ def _fig_split_windows(root, plt):
 
 
 def _fig_signal_quality(root, plt):
+    # Create the plotting panels for this comparison.
     man = _csv(root, "table_case_signal_quality")
     fig, axes = plt.subplots(2, 4, figsize=(16, 6.4))
     panels = (("hr_median", "heart rate (beats/min)"), ("ptt_ecg_art_median", "ECG->ART delay (s)"), ("ptt_ecg_ppg_median", "ECG->PPG delay (s)"),
@@ -396,9 +423,11 @@ def _fig_gap_profile(root, plt):
 
 
 def _fig_labels(root, plt):
+    # Label the panel with the measurement names and their units.
     prev, h = _csv(root, "table_labels_prevalence"), _csv(root, "curve_label_hist")
     fig, axes = plt.subplots(1, 4, figsize=(17, 4))
     pv = prev[(prev.split != "all") & (prev.dataset != "all")]
+    # Label the panel with the measurement names and their units.
     pv.pivot(index="split", columns="dataset", values="prevalence_pct").reindex(["train", "validation", "test"])[["mover", "vitaldb"]].plot(
         kind="bar", ax=axes[0], color=[DS_COLOR["mover"], DS_COLOR["vitaldb"]], rot=0)
     axes[0].legend(title="dataset", fontsize=7)
@@ -419,6 +448,7 @@ def _fig_labels(root, plt):
 
 
 def _fig_ladder(root, plt):
+    # Create the plotting panels for this comparison.
     t = _csv(root, "table_baseline_ladder_all")
     full = t[t.set == "full"]
     fig, axes = plt.subplots(1, 3, figsize=(15, 5.2), sharey=True)
@@ -443,6 +473,7 @@ def _fig_roc_cal_lead(root, plt):
     fig, axes = plt.subplots(1, 3, figsize=(16, 4.4))
     for setting, ls in (("pooled_test", "-"), ("E3x vitaldb_train->all_mover", "--")):
         for (rung, learner), c in ((("G0", "lr"), "#888"), (("G4", "hgb"), "#c0392b")):
+            # Plot the observed results, including uncertainty where it is available.
             r = roc[(roc.setting == setting) & (roc.rung == rung) & (roc.learner == learner)]
             axes[0].plot(r.fpr, r.tpr, ls, color=c, label=f"{SETTING_SHORT[setting]} {rung}-{learner}")
             q = cal[(cal.setting == setting) & (cal.rung == rung) & (cal.learner == learner)]
@@ -457,6 +488,7 @@ def _fig_roc_cal_lead(root, plt):
     bins = list(dict.fromkeys(lt.lead_bin_sec))
     for (rung, learner), g in lt.groupby(["rung", "learner"]):
         axes[2].errorbar(range(len(g)), g.auroc, yerr=[g.auroc - g.auroc_lo, g.auroc_hi - g.auroc], marker="o", capsize=3, label=f"{rung}-{learner}")
+    # Label the panel with the measurement names and their units.
     axes[2].set_xticks(range(len(bins)))
     axes[2].set_xticklabels(bins)
     axes[2].legend(fontsize=7)
@@ -466,20 +498,25 @@ def _fig_roc_cal_lead(root, plt):
 
 
 def _fig_domain(root, plt):
+    # Plot the observed results, including uncertainty where it is available.
     domain, smd = _csv(root, "table_domain_shift"), _csv(root, "table_smd")
     fig, axes = plt.subplots(1, 2, figsize=(14, 4.4))
     axes[0].barh(range(len(domain)), domain.domain_auroc, xerr=[domain.domain_auroc - domain.auroc_lo, domain.auroc_hi - domain.domain_auroc], color="#7d5ba6")
+    # Label the panel with the measurement names and their units.
     axes[0].set_yticks(range(len(domain)))
     axes[0].set_yticklabels([_wrap(s.strip(), 44) for s in domain.feature_family], fontsize=7)
     axes[0].invert_yaxis()
     axes[0].axvline(0.5, color="k", lw=0.8)
+    # Label the panel with the measurement names and their units.
     axes[0].set_xlim(0.4, 1.0)
     finish_axes(axes[0], "domain-classifier AUROC (0.5 = datasets indistinguishable)", "feature family", "can a classifier tell the datasets apart?")
     top = smd.head(12)
+    # Label the panel with the measurement names and their units.
     axes[1].barh(range(len(top)), top.smd, color=["#d8743b" if v > 0 else "#3b7dd8" for v in top.smd])
     axes[1].set_yticks(range(len(top)))
     axes[1].set_yticklabels(top.feature, fontsize=7)
     axes[1].invert_yaxis()
+    # Label the panel with the measurement names and their units.
     finish_axes(axes[1], "standardized mean difference, MOVER minus VitalDB (SD units)", "feature", "largest feature differences (top 12)")
     fig.tight_layout()
     return _figure(root, "fig_domain_shift", fig)
@@ -506,6 +543,7 @@ def score_event_power(events, patients_with_event, min_events, min_patients):
 
 
 def stage_readiness(root):
+    # Combine coverage, patient separation, and available-event checks into the readiness summary.
     root = Path(root)
     s = _settings(root)
     eda = s["eda"]
@@ -527,6 +565,7 @@ def stage_readiness(root):
     for sp, target in (("train", 70), ("validation", 15), ("test", 15)):
         add(f"pooled {sp} patient share within 3 points of {target}%", round(float(shares[sp]), 2), f"{target} +- 3", abs(shares[sp] - target) <= 3)
     for ds, g in idx.groupby("dataset"):
+        # Summarize the records separately within each requested group.
         sh = 100 * g.groupby("split_within_dataset").patient_key.nunique() / g.patient_key.nunique()
         add(f"{ds} within-dataset split shares within 3 points of 70/15/15", {k: round(float(v), 1) for k, v in sh.items()}, "70/15/15 +- 3",
             all(abs(sh[k] - t) <= 3 for k, t in (("train", 70), ("validation", 15), ("test", 15))))
@@ -543,6 +582,7 @@ def stage_readiness(root):
         c, f = 100 * g.in_core.mean(), 100 * g.in_full.mean()
         add(f"mask coverage, {ds}: core windows / eligible windows", round(float(c), 1), ">= 50%", c >= 50)
         add(f"mask coverage, {ds}: full windows / eligible windows", round(float(f), 1), ">= 30%", f >= 30)
+    # Load the recorded settings or metadata for this processing step.
     add("dead-ECG cases excluded from BSHI sets", int((w.in_core & w.ecg_dead_case).sum()), "0", int((w.in_core & w.ecg_dead_case).sum()) == 0)
     tc = _read_json(root, "results/bshi_tensor_checks.json")
     add("tensor sanity on real windows (NaN, constant planes, clip, PPG-free variant)", tc["checks_pass"], "all True", all(tc["checks_pass"].values()))
@@ -560,10 +600,12 @@ def stage_readiness(root):
             pk[name] = md.version(name)
         except md.PackageNotFoundError:
             pk[name] = None
+    # Collect the per-record values into a table for comparison.
     repro = {"python": sys.version.split()[0], "platform": platform.platform(), "packages": pk, "seeds": {"random_seed": s["random_seed"], "patient_split_seed": s["patient_split_seed"], "eda_seed": eda["seed"],
                                                                                                          "dev_subset_seed": s["bshi"]["dev_subset"]["seed"]},
              "hashes": {"dataset_index": tag["index_content_sha256"][:16], "label_rule": L.label_rule_sha256(L.load_label_rule(s))[:16], "beats_config": M.P.config_hash(M.P.load_beats_config(s))[:16],
                         "bshi_index_signature": meta["signature"][:16]}}
+    # Collect the per-record values into a table for comparison.
     add("reproducibility record (seeds, config hashes, package versions)", "recorded in dataset_readiness.json", "present", all(v is not None for v in pk.values()) and all(repro["seeds"].values()))
     frame = pd.DataFrame(checks)
     _table(root, "table_readiness", frame)
@@ -578,13 +620,16 @@ def _fmt(v):
 
 
 def write_summary(root, heads):
+    # Read the saved table and retain its named columns.
     root = Path(root)
     c, sg, lb, md_, sh, rd = heads["cohort"], heads["signal"], heads["labels"], heads["models"], heads["shift"], heads["readiness"]
     a = md_["auroc_full_set"]
+    # Read the saved table and retain its named columns.
     funnel = pd.read_csv(root / "results" / "eda" / "table_cohort_funnel.csv")
     f = lambda ds, step: funnel[(funnel.dataset == ds) & (funnel.step == step)].iloc[0]
     summ = _read_json(root, "results/bshi_index_summary.json")["reconciliation"]
     gaps = {r["dataset"]: r for r in sg["gap_profile"]}
+    # Read the saved table and retain its named columns.
     dead = _read_json(root, "results/dead_ecg_decision.json")["evidence"]
     base = {r["setting"]: r for r in pd.read_csv(root / "results" / "eda" / "table_baseline_A_saved.csv").to_dict("records")}
     run = lambda ds: (f"median uninterrupted run {gaps[ds]['median_valid_run_s'] / 3600:.1f} h ({gaps[ds]['valid_fraction_median']:.2f} of samples valid)" if gaps[ds]["median_valid_run_s"] > 600

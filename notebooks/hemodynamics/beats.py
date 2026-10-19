@@ -19,6 +19,7 @@ Method
   and cross-signal consistency.
 """
 from __future__ import annotations
+# Detect cardiac landmarks and describe pulse shape and signal quality.
 
 from functools import lru_cache
 import warnings
@@ -49,6 +50,7 @@ def _sos(kind, fs, lo, hi):
 
 
 def finite_segments(x, min_len):
+    # Exclude or flag missing values before using these measurements.
     f = np.isfinite(x)
     d = np.diff(np.concatenate(([0], f.astype(np.int8), [0])))
     s, e = np.flatnonzero(d == 1), np.flatnonzero(d == -1)
@@ -119,6 +121,7 @@ def orientation(ecg, ppg, fs=FS):
 # ECG
 def detect_r_peaks(ecg, fs=FS, sign=None):
     """Return (r_idx float sample positions, confidence in [0,1], polarity +1/-1)."""
+    # Detect peaks within continuous ECG segments and avoid joining across capture gaps.
     starts, ends = finite_segments(ecg, int(MIN_SEG_SEC * fs))
     sos = _sos("band", fs, 5.0, 25.0)
     filt = []
@@ -131,6 +134,7 @@ def detect_r_peaks(ecg, fs=FS, sign=None):
         sign = ecg_orientation(ecg, fs)
     idx, conf = [], []
     for a, f in filt:
+        # Measure the signal derivative to locate its rapid changes.
         g = sign * f
         d = np.gradient(g)
         env = uniform_filter1d(d * d, size=max(3, int(0.08 * fs)), mode="nearest")
@@ -138,6 +142,7 @@ def detect_r_peaks(ecg, fs=FS, sign=None):
             continue
         peaks, _ = find_peaks(env, height=_block_threshold(env, fs), distance=int(0.28 * fs))
         last = -10 ** 9
+        # Process the selected records in order and retain their individual results.
         for p in peaks:
             lo, hi = max(0, p - int(0.08 * fs)), min(len(g), p + int(0.05 * fs) + 1)
             r = lo + int(np.argmax(g[lo:hi]))
@@ -145,6 +150,7 @@ def detect_r_peaks(ecg, fs=FS, sign=None):
                 continue
             last = r
             w0, w1 = max(0, r - int(2 * fs)), min(len(g), r + int(2 * fs))
+            # Use the local median absolute deviation to judge a peak against nearby noise.
             noise = 1.4826 * np.median(np.abs(g[w0:w1] - np.median(g[w0:w1]))) + 1e-9
             amp = g[r] - np.median(g[max(0, r - int(0.5 * fs)):min(len(g), r + int(0.5 * fs))])
             c = 1.0 - np.exp(-max(amp, 0.0) / (6.0 * noise))
@@ -164,6 +170,7 @@ def detect_pulses(x, fs=FS, kind="art", polarity=1.0):
     never the amplitude of a whole contiguous segment: hours-long VitalDB segments include slow pressure swings that would otherwise
     reject genuine small pulses.
     """
+    # Find pulse landmarks using local amplitude and noise rather than whole-case scaling.
     empty = {k: np.array([]) for k in ("foot", "peak", "top", "base", "dpdt")}
     if int(np.isfinite(x).sum()) < int(MIN_SEG_SEC * fs):
         return empty
@@ -172,9 +179,11 @@ def detect_pulses(x, fs=FS, kind="art", polarity=1.0):
     starts, ends = finite_segments(x, int(MIN_SEG_SEC * fs))
     win, smooth = max(3, int(2.0 * fs)), max(3, int(4.0 * fs))
     for a, b in zip(starts, ends):
+        # Filter the continuous signal before estimating its peak positions.
         raw = polarity * x[a:b].astype(np.float64)
         y = sosfiltfilt(sos, raw - np.median(raw))
         resid = raw - np.median(raw) - y
+        # Use the local median absolute deviation to judge a peak against nearby noise.
         noise = 1.4826 * np.median(np.abs(resid - np.median(resid))) + 1e-9
         min_amp = 3.0 if kind == "art" else 6.0 * noise
         local = uniform_filter1d(maximum_filter1d(y, win) - minimum_filter1d(y, win), smooth, mode="nearest")
@@ -182,6 +191,7 @@ def detect_pulses(x, fs=FS, kind="art", polarity=1.0):
         keep = (props["prominences"] >= 0.4 * local[peaks]) & (local[peaks] >= min_amp)
         peaks = peaks[keep]
         d = np.gradient(y) * fs
+        # Process the selected records in order and retain their individual results.
         for k, P in enumerate(peaks):
             w0 = peaks[k - 1] if k > 0 else max(0, P - int(0.7 * fs))
             if P - w0 < 5:
@@ -193,6 +203,7 @@ def detect_pulses(x, fs=FS, kind="art", polarity=1.0):
             if d[u] <= 0 or y[P] - y[m] < min_amp * 0.5:
                 continue
             u_f = _parabolic(d, u)
+            # Project the steepest upstroke back to the pulse baseline to estimate its foot.
             foot = float(np.clip(u_f - (y[u] - y[m]) * fs / d[u], m, u_f))
             rows["foot"].append(a + foot)
             rows["peak"].append(a + P)
@@ -207,6 +218,7 @@ def detect_pulses(x, fs=FS, kind="art", polarity=1.0):
 def _delay_support(r_s, foot_s, taus, tol):
     out = np.empty(len(taus), dtype=int)
     for i, tau in enumerate(taus):
+        # Locate the requested interval within the sorted sample times.
         target = r_s + tau
         j = np.searchsorted(foot_s, target - tol)
         jj = np.minimum(j, len(foot_s) - 1)
@@ -245,6 +257,7 @@ def associate(r_s, foot_s, tol=0.12, block_sec=300.0, min_delay=0.04):
     Returns (index of the foot or -1, delay used). An R without a foot within +-tol of its expected arrival is MASKED, never forced;
     a foot serves at most one R.
     """
+    # Match each ECG beat to the nearest plausible pulse without reusing a pulse.
     out = np.full(len(r_s), -1)
     delay = np.full(len(r_s), np.nan)
     if len(foot_s) == 0 or len(r_s) == 0:
@@ -254,9 +267,11 @@ def associate(r_s, foot_s, tol=0.12, block_sec=300.0, min_delay=0.04):
         return out, delay
     blocks = np.floor((r_s - r_s[0]) / block_sec).astype(int)
     for b in np.unique(blocks):
+        # Locate the requested interval within the sorted sample times.
         sel = np.flatnonzero(blocks == b)
         near = foot_s[(foot_s >= r_s[sel[0]] - 2.0) & (foot_s <= r_s[sel[-1]] + 3.5)]
         tau = estimate_delay(r_s[sel], near, min_delay) if len(sel) >= 30 else None
+        # Locate the requested interval within the sorted sample times.
         tau = tau_global if tau is None else tau
         target = r_s[sel] + tau
         j = np.searchsorted(foot_s, target)
@@ -282,6 +297,7 @@ def phase_matrix(x, r0, r1, n_phase, chunk=8192):
     out = np.full((len(r0), n_phase), np.nan, dtype=np.float32)
     grid = np.arange(n_phase) / n_phase
     for a in range(0, len(r0), chunk):
+        # Calculate the acceptance flags and output values for the following step.
         pos = r0[a:a + chunk, None] + (r1[a:a + chunk] - r0[a:a + chunk])[:, None] * grid[None, :]
         i0 = np.floor(pos).astype(np.int64)
         ok = (i0 >= 0) & (i0 + 1 < len(x))
@@ -330,13 +346,16 @@ def analyze(ecg, art, ppg, t_origin=0.0, fs=FS, n_phase=200, ecg_sign=None, ppg_
     meta = {"ecg_polarity": ecg_sign, "ppg_polarity": ppg_pol}
     if len(r_idx) < 3:
         return _empty_frame(), {c: np.zeros((0, n_phase), dtype=np.float32) for c in ("ecg", "art", "ppg")}, meta
+    # Calculate pulse pressure and the observation count for the following step.
     ap = detect_pulses(art, fs, "art")
     pp = detect_pulses(ppg, fs, "ppg", polarity=ppg_pol)
     n = len(r_idx) - 1
     r0, r1 = r_idx[:-1], r_idx[1:]
+    # Exclude or flag missing values before using these measurements.
     rr = (r1 - r0) / fs
     r_s = r_idx / fs
     ja_all, delay_a = associate(r_s, ap["foot"] / fs)
+    # Exclude or flag missing values before using these measurements.
     art_delay = float(np.nanmedian(delay_a)) if np.isfinite(delay_a).any() else 0.04
     jp_all, _ = associate(r_s, pp["foot"] / fs, min_delay=max(0.04, art_delay + 0.02))   # the oximeter foot follows the arterial foot of the same beat
     ja, jp = ja_all[:n], jp_all[:n]
@@ -351,9 +370,11 @@ def analyze(ecg, art, ppg, t_origin=0.0, fs=FS, n_phase=200, ecg_sign=None, ppg_
 
 
 def _describe(n, r_idx, r_conf, r0, r1, rr, ja, jp, ap, pp, ppg, ppg_pol, wave_e_raw, wave_a, wave_p_raw, fin_e, fin_a, fin_p, t_origin, fs, meta):
+    # Calculate beat-level physiology and quality only where the relevant samples are usable.
     has_a, has_p = ja >= 0, jp >= 0
     take = lambda arr, j, has: np.where(has, arr[np.maximum(j, 0)] if len(arr) else np.nan, np.nan)
     a_foot, a_peak = take(ap["foot"], ja, has_a), take(ap["peak"], ja, has_a)
+    # Calculate systolic pressure and diastolic pressure for the following step.
     sbp, dbp, dpdt = take(ap["top"], ja, has_a), take(ap["base"], ja, has_a), take(ap["dpdt"], ja, has_a)
     p_foot, p_peak = take(pp["foot"], jp, has_p), take(pp["peak"], jp, has_p)
     p_top, p_base, p_dpdt = take(pp["top"], jp, has_p), take(pp["base"], jp, has_p), take(pp["dpdt"], jp, has_p)
@@ -369,13 +390,16 @@ def _describe(n, r_idx, r_conf, r0, r1, rr, ja, jp, ap, pp, ppg, ppg_pol, wave_e
         flat = fin_a & (art_std < 0.5)
         near_top = (np.abs(wave_a - np.nanmax(wave_a, axis=1, keepdims=True)) < 0.1).mean(axis=1)
         near_bot = (np.abs(wave_a - np.nanmin(wave_a, axis=1, keepdims=True)) < 0.1).mean(axis=1)
+        # Exclude or flag missing values before using these measurements.
         clipped = fin_a & ~flat & ((near_top >= 0.15) | (near_bot >= 0.15))
         implausible = has_a & ((pp_art < 15) | (pp_art > 150) | (sbp > 300) | (dbp < -20))
         ppg_amp = p_top - p_base
+        # Exclude or flag missing values before using these measurements.
         ppg_mean = np.nanmean(wave_p_raw, axis=1)
         resid = ppg_pol * ppg
         resid = resid[np.isfinite(resid)]
         noise_p = 1.4826 * np.median(np.abs(np.diff(resid))) / np.sqrt(2) + 1e-9 if len(resid) > 1 else 1e-9
+        # Reserve output arrays and masks with explicit initial values.
         ppg_factor = np.clip(ppg_amp / (6.0 * noise_p), 0.0, 1.0)
         ptt_a, ptt_p = (a_foot - r0) / fs, (p_foot - r0) / fs
         art_int = np.full(n, np.nan)
@@ -391,9 +415,11 @@ def _describe(n, r_idx, r_conf, r0, r1, rr, ja, jp, ap, pp, ppg, ppg_pol, wave_e
         sqi_ppg = np.where(fin_p & has_p, np.clip(np.nan_to_num(c_p), 0, 1) * ppg_factor, 0.0)
         sqi_ecg = np.where(fin_e, np.clip(np.nan_to_num(c_e), 0, 1) * r_conf[:-1], 0.0)
         ppg_ok = fin_p & has_p & (sqi_ppg > 0)
+        # Collect the per-record values into a table for comparison.
         flags = (np.where(~fin_e, FLAGS["gap_overlap"], 0) | np.where(~fin_a, FLAGS["art_missing"], 0) | np.where(~fin_p, FLAGS["ppg_missing"], 0)
                  | np.where(ecg_low, FLAGS["ecg_low_conf"], 0) | np.where(flat, FLAGS["art_flatline"], 0) | np.where(clipped, FLAGS["art_clipped"], 0)
                  | np.where(implausible, FLAGS["art_implausible"], 0) | np.where((fin_a & ~has_a) | (fin_p & ~has_p), FLAGS["assoc_failed"], 0))
+        # Collect the per-record values into a table for comparison.
         valid = fin_e & ~ecg_low
         keep_a, keep_p = art_ok, has_p & fin_p
         map_beat = np.where(fin_a, np.nanmean(wave_a, axis=1), np.nan)
@@ -420,6 +446,7 @@ def _describe(n, r_idx, r_conf, r0, r1, rr, ja, jp, ap, pp, ppg, ppg_pol, wave_e
 
 def merge_spans(t_start, t_end, pad=0.0):
     """Union of [t_start, t_end] intervals as (start, end) arrays; touching/overlapping intervals merge."""
+    # Order the measurements before matching intervals or comparing rows.
     order = np.argsort(t_start)
     s, e = np.asarray(t_start, dtype=float)[order], np.asarray(t_end, dtype=float)[order]
     out_s, out_e = [], []
@@ -444,6 +471,7 @@ def process_case(time_sec, art, ecg, ppg, win_start, win_end, fs=FS, n_phase=200
     idx = np.rint((time_sec - t_first) * fs).astype(np.int64)
     dense = {}
     for name, x in (("art", art), ("ecg", ecg), ("ppg", ppg)):
+        # Reserve output arrays and masks with explicit initial values.
         d = np.full(n_total, np.nan)
         d[idx] = np.asarray(x, dtype=np.float64)
         dense[name] = d

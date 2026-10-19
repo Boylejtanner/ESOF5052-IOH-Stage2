@@ -7,6 +7,7 @@ an interrupted run loses at most the in-flight cases and a rerun skips everythin
 COMPLETE / PAUSED / INCOMPLETE / FAILED.
 """
 from __future__ import annotations
+# Extract and store beat measurements one case at a time, with restart support.
 
 import concurrent.futures as cf
 import hashlib
@@ -56,6 +57,7 @@ def _read_settings(root):
 def _atomic_parquet(table_or_frame, path):
     path = Path(path)
     temp = path.with_name(path.name + ".tmp")
+    # Ensure the associated files, locks, or resources are released after this operation.
     try:
         if isinstance(table_or_frame, pd.DataFrame):
             table_or_frame = pa.Table.from_pandas(table_or_frame, preserve_index=False)
@@ -89,6 +91,7 @@ def _job(root, row, win_start, win_end, cfg, chash):
     """Process one case; never raises (errors are returned)."""
     started = time.perf_counter()
     try:
+        # Read the stored table required for this calculation.
         root = Path(root)
         w = pq.read_table(root / row["waveform_path"], columns=["time_sec", "ART", "ECG", "PPG"]).to_pandas()
         df, waves, meta = B.process_case(w["time_sec"].to_numpy(), w["ART"].to_numpy(), w["ECG"].to_numpy(), w["PPG"].to_numpy(), win_start, win_end,
@@ -103,6 +106,7 @@ def _job(root, row, win_start, win_end, cfg, chash):
         else:
             for name in ("beats.parquet", "beat_waveforms.parquet"):
                 (directory / name).unlink(missing_ok=True)
+        # Calculate output values for the following step.
         sizes = {n: (directory / n).stat().st_size if (directory / n).exists() else 0 for n in ("beats.parquet", "beat_waveforms.parquet")}
         v = df.loc[df.valid_beat] if len(df) else df
         out = {"dataset": row["dataset"], "case_id": str(row["case_id"]), "n_beats": int(len(df)), "n_valid": int(len(v)),
@@ -129,11 +133,13 @@ class _Lock:
 
     def __enter__(self):
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        # Accumulate the calculation over the required samples or iterations.
         for _ in range(3):
             try:
                 fd = os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
             except FileExistsError:
                 try:
+                    # Load the recorded settings or metadata for this processing step.
                     info = json.loads(self.path.read_text())
                     alive = (info["pid"] != os.getpid() and psutil.pid_exists(info["pid"])
                              and abs(psutil.Process(info["pid"]).create_time() - info["create_time"]) < 2)
@@ -183,6 +189,7 @@ def _selection(root, datasets, case_ids):
 
 def run(root, datasets=("mover", "vitaldb"), workers=None, progress=True, case_ids=None, max_cases=None, allow_changed=False, check_projection=True):
     """Extract beats for every selected case that is not already finished. ``case_ids`` = iterable of (dataset, case_id)."""
+    # Calculate project paths and the run settings for the following step.
     started = time.perf_counter()
     root = Path(root)
     assert_dataset_v1(root, allow_changed=allow_changed)
@@ -192,6 +199,7 @@ def run(root, datasets=("mover", "vitaldb"), workers=None, progress=True, case_i
     index = _selection(root, datasets, case_ids)
     windows = {}
     for ds in datasets:
+        # Summarize the records separately within each requested group.
         w = pd.read_parquet(root / "data" / "manifests" / f"ready_windows_{ds}.parquet", columns=["case_id", "t_start_sec", "t_end_sec", "min_valid_frac", "is_ready"])
         w = w.loc[w.is_ready & (w.min_valid_frac >= cfg["min_valid_frac"] - 1e-6)].astype({"case_id": str})
         windows[ds] = {k: (g.t_start_sec.to_numpy(), g.t_end_sec.to_numpy()) for k, g in w.groupby("case_id")}
@@ -215,6 +223,7 @@ def run(root, datasets=("mover", "vitaldb"), workers=None, progress=True, case_i
     if check_projection and todo:
         proj_path = root / "results" / "beats_projection.json"
         if proj_path.exists():
+            # Load the recorded settings or metadata for this processing step.
             proj = json.loads(proj_path.read_text(encoding="utf-8"))
             need = float(proj.get("remaining_gb_estimate", 0)) * 1e9
             free = ensure_disk_space(root, 0)
@@ -231,6 +240,7 @@ def run(root, datasets=("mover", "vitaldb"), workers=None, progress=True, case_i
         bar = tqdm(total=len(todo), desc="beats", unit="case")
     pending, iterator, interrupted = {}, iter(todo), 0
     stop = False
+    # Ensure the associated files, locks, or resources are released after this operation.
     try:
         with _Lock(root), cf.ProcessPoolExecutor(max_workers=workers_n, mp_context=multiprocessing.get_context("spawn")) as pool:
             while True:
@@ -245,6 +255,7 @@ def run(root, datasets=("mover", "vitaldb"), workers=None, progress=True, case_i
                     if not pending:
                         break
                     finished, _ = cf.wait(pending, timeout=0.5, return_when=cf.FIRST_COMPLETED)
+                    # Process the selected records in order and retain their individual results.
                     for fut in finished:
                         row = pending.pop(fut)
                         try:
@@ -277,6 +288,7 @@ def run(root, datasets=("mover", "vitaldb"), workers=None, progress=True, case_i
     finally:
         bar and bar.close()
     if failed:
+        # Save the comparison table so the same measurements can be inspected later.
         errors = pd.DataFrame([{"timestamp": utc_now(), "dataset": f["dataset"], "case_id": f["case_id"], "error": f["error"][:900]} for f in failed])
         path = root / "data" / "manifests" / "beats_errors.csv"
         errors.to_csv(path, mode="a", header=not path.exists(), index=False)
@@ -302,6 +314,7 @@ def load_beats(root, dataset, case_id, columns=None):
 
 def load_beat_waveforms(root, dataset, case_id):
     """Load stored phase-normalized beat waveforms for one case."""
+    # Read the stored table required for this calculation.
     t = pq.read_table(case_dir(root, dataset, case_id) / "beat_waveforms.parquet")
     n = t.num_rows
     return {k: np.asarray(t[k].combine_chunks().values.to_numpy(zero_copy_only=False), dtype=np.float16).reshape(n, -1) for k in ("ecg", "art", "ppg")}, t["beat_idx"].to_numpy()
@@ -309,6 +322,7 @@ def load_beat_waveforms(root, dataset, case_id):
 
 def project(root, write=True):
     """Extrapolate disk and wall time for ALL cases from the finished sample (clearly an estimate)."""
+    # Read the stored table required for this calculation.
     root = Path(root)
     settings = _read_settings(root)
     cfg = load_beats_config(settings)
@@ -316,15 +330,18 @@ def project(root, write=True):
     index = pd.read_parquet(root / "data" / "manifests" / "unified_case_index.parquet")
     if len(manifest) < 10:
         raise ValueError("Need at least 10 finished cases for a projection (run the dry run first)")
+    # Join related tables by dataset, case id to keep measurements aligned.
     m = manifest.merge(index[["dataset", "case_id", "ready_span_min_theta_50"]].astype({"case_id": str}), on=["dataset", "case_id"], how="left")
     m = m.loc[m.ready_span_min_theta_50 > 0]
     hours = m.ready_span_min_theta_50.sum() / 60
     beats_per_hour = m.n_beats.sum() / hours
     total_hours = index.ready_span_min_theta_50.sum() / 60
+    # Calculate output values for the following step.
     total_beats = beats_per_hour * total_hours
     scalar_per_beat = m.bytes_scalar.sum() / max(1, m.n_beats.sum())
     wave_per_beat = m.bytes_waveforms.sum() / max(1, m.n_beats.sum())
     finished_gb = float((manifest.bytes_scalar.sum() + manifest.bytes_waveforms.sum()) / 1e9)
+    # Calculate output values for the following step.
     remaining = max(0.0, total_beats * (scalar_per_beat + wave_per_beat) / 1e9 - finished_gb)
     sec_per_case = float(manifest.seconds.mean())
     out = {"sample_cases": int(len(manifest)), "sample_ready_hours": round(hours, 1), "beats_per_ready_hour": round(beats_per_hour),
@@ -346,9 +363,11 @@ def apply_storage_budget(root, projection=None):
 
     Rewrites only the additive 'beats' keys in configs/hemodynamics.json and returns what it did (finished cases are recomputed on the next run).
     """
+    # Load the recorded settings or metadata for this processing step.
     root = Path(root)
     path = root / "configs" / "hemodynamics.json"
     settings = json.loads(path.read_text(encoding="utf-8"))
+    # Calculate the run settings for the following step.
     cfg = load_beats_config(settings)
     proj = projection or project(root)
     limit = float(cfg["max_projected_waveform_gb"])
@@ -363,6 +382,7 @@ def apply_storage_budget(root, projection=None):
         if waveform_gb > limit:
             actions.append("store_waveforms -> false (beats must be resampled on the fly from waveform.parquet)")
     if actions:
+        # Store the settings and results as JSON for later inspection.
         settings.setdefault("beats", {})
         settings["beats"]["phase_samples"] = phase
         settings["beats"]["store_waveforms"] = not any("store_waveforms" in a for a in actions)

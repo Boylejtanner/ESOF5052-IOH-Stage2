@@ -1,3 +1,4 @@
+# Check beats using controlled inputs and isolated files.
 import unittest
 
 import numpy as np
@@ -12,6 +13,7 @@ TRUE_PTT_PPG = PPG_ONSET + 0.18169 * PPG_TP
 
 
 def pulse(t, onset, tau_p, tau_d=0.25):
+    # Calculate the decay time constant and output values for the following step.
     tau = t - onset
     out = np.zeros_like(t)
     rise = (tau >= 0) & (tau < tau_p)
@@ -22,6 +24,7 @@ def pulse(t, onset, tau_p, tau_d=0.25):
 
 
 def synth(duration=120.0, hr=72.0, seed=0, noise=0.015, art_pp=45.0, art_dbp=70.0, ppg_onset=PPG_ONSET, qrs_sigma=0.012, s_amp=0.0):
+    # Seed the generated values so this check can be repeated.
     rng = np.random.default_rng(seed)
     t = np.arange(int(duration * FS)) / FS
     r, now, k = [], 1.0, 0
@@ -44,6 +47,7 @@ def synth(duration=120.0, hr=72.0, seed=0, noise=0.015, art_pp=45.0, art_dbp=70.
 
 
 def gate(x, t, on=8.0, off=2.0):
+    # Hide samples on a repeating schedule to imitate MOVER capture gaps.
     y = x.copy()
     y[(t % (on + off)) >= on] = np.nan
     return y
@@ -51,16 +55,20 @@ def gate(x, t, on=8.0, off=2.0):
 
 class DetectionTests(unittest.TestCase):
     def test_clean_signal_recall_precision_delays_and_quality(self):
+        # Verify clean signal recall precision delays and quality.
         t, r, ecg, art, ppg = synth()
         df, waves, meta = B.analyze(ecg, art, ppg, 0.0)
         got = df.t_r.to_numpy()
+        # Compare the result with the expected value or tolerance.
         inner = r[(r > 3) & (r < t[-1] - 3)]
         hit = np.array([np.abs(got - x).min() < 0.02 for x in inner])
         spurious = np.array([np.abs(inner - x).min() > 0.05 for x in got if 3 < x < t[-1] - 3])
         self.assertGreaterEqual(hit.mean(), 0.98)
+        # Compare the result with the expected value or tolerance.
         self.assertGreaterEqual(1 - spurious.mean(), 0.98)
         ok = df.loc[df.art_ok & df.ppg_ok]
         self.assertGreater(len(ok), 0.9 * len(df))
+        # Check TRUE PTT ART against the expected result.
         self.assertAlmostEqual(float(ok.ptt_ecg_art.median()), TRUE_PTT_ART, delta=0.015)
         self.assertAlmostEqual(float(ok.ptt_ecg_ppg.median()), TRUE_PTT_PPG, delta=0.015)
         self.assertAlmostEqual(float(ok.ptt_art_ppg.median()), TRUE_PTT_PPG - TRUE_PTT_ART, delta=0.015)
@@ -73,6 +81,7 @@ class DetectionTests(unittest.TestCase):
         self.assertTrue(((df[["sqi_ecg", "sqi_art", "sqi_ppg", "sqi_cross"]] >= 0) & (df[["sqi_ecg", "sqi_art", "sqi_ppg", "sqi_cross"]] <= 1)).all().all())
 
     def test_polarity_is_handled(self):
+        # Verify polarity is handled.
         t, r, ecg, art, ppg = synth(seed=3)
         df, waves, meta = B.analyze(-ecg, art, -ppg, 0.0)
         self.assertEqual(meta["ecg_polarity"], -1.0)
@@ -82,6 +91,7 @@ class DetectionTests(unittest.TestCase):
         self.assertGreater(float(np.nanmedian(waves["ecg"][:, 0])), 0.5)        # stored R-positive: z-scored R sits at phase 0
 
     def test_high_heart_rate_association(self):
+        # Verify high heart rate association.
         t, r, ecg, art, ppg = synth(hr=130.0, seed=5)
         df, _, _ = B.analyze(ecg, art, ppg, 0.0)
         ok = df.loc[df.art_ok & df.ppg_ok]
@@ -98,13 +108,16 @@ class DetectionTests(unittest.TestCase):
         self.assertAlmostEqual(float(ok.ptt_ecg_art.median()), TRUE_PTT_ART, delta=0.015)
 
     def test_mover_style_gating_never_fabricates_beats_across_a_gap(self):
+        # Verify MOVER style gating never fabricates beats across a gap.
         t, r, ecg, art, ppg = synth(duration=200.0, seed=7)
         df, waves, _ = B.analyze(gate(ecg, t), gate(art, t), gate(ppg, t), 0.0)
         valid = df.loc[df.valid_beat]
+        # Compare the result with the expected value or tolerance.
         phase = valid.t_r % 10.0
         self.assertTrue(((phase + valid.rr_sec) <= 8.0 + 0.02).all(), "a valid cycle must lie entirely inside an 8 s block")
         crossing = df.loc[(df.t_r % 10.0 + df.rr_sec) > 8.0 + 0.02]
         self.assertTrue(((crossing["flags"] & B.FLAGS["gap_overlap"]) > 0).all())
+        # Compare the result with the expected value or tolerance.
         self.assertFalse(crossing.valid_beat.any())
         share = len(valid) / len(df)
         self.assertTrue(0.5 < share < 0.9, share)
@@ -112,6 +125,7 @@ class DetectionTests(unittest.TestCase):
         self.assertTrue(np.isnan(waves["art"][~np.isfinite(waves["art"]).all(axis=1)]).any(axis=1).all())
 
     def test_flatline_art_is_flagged_and_timing_masked(self):
+        # Verify flatline ART is flagged and timing masked.
         t, r, ecg, art, ppg = synth(seed=11)
         df, _, _ = B.analyze(ecg, np.full(len(t), 3.0) + np.random.default_rng(0).normal(0, 0.05, len(t)), ppg, 0.0)
         self.assertFalse(df.art_ok.any())
@@ -120,12 +134,14 @@ class DetectionTests(unittest.TestCase):
         self.assertGreater(df.valid_beat.mean(), 0.9)                          # the ECG-based beat is still valid
 
     def test_cvp_like_low_pulse_pressure_is_implausible(self):
+        # Verify cvp like low pulse pressure is implausible.
         t, r, ecg, art, ppg = synth(seed=13, art_pp=6.0, art_dbp=4.0)
         df, _, _ = B.analyze(ecg, art, ppg, 0.0)
         self.assertFalse(df.art_ok.any())
         self.assertTrue(((df["flags"] & (B.FLAGS["art_implausible"] | B.FLAGS["art_flatline"])) > 0).mean() > 0.8)
 
     def test_missing_ppg_keeps_art_and_ecg_beats(self):
+        # Verify missing PPG keeps ART and ECG beats.
         t, r, ecg, art, ppg = synth(seed=17)
         df, _, _ = B.analyze(ecg, art, np.full(len(t), np.nan), 0.0)
         self.assertFalse(df.ppg_ok.any())
@@ -134,6 +150,7 @@ class DetectionTests(unittest.TestCase):
         self.assertTrue(df.ptt_ecg_ppg.isna().all())
 
     def test_ecg_noise_burst_lowers_confidence_not_crashes(self):
+        # Verify ECG noise burst lowers confidence not crashes.
         t, r, ecg, art, ppg = synth(seed=19)
         noisy = ecg.copy()
         noisy[(t > 40) & (t < 50)] += np.random.default_rng(1).normal(0, 0.8, ((t > 40) & (t < 50)).sum())
@@ -161,15 +178,18 @@ class DetectionTests(unittest.TestCase):
         t, r, ecg, art, ppg = synth(seed=37, qrs_sigma=0.007, s_amp=0.7)
         self.assertEqual(B.ecg_orientation(ecg), 1.0)
         df, _, meta = B.analyze(ecg, art, ppg, 0.0)
+        # Check ecg polarity against the expected result.
         self.assertEqual(meta["ecg_polarity"], 1.0)
         got = df.t_r.to_numpy()
         inner = r[(r > 3) & (r < t[-1] - 3)]
         offsets = np.array([got[np.abs(got - x).argmin()] - x for x in inner])
+        # Compare the result with the expected value or tolerance.
         self.assertLess(float(np.abs(np.median(offsets))), 0.015, "R markers must sit on the tall R, not on the opposite lobe")
         self.assertGreater(float((np.abs(offsets) < 0.03).mean()), 0.97)
         self.assertEqual(B.ecg_orientation(-ecg), -1.0)
 
     def test_too_little_signal_returns_empty(self):
+        # Verify too little signal returns empty.
         df, waves, _ = B.analyze(np.zeros(500), np.zeros(500), np.zeros(500), 0.0)
         self.assertEqual(len(df), 0)
         self.assertEqual(list(df.columns), B.BEAT_COLUMNS)
@@ -178,6 +198,7 @@ class DetectionTests(unittest.TestCase):
 
 class HelperTests(unittest.TestCase):
     def test_associate_estimates_the_delay_and_masks_missing_pulses(self):
+        # Verify associate estimates the delay and masks missing pulses.
         r = 1.0 + 0.8 * np.arange(40)
         feet = r + 0.45
         feet = np.delete(feet, 10)                              # beat 10 has no pulse
@@ -189,6 +210,7 @@ class HelperTests(unittest.TestCase):
         self.assertEqual(B.associate(r, np.array([]))[0].tolist(), [-1] * 40)
 
     def test_associate_handles_a_delay_longer_than_the_rr_interval(self):
+        # Verify associate handles a delay longer than the RR interval.
         rng = np.random.default_rng(2)
         r = np.cumsum(0.45 + rng.normal(0, 0.02, 60)) + 1.0     # 133 bpm
         feet = r + 0.62 + rng.normal(0, 0.005, 60)              # each pulse arrives after the NEXT R wave
@@ -198,9 +220,11 @@ class HelperTests(unittest.TestCase):
         self.assertAlmostEqual(float(np.nanmedian(delay)), 0.62, delta=0.01)
 
     def test_phase_matrix_maps_cycles_monotonically(self):
+        # Verify phase matrix maps cycles monotonically.
         x = np.arange(1000, dtype=float)
         m = B.phase_matrix(x, np.array([10.0, 100.0]), np.array([60.0, 200.0]), 200)
         self.assertAlmostEqual(float(m[0, 0]), 10.0, places=4)
+        # Compare the result with the expected value or tolerance.
         self.assertAlmostEqual(float(m[0, 100]), 35.0, places=4)
         self.assertAlmostEqual(float(m[0, -1]), 59.75, places=3)
         self.assertTrue((np.diff(m, axis=1) > 0).all())
@@ -213,6 +237,7 @@ class HelperTests(unittest.TestCase):
         self.assertEqual((s.tolist(), e.tolist()), ([0.0, 200.0], [120.0, 300.0]))
 
     def test_finite_segments_min_length(self):
+        # Verify finite segments min length.
         x = np.ones(100)
         x[30:40] = np.nan
         x[90:92] = np.nan
@@ -222,6 +247,7 @@ class HelperTests(unittest.TestCase):
 
 class CaseTests(unittest.TestCase):
     def test_process_case_keeps_only_span_beats_and_float16_waveforms(self):
+        # Verify process case keeps only span beats and float16 waveforms.
         t, r, ecg, art, ppg = synth(duration=300.0, seed=23)
         df, waves, meta = B.process_case(t + 1000.0, art, ecg, ppg, [1060.0, 1140.0], [1150.0, 1250.0], pad_sec=10.0)
         self.assertEqual(meta["regions"], 1)                       # the two windows overlap and merge
@@ -229,12 +255,14 @@ class CaseTests(unittest.TestCase):
         self.assertEqual(df.beat_idx.tolist(), list(range(len(df))))
         self.assertEqual(waves["art"].dtype, np.float16)
         self.assertEqual(waves["ecg"].shape, (len(df), 200))
+        # Check TRUE PTT ART against the expected result.
         self.assertAlmostEqual(float(df.ptt_ecg_art.median()), TRUE_PTT_ART, delta=0.015)
         self.assertGreater(len(df), 0.9 * (250 - 60) * 72 / 60)
         none, w2, _ = B.process_case(t + 1000.0, art, ecg, ppg, [5000.0], [5100.0])
         self.assertEqual(len(none), 0)
 
     def test_irregular_row_placement_is_densified(self):
+        # Verify irregular row placement is densified.
         t, r, ecg, art, ppg = synth(duration=120.0, seed=29)
         keep = ~((t > 60) & (t < 70))                              # rows physically missing from the file (not NaN)
         df, _, _ = B.process_case(t[keep], art[keep], ecg[keep], ppg[keep], [5.0], [115.0], store_waveforms=False)

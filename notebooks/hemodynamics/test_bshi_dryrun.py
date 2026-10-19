@@ -1,3 +1,4 @@
+# Check bshi dryrun using controlled inputs and isolated files.
 import os
 import tempfile
 import unittest
@@ -13,6 +14,7 @@ ROOT = Path(os.environ.get("BSHI_ROOT", Path(__file__).resolve().parents[2]))
 
 class MonitorTests(unittest.TestCase):
     def test_summary_uses_only_training_intervals(self):
+        # Verify summary uses only training intervals.
         s = [{"t": t, "gpu_util": u, "vram_mb": 4096 + t, "cpu_util": 50.0} for t, u in [(0, 0), (1, 90), (2, 95), (3, 5)]]
         m = DR.summarize_monitor(s, [(1, 2)])
         self.assertEqual(m["samples"], 2)
@@ -20,6 +22,7 @@ class MonitorTests(unittest.TestCase):
         self.assertEqual(m["share_samples_gpu_util_ge_80_%"], 100.0)
 
     def test_bottleneck_wording(self):
+        # Compare the result with the expected value or tolerance.
         self.assertTrue(DR.bottleneck({"share_samples_gpu_util_ge_80_%": 90, "cpu_util_mean_%": 10}).startswith("none"))
         self.assertIn("loader", DR.bottleneck({"share_samples_gpu_util_ge_80_%": 20, "cpu_util_mean_%": 80}))
         self.assertTrue(DR.bottleneck({}).startswith("unknown"))
@@ -28,6 +31,7 @@ class MonitorTests(unittest.TestCase):
 @unittest.skipUnless(torch.cuda.is_available() and (ROOT / "data" / "derived" / "bshi" / "sweep_subset" / "MANIFEST.sha256").exists(), "needs CUDA and the sweep subset")
 class SmokeRunTests(unittest.TestCase):
     def test_smoke_run_writes_checkpoint_and_reloads(self):
+        # Verify smoke run writes checkpoint and reloads.
         with tempfile.TemporaryDirectory() as td:
             out = DR.run_dry(ROOT, td, epochs=2, smoke=True, epoch_windows=512, log=lambda *a: None)
             self.assertTrue((Path(td) / "best.pt").exists() and (Path(td) / "last.pt").exists())

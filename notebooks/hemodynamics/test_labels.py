@@ -1,3 +1,4 @@
+# Check labels using controlled inputs and isolated files.
 import json
 from pathlib import Path
 import tempfile
@@ -77,6 +78,7 @@ class DefinitionTests(unittest.TestCase):
             self.assertEqual(bool(one(300, t, v).gray_zone), expected, level)
 
     def test_delta_map_and_robust_variant(self):
+        # Verify delta MAP and robust variant.
         t, v = track(dips=[(450, 470, 50)])
         self.assertAlmostEqual(float(one(300, t, v).delta_map), 30.0)
         t, v = track()
@@ -88,11 +90,13 @@ class DefinitionTests(unittest.TestCase):
         self.assertLess(float(row.delta_map_robust), 5.0)
 
     def test_slope_is_mmhg_per_minute(self):
+        # Compare the result with the expected value or tolerance.
         t = np.arange(0.0, 600, 2.0)
         v = 70 + t / 10.0                                        # +1 mmHg per 10 s = 6 mmHg/min
         self.assertAlmostEqual(float(one(300, t, v).map_slope_60), 6.0, places=3)
 
     def test_aut65_constant_and_against_brute_force(self):
+        # Verify aut65 constant and against brute force.
         t, v = track(level=55.0)
         row = one(300, t, v)
         self.assertAlmostEqual(float(row.aut65), 50.0, places=3)             # 10 mmHg x 5 min
@@ -104,9 +108,11 @@ class DefinitionTests(unittest.TestCase):
         t, v = t[keep], v[keep]
         got = one(200, t, v)
         grid = np.arange(200.0, 500.0, 0.005)
+        # Check brute against the expected result.
         interp = np.interp(grid, t, v)
         k = np.clip(np.searchsorted(t, grid, side="right") - 1, 0, len(t) - 2)
         observed = (t[k + 1] - t[k]) <= RULE["max_gap_sec"]
+        # Check brute against the expected result.
         brute = float(np.sum(np.where(observed, np.maximum(0.0, 65 - interp), 0.0)) * 0.005 / 60)
         self.assertAlmostEqual(float(got.aut65), brute, delta=0.02)
         self.assertAlmostEqual(float(got.aut65_observed_fraction), float(np.mean(observed)), delta=0.002)
@@ -121,12 +127,14 @@ class DefinitionTests(unittest.TestCase):
         self.assertTrue(row.y_event and not row.label_ambiguous)           # an event is never "ambiguous"
 
     def test_no_map_is_handled_without_error(self):
+        # Verify no MAP is handled without error.
         row = one(300, np.array([]), np.array([]))
         self.assertFalse(row.eligible_onset)
         self.assertFalse(row.y_event)
         self.assertTrue(np.isnan(row.map_current))
 
     def test_values_outside_valid_range_are_ignored_and_output_is_deterministic(self):
+        # Verify values outside valid range are ignored and output is deterministic.
         t, v = track()
         v[10] = 5.0
         v[11] = 300.0
@@ -138,6 +146,7 @@ class DefinitionTests(unittest.TestCase):
         self.assertNotEqual(L.label_rule_sha256(RULE), L.label_rule_sha256({**RULE, "sustained_min_sec": 30}))
 
     def test_metric_helpers(self):
+        # Verify metric helpers.
         y = np.array([0, 0, 1, 1])
         self.assertEqual(L.auroc(y, np.array([.1, .2, .8, .9])), 1.0)
         self.assertEqual(L.auroc(y, np.array([.5, .5, .5, .5])), 0.5)
@@ -153,9 +162,11 @@ def build_root(base, patients=12):
     rng = np.random.default_rng(1)
     for ds in ("mover", "vitaldb"):
         for i in range(patients):
+            # Write the verified values in the pipeline's Parquet table format.
             cid = f"{ds[0]}{i}"
             d = root / "data/parquet" / ds / f"case_id={cid}"
             d.mkdir(parents=True)
+            # Write the verified values in the pipeline's Parquet table format.
             t, v = track(duration=1500, dips=[(600 + 40 * i, 700 + 40 * i, 55)])
             v = v + rng.normal(0, 1, len(v))
             pd.DataFrame({"time_sec": t, "MAP": v.astype("float32")}).to_parquet(d / "map.parquet", index=False)
@@ -181,30 +192,37 @@ class BuildTests(unittest.TestCase):
         self.temp.cleanup()
 
     def test_guard_then_incremental_build_and_rule_change(self):
+        # Verify guard then incremental build and rule change.
         with self.assertRaises(FileNotFoundError):
             L.build_labels(self.root, workers=1, progress=False)
         S.snapshot_dataset_v1(self.root)
+        # Compare the result with the expected value or tolerance.
         first = L.build_labels(self.root, workers=1, progress=False)
         self.assertEqual({k: v["computed"] for k, v in first["datasets"].items()}, {"mover": 12, "vitaldb": 12})
         lab = L.load_labels(self.root)
         self.assertEqual(list(lab.columns), L.LABEL_COLUMNS)
         self.assertEqual(len(lab), 24 * 34)
         self.assertTrue(lab.y_event.any() and lab.eligible_onset.any())
+        # Compare the result with the expected value or tolerance.
         second = L.build_labels(self.root, workers=1, progress=False)
         self.assertEqual({k: v["skipped_current"] for k, v in second["datasets"].items()}, {"mover": 12, "vitaldb": 12})
         config = self.root / "configs/hemodynamics.json"
+        # Check computed against the expected result.
         config.write_text(json.dumps({"label_rule": {"sustained_min_sec": 30}}))
         third = L.build_labels(self.root, workers=1, progress=False)
         self.assertEqual(third["datasets"]["mover"]["computed"], 12)
         self.assertNotEqual(set(L.load_labels(self.root).label_rule_sha256), {first["rule_sha256"]})
+        # Compare the result with the expected value or tolerance.
         by_split, pooled = L.summarize_labels(self.root, write=True)
         self.assertEqual(int(by_split.windows.sum()), len(L.load_labels(self.root)))
         self.assertTrue((self.root / "results/label_summary.json").exists())
 
     def test_baseline_a_runs_on_a_labelled_set(self):
+        # Verify baseline a runs on a labelled set.
         S.snapshot_dataset_v1(self.root)
         L.build_labels(self.root, workers=1, progress=False)
         out = L.baseline_a(self.root, reps=5, write=True)
+        # Compare the result with the expected value or tolerance.
         self.assertEqual(set(out["settings"]), {"pooled_train->pooled_test", "vitaldb_train->vitaldb_test", "E3x vitaldb_train->all_mover"})
         e3x = out["settings"]["E3x vitaldb_train->all_mover"]
         self.assertGreater(e3x["test_windows"], 0)

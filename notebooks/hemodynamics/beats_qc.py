@@ -10,6 +10,7 @@ per-case values) and why they differ from a naive reading of the proposal:
 * ECG->ART delay IQR <= 0.08 s: a consistent association has a tight delay distribution.
 """
 from __future__ import annotations
+# Compare stored detections with the signals before accepting the beat extraction.
 
 import json
 from pathlib import Path
@@ -31,6 +32,7 @@ def r_peak_alignment(t_r, time_sec, ecg, half_sec=0.4, fs=100.0, ratio=0.5):
     Independent of the detector's own orientation logic: a marker placed on a trough or T wave 0.25 s after a tall R fails, even though
     HR agreement and delay ranges would still look self-consistent. NaN-neighbourhoods are skipped.
     """
+    # Calculate the ECG signal and the input array for the following step.
     ecg = np.asarray(ecg, dtype=float)
     x = np.abs(ecg - np.nanmedian(ecg))
     idx = np.rint((np.asarray(t_r) - float(time_sec[0])) * fs).astype(int)
@@ -50,6 +52,7 @@ def pick_cases(root, seed=5052, per_dataset=6):
     index = pd.read_parquet(Path(root) / "data" / "manifests" / "unified_case_index.parquet")
     out = []
     for ds in ("vitaldb", "mover"):
+        # Order the measurements before matching intervals or comparing rows.
         d = index.loc[index.dataset == ds]
         pool = d.sample(n=min(len(d), 60), random_state=seed)
         low = pool.sort_values("art_plausible_fraction", kind="stable").iloc[0]
@@ -71,6 +74,7 @@ def pick_dry_run(root, qc_cases, per_dataset=20, seed=5052):
 
 def case_metrics(beats):
     """Detector-reliability metrics from one case's beat table."""
+    # Calculate valid-sample flags for the following step.
     f = beats["flags"].to_numpy()
     valid = beats["valid_beat"].to_numpy()
     art_usable = valid & ((f & (FLAGS["art_missing"] | FLAGS["art_flatline"] | FLAGS["art_clipped"])) == 0)
@@ -93,6 +97,7 @@ def case_metrics(beats):
 def evaluate_gates(per_case):
     """Dataset-level gate table from the per-case frame (columns: dataset + case_metrics keys)."""
     rows, passed = [], True
+    # Process each dataset group separately to retain the intended grouping.
     for ds, g in per_case.groupby("dataset"):
         med = g.median(numeric_only=True)
         checks = {
@@ -111,20 +116,25 @@ def evaluate_gates(per_case):
 
 def plot_overlay(root, dataset, case_id, center, path, half=7.5):
     """ECG / ART / PPG with the STORED detections and an SQI strip for ``center +- half`` seconds."""
+    # Read the stored table required for this calculation.
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
+    # Read the stored table required for this calculation.
     import pyarrow.parquet as pq
     root = Path(root)
     index = pd.read_parquet(root / "data" / "manifests" / "unified_case_index.parquet")
     row = index.loc[(index.dataset == dataset) & (index.case_id.astype(str) == str(case_id))].iloc[0]
+    # Read the stored table required for this calculation.
     w = pq.read_table(root / row.waveform_path, columns=["time_sec", "ART", "ECG", "PPG"]).to_pandas()
     t0 = float(w.time_sec.iloc[0])
     a, b = int((center - half - t0) * 100), int((center + half - t0) * 100)
+    # Resample the available measurements onto the required time or phase grid.
     w = w.iloc[max(0, a):b]
     beats = P.load_beats(root, dataset, case_id)
     b = beats.loc[(beats.t_r >= center - half) & (beats.t_r <= center + half)]
     fig, ax = plt.subplots(4, 1, figsize=(11, 7.5), sharex=True, gridspec_kw={"height_ratios": [1, 1.2, 1, .6]})
+    # Resample the available measurements onto the required time or phase grid.
     ax[0].plot(w.time_sec, w.ECG, lw=.7)
     ax[0].plot(b.t_r, np.interp(b.t_r, w.time_sec, np.nan_to_num(w.ECG.to_numpy())), "rv", ms=5)
     ax[0].set_ylabel("ECG, R peaks")
@@ -133,6 +143,7 @@ def plot_overlay(root, dataset, case_id, center, path, half=7.5):
         times = times.dropna()
         return times, np.interp(times, w.time_sec, np.nan_to_num(w[col].to_numpy()))
 
+    # Label the panel with the measurement names and their units.
     ax[1].plot(w.time_sec, w.ART, lw=.7)
     ax[1].plot(*on_signal(b.art_foot_t, "ART"), "g^", ms=5)
     ax[1].plot(b.art_sys_t, b.sbp, "rv", ms=4)
@@ -158,6 +169,7 @@ def plot_overlay(root, dataset, case_id, center, path, half=7.5):
 
 def run_qc(root, cases=None, figures=True, figures_per_case=3, seed=5052, write=True, progress=True):
     """Run beats on the QC cases (skipped when already finished), compute metrics + gates, draw overlays, write results/beats_qc.json."""
+    # Read the stored table required for this calculation.
     root = Path(root)
     cases = cases or pick_cases(root, seed)
     run = P.run(root, case_ids=cases, progress=progress)
@@ -166,6 +178,7 @@ def run_qc(root, cases=None, figures=True, figures_per_case=3, seed=5052, write=
     for ds, cid in cases:
         beats = P.load_beats(root, ds, cid)
         if len(beats):
+            # Read the stored table required for this calculation.
             row = index.loc[(index.dataset == ds) & (index.case_id.astype(str) == str(cid))].iloc[0]
             import pyarrow.parquet as pq
             w = pq.read_table(root / row.waveform_path, columns=["time_sec", "ECG"]).to_pandas()

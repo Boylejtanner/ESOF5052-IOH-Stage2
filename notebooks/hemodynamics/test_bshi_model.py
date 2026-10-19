@@ -1,3 +1,4 @@
+# Check bshi model using controlled inputs and isolated files.
 import unittest
 
 import torch
@@ -10,6 +11,7 @@ DEV = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 def batch(n=6, seed=0):
+    # Seed the generated values so this check can be repeated.
     g = torch.Generator().manual_seed(seed)
     x = torch.randn((n, 7, 60, 200), generator=g)
     return x.to(DEV), torch.randn((n, len(S.CONTEXT_NAMES)), generator=g).to(DEV), (torch.rand((n, 3, 60), generator=g) > 0.1).to(DEV)
@@ -17,6 +19,7 @@ def batch(n=6, seed=0):
 
 class TestShapes(unittest.TestCase):
     def test_every_variant_gives_finite_heads_of_the_right_shape(self):
+        # Verify every variant gives finite heads of the right shape.
         x, ctx, bm = batch()
         for variant in S.VARIANTS:
             net = BshiNet(ModelConfig(variant=variant)).to(DEV).eval()
@@ -27,12 +30,14 @@ class TestShapes(unittest.TestCase):
                 self.assertTrue(torch.isfinite(v).all(), (variant, k))
 
     def test_parameter_budget(self):
+        # Verify parameter budget.
         n = BshiNet(ModelConfig()).n_params()
         self.assertLess(n, 3_100_000)
         self.assertGreater(n, 2_000_000)
         self.assertLess(BshiNet(ModelConfig(variant="map_only")).n_params(), 100_000)   # context only: no image trunk
 
     def test_masks_match_the_recipes(self):
+        # Verify masks match the recipes.
         m, cm = input_masks("eap")
         self.assertEqual(float(m.sum()), 7 * 200)
         self.assertEqual(float(cm.sum()), len(S.CONTEXT_NAMES))
@@ -48,9 +53,11 @@ class TestShapes(unittest.TestCase):
 
 class TestInputIsolation(unittest.TestCase):
     def test_zeroed_groups_cannot_change_the_output(self):
+        # Verify zeroed groups cannot change the output.
         x, ctx, bm = batch()
         for variant in ("ea", "art_only", "wave", "map_only"):
             net = BshiNet(ModelConfig(variant=variant)).to(DEV).eval()
+            # Calculate the validity mask and local noise estimates for the following step.
             ref = net(x, ctx, bm)
             mask, cmask = input_masks(variant)
             noise = torch.randn_like(x) * 5
@@ -61,6 +68,7 @@ class TestInputIsolation(unittest.TestCase):
                 self.assertTrue(torch.allclose(ref[k], out[k], atol=1e-5), (variant, k))
 
     def test_a_window_does_not_depend_on_the_other_windows_in_its_batch(self):
+        # Verify a window does not depend on the other windows in its batch.
         x, ctx, bm = batch(8)
         net = BshiNet(ModelConfig()).to(DEV).eval()
         full = net(x, ctx, bm)
@@ -75,6 +83,7 @@ class TestInputIsolation(unittest.TestCase):
 
 class TestGate(unittest.TestCase):
     def test_gate_starts_as_identity(self):
+        # Verify gate starts as identity.
         x, ctx, bm = batch(4)
         net = BshiNet(ModelConfig(gate=True)).to(DEV).eval()
         w = net.gate(x, bm)
@@ -87,6 +96,7 @@ class TestGate(unittest.TestCase):
             self.assertTrue(torch.allclose(a[k], c[k], atol=1e-5))
 
     def test_gate_scales_only_the_waveform_planes_by_the_learned_weights(self):
+        # Verify gate scales only the waveform planes by the learned weights.
         x, ctx, bm = batch(3)
         net = BshiNet(ModelConfig(gate=True)).to(DEV).eval()
         with torch.no_grad():
@@ -100,6 +110,7 @@ class TestGate(unittest.TestCase):
         def grab(module, inputs, output):
             seen.setdefault("x", inputs[0].detach())
 
+        # Compare the result with the expected value or tolerance.
         net.stem.register_forward_hook(grab)
         net(x, ctx, bm)
         s = seen["x"]
@@ -109,6 +120,7 @@ class TestGate(unittest.TestCase):
         self.assertTrue(torch.equal(s[:, 3:], x[:, 3:]))                    # scalar planes untouched
 
     def test_gate_is_absent_without_waveform_planes_or_when_switched_off(self):
+        # Check gate against the expected result.
         self.assertIsNone(BshiNet(ModelConfig(gate=False)).gate)
         self.assertIsNone(BshiNet(ModelConfig(variant="map_only")).gate)
         self.assertIsNotNone(BshiNet(ModelConfig(variant="ea")).gate)
@@ -116,6 +128,7 @@ class TestGate(unittest.TestCase):
 
 class TestClamp(unittest.TestCase):
     def test_clamp_touches_only_scalar_planes_3_to_5(self):
+        # Verify clamp touches only scalar planes 3 to 5.
         x = torch.full((2, 7, 60, 200), 9.0)
         y = A.clamp_scalar_planes(x, 6.0)
         self.assertTrue((y[:, 3:6] == 6.0).all())

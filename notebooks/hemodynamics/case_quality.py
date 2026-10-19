@@ -9,6 +9,7 @@ A case is ``ecg_dead`` ("ECG unusable") when all of the following hold (every th
 Nothing here edits beats or labels; it reads them.
 """
 from __future__ import annotations
+# Identify unusable channels before constructing beat-based model inputs.
 
 import concurrent.futures as cf
 import hashlib
@@ -48,6 +49,7 @@ def _bshi_cfg(root):
 
 
 def signature(root):
+    # Store the settings and results as JSON for later inspection.
     cfg = _bshi_cfg(root)
     man = pd.read_parquet(Path(root) / "data" / "manifests" / "beats_manifest.parquet", columns=["dataset", "case_id", "config_hash", "waveform_sha256"])
     h = hashlib.sha256(json.dumps({"v": QUALITY_VERSION, "rule": RULE, "min_usable": cfg["min_usable_beats"], "sqi": cfg["sqi_ecg_min"], "delay": cfg["ppg_delay_max_sec"],
@@ -65,6 +67,7 @@ def _chunk_starts(ws, we, n, length):
     cum = np.cumsum(lens)
     out = []
     for k in range(n):
+        # Locate the requested interval within the sorted sample times.
         pos = (k + 0.5) / n * total
         i = int(np.searchsorted(cum, pos, side="right"))
         i = min(i, len(s) - 1)
@@ -74,9 +77,11 @@ def _chunk_starts(ws, we, n, length):
 
 def raw_features(waveform_path, ws, we, rule=RULE, fs=100.0):
     """ECG amplitude (p99-p1, median over chunks), independent ART pulse rate and pulse pressure from a few ready chunks of the raw signal."""
+    # Read the stored table required for this calculation.
     t = pq.read_table(waveform_path, columns=["time_sec", "ART", "ECG"]).to_pandas()
     ts = t.time_sec.to_numpy(dtype=float)
     amps, rates, pps = [], [], []
+    # Process the selected records in order and retain their individual results.
     for c0 in _chunk_starts(ws, we, int(rule["chunks"]), float(rule["chunk_sec"])):
         i0, i1 = np.searchsorted(ts, [c0, c0 + rule["chunk_sec"]])
         if i1 - i0 < int(0.5 * rule["chunk_sec"] * fs):
@@ -85,6 +90,7 @@ def raw_features(waveform_path, ws, we, rule=RULE, fs=100.0):
         pos = np.clip(np.rint((ts[i0:i1] - c0) * fs).astype(int), 0, n - 1)
         dense = {}
         for name in ("ECG", "ART"):
+            # Reserve output arrays and masks with explicit initial values.
             d = np.full(n, np.nan)
             d[pos] = t[name].to_numpy(dtype=float)[i0:i1]
             dense[name] = d
@@ -93,6 +99,7 @@ def raw_features(waveform_path, ws, we, rule=RULE, fs=100.0):
             amps.append(float(np.percentile(e, 99) - np.percentile(e, 1)))
         pulses = B.detect_pulses(dense["ART"], fs, "art")
         if len(pulses["foot"]) >= 8:
+            # Summarize the observed levels and variability for this set of measurements.
             span = (pulses["foot"][-1] - pulses["foot"][0]) / fs
             rates.append(60.0 * (len(pulses["foot"]) - 1) / span if span > 0 else np.nan)
             pps.append(float(np.median(pulses["top"] - pulses["base"])))
@@ -105,6 +112,7 @@ def beat_features(beats, cfg, rule=RULE):
     n = len(beats)
     if not n:
         return {"n_beats": 0}
+    # Calculate valid-sample flags for the following step.
     f = beats["flags"].to_numpy()
     valid = beats["valid_beat"].to_numpy()
     m_ecg = valid & (beats["sqi_ecg"].to_numpy() >= cfg["sqi_ecg_min"])
@@ -120,14 +128,17 @@ def beat_features(beats, cfg, rule=RULE):
 
 def flag_cases(df, rule=RULE, min_usable=54):
     """Pure classification. ``df`` needs the columns produced by ``beat_features`` + ``raw_features`` + ``ecg_amp_ratio``; returns df with flag columns."""
+    # Exclude or flag missing values before using these measurements.
     d = df.copy()
     a = d["sqi_ecg_median"] < rule["sqi_ecg_max"]
     b = d["art_ok_frac"] < rule["art_ok_frac_max"]
+    # Exclude or flag missing values before using these measurements.
     disagree = d["art_rate_bpm"].notna() & ((d["hr_median"] - d["art_rate_bpm"]).abs() > rule["hr_disagree_bpm"])
     tiny = d["ecg_amp_ratio"] < rule["tiny_ecg_amp_ratio"]
     d["ecg_dead"] = (a & b & (disagree | tiny)).fillna(False).astype(bool)
     d["ecg_dead_kind"] = np.where(~d["ecg_dead"], "", np.where(d["ecg_amp_ratio"] < rule["noise_floor_amp_ratio"], "noise_floor",
                                                                np.where(disagree, "rate_contradiction", "weak_ecg")))
+    # Exclude or flag missing values before using these measurements.
     d["art_dead"] = ((d["art_rate_bpm"].isna() | (d["art_pp_mmhg"] < rule["art_pp_min_mmhg"])) & (d["art_ok_frac"] < rule["art_ok_frac_max"]) & ~d["ecg_dead"]).astype(bool)
     d["art_unlinked"] = ((d["art_ok_frac"] < rule["art_ok_frac_max"]) & ~d["ecg_dead"] & ~d["art_dead"]).astype(bool)
     d["ppg_dead"] = ((d["ppg_ok_frac"] < rule["ppg_dead_ok_frac_max"]) | (d["sqi_ppg_median"] < 0.05)).fillna(False).astype(bool)
@@ -151,6 +162,7 @@ def _job(root, row, ws, we, cfg):
 
 def build(root, workers=None, progress=True, force=False):
     """case_quality.parquet: one row per case. Skipped when the signature (rule, beats config hash, case hashes) is unchanged."""
+    # Use settings and input fingerprints to decide which case outputs need rebuilding.
     root = Path(root)
     assert_dataset_v1(root)
     sig = signature(root)
@@ -160,6 +172,7 @@ def build(root, workers=None, progress=True, force=False):
     index = pd.read_parquet(root / "data" / "manifests" / "unified_case_index.parquet").astype({"case_id": str})
     windows = {}
     for ds in ("mover", "vitaldb"):
+        # Summarize the records separately within each requested group.
         w = pd.read_parquet(root / "data" / "manifests" / f"ready_windows_{ds}.parquet", columns=["case_id", "t_start_sec", "t_end_sec", "min_valid_frac", "is_ready"])
         w = w.loc[w.is_ready & (w.min_valid_frac >= 0.5 - 1e-6)].astype({"case_id": str})
         windows[ds] = {k: (g.t_start_sec.to_numpy(), g.t_end_sec.to_numpy()) for k, g in w.groupby("case_id")}
@@ -179,6 +192,7 @@ def build(root, workers=None, progress=True, force=False):
     bar and bar.close()
     if failed:
         raise RuntimeError(f"{len(failed)} case(s) failed, first: {failed[0]}")
+    # Join related tables by dataset, case id to keep measurements aligned.
     feat = pd.DataFrame(rows)
     feat["ecg_amp_ratio"] = feat.ecg_amp / feat.groupby("dataset").ecg_amp.transform("median")
     keys = index[["dataset", "case_id", "patient_key", "split_pooled", "split_within_dataset"]]
@@ -204,13 +218,16 @@ def _score_block(frame, y="y", p="p", reps=200):
 
 def build_dead_ecg_decision(root, reps=None, write=True):
     """Evidence + decision for the dead-ECG cases -> results/dead_ecg_decision.json and results/eda/dead_ecg_cases.csv."""
+    # Load the recorded settings or metadata for this processing step.
     root = Path(root)
     settings = json.loads((root / "configs" / "hemodynamics.json").read_text(encoding="utf-8"))
     reps = int(reps or settings["eda"]["bootstrap_reps"])
+    # Read the stored table required for this calculation.
     q = load_case_quality(root)
     beats_man = pd.read_parquet(root / "data" / "manifests" / "beats_manifest.parquet", columns=["dataset", "case_id", "art_ok_frac"]).astype({"case_id": str})
     ref68 = set(beats_man.loc[(beats_man.dataset == "vitaldb") & (beats_man.art_ok_frac < 0.1), "case_id"])
     flagged = set(q.loc[q.ecg_dead & (q.dataset == "vitaldb"), "case_id"])
+    # Read the stored table required for this calculation.
     flagged_all = q.loc[q.ecg_dead]
     index = pd.read_parquet(root / "data" / "manifests" / "unified_case_index.parquet").astype({"case_id": str})
     lab = L.load_labels(root)
@@ -224,6 +241,7 @@ def build_dead_ecg_decision(root, reps=None, write=True):
     rest_test["p"] = L._fit_predict(train, rest_test)
     if len(dead):
         dead["p"] = L._fit_predict(train, dead)
+    # Summarize the records separately within each requested group.
     ready_h = index.assign(dead=[(d, c) in dead_keys for d, c in zip(index.dataset, index.case_id)]).groupby("dead").ready_span_min_theta_50.sum() / 60
     own = q.groupby("patient_key").agg(n=("case_id", "size"), n_dead=("ecg_dead", "sum"), splits=("split_pooled", "nunique"))
     pats = own.loc[own.n_dead > 0]
@@ -253,6 +271,7 @@ def build_dead_ecg_decision(root, reps=None, write=True):
         "ecg_amp_ratio_dead_median": float(flagged_all.ecg_amp_ratio.median()) if len(flagged_all) else None,
         "hr_median_dead": float(flagged_all.hr_median.median()) if len(flagged_all) else None,
         "art_rate_median_dead": float(flagged_all.art_rate_bpm.median()) if len(flagged_all) else None}
+    # Calculate output values for the following step.
     decision = {"decision": "EXCLUDE from every beat-synchronous (BSHI) set; KEEP in MAP-only baselines and in the EDA 'all windows' tables (always labelled)",
                 "default_kept": all(v for k, v in checks.items() if k != "recovers_reference_68"),
                 "checks": checks,
@@ -261,6 +280,7 @@ def build_dead_ecg_decision(root, reps=None, write=True):
                 "at": utc_now()}
     out = {"evidence": evidence, "decision": decision}
     if write:
+        # Join related tables by dataset, case id to keep measurements aligned.
         atomic_json(root / "results" / "dead_ecg_decision.json", out)
         (root / "results" / "eda").mkdir(parents=True, exist_ok=True)
         win = prim.groupby(["dataset", "case_id"]).agg(primary_windows=("y", "size"), primary_events=("y", "sum")).reset_index()

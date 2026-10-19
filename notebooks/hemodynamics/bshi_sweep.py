@@ -5,6 +5,7 @@ for fitting, VALIDATION windows (weighted back to natural prevalence with ``samp
 Stages (see ``run_sweep``): B1 optimizer x peak-LR grid (candidates from the LR range test), B2 weight decay / batch size / one-cycle around the best, B3 top-3 with extra seeds.
 """
 from __future__ import annotations
+# Compare optimizer settings using the same short training budget.
 
 import math
 import os
@@ -23,10 +24,12 @@ STORE_REL = Path("data") / "derived" / "bshi" / "sweep_subset"
 def run_trial(cfg):
     """One training run (6 short epochs by default) -> metrics dict. ``cfg`` keys: name, opt (a key of OPTIMIZERS), lr, weight_decay, batch_size, schedule, epochs, patience, epoch_windows,
     seed, variant, gate, dropout, sampler, store (optional path relative to BSHI_ROOT)."""
+    # Calculate project paths for the following step.
     import torch
     from . import bshi_data as D
     from . import bshi_store as ST
     from . import bshi_train as T
+    # Calculate project paths for the following step.
     from .bshi_model import ModelConfig
     root = Path(os.environ.get("BSHI_ROOT", "."))
     store = root / cfg.get("store", str(STORE_REL))
@@ -37,14 +40,17 @@ def run_trial(cfg):
                                     "variant": cfg.get("variant", "eap"), "sampler": cfg.get("sampler", "natural"), "warmup_epochs": cfg.get("warmup_epochs", 1.0), "num_workers": 0, "channels_last": False})
     mcfg = ModelConfig(variant=tcfg.variant, gate=cfg.get("gate", True), dropout=cfg.get("dropout", 0.1))
     epoch_windows = int(cfg.get("epoch_windows", len(tr)))
+    # Keep test files in an isolated directory, away from real dataset outputs.
     spe = math.ceil(epoch_windows / tcfg.batch_size)
     pre = D.Preprocessor(tcfg.variant, D.load_stats(root), clamp=tcfg.clamp, device="cuda", channels_last=tcfg.channels_last)
     out_dir = Path(tempfile.mkdtemp(prefix=f"bshi_trial_{cfg.get('name', 'x')}_"))
     torch.cuda.reset_peak_memory_stats()
     try:
+        # Fit the model or transform using the supplied fitting partition.
         trainer = T.Trainer(tcfg, mcfg, pre, D.store_train_loader(tr, tcfg.batch_size, epoch_windows, tcfg.seed, tcfg.sampler), D.store_eval_loader(va, 512), out_dir, device="cuda",
                             steps_per_epoch=spe, log=lambda *a: None)
         res = trainer.fit(resume=False)
+        # Exclude or flag missing values before using these measurements.
         h = res["history"]
         best = h.loc[h.val_auprc.idxmax()] if h.val_auprc.notna().any() else h.iloc[-1]
         return {"name": cfg.get("name"), "opt": cfg["opt"], "lr": cfg["lr"], "weight_decay": tcfg.weight_decay, "batch_size": tcfg.batch_size, "schedule": tcfg.schedule, "seed": tcfg.seed,
@@ -57,6 +63,7 @@ def run_trial(cfg):
 
 
 def plot_lr_range(curves, sugg, path):
+    # Create the plotting panels for this comparison.
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -66,6 +73,7 @@ def plot_lr_range(curves, sugg, path):
         ax.plot(c["lr"], c["smoothed"], color=col, label=name)
         for v in sugg[name]["candidates"]:
             ax.axvline(v, color=col, lw=0.6, ls=":")
+    # Create the destination directory before writing any outputs.
     ax.set_xscale("log")
     ax.legend(title="optimizer (dotted = sweep candidates)", fontsize=8)
     F.finish_axes(ax, "learning rate (log scale)", "training loss (smoothed, multi-task)", "learning-rate range test")
@@ -77,6 +85,7 @@ def plot_lr_range(curves, sugg, path):
 
 
 def plot_sweep(df, path):
+    # Exclude or flag missing values before using these measurements.
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -86,13 +95,16 @@ def plot_sweep(df, path):
     for (name, g), col in zip(d[d.stage.str.startswith("B1")].groupby("opt"), ("#1f77b4", "#2ca02c", "#d62728")):
         g = g.sort_values("lr")
         ax[0].plot(g.lr, g.val_auprc, marker="o", color=col, label=name)
+    # Label the panel with the measurement names and their units.
     ax[0].set_xscale("log")
     ax[0].legend(title="optimizer", fontsize=8)
     F.finish_axes(ax[0], "peak learning rate (log scale)", "validation AUPRC (natural prevalence, weighted)", "B1: optimizer x peak LR (batch 256, 6 short epochs)")
     top = d.sort_values("val_auprc", ascending=False).head(12).iloc[::-1]
+    # Create the destination directory before writing any outputs.
     ax[1].barh(top.name, top.val_auprc, color="#2ca02c")
     F.finish_axes(ax[1], "validation AUPRC (natural prevalence, weighted)", "trial", "best 12 trials of all stages")
     fig.tight_layout()
+    # Create the destination directory before writing any outputs.
     F.audit_figure(fig, "fig_sweep")
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(path, dpi=90)
@@ -101,6 +113,7 @@ def plot_sweep(df, path):
 
 def lr_range_all(root=".", steps=300, batch_size=256, write=True):
     """M2: one LR range-test curve per optimizer on the TRAIN part of the sweep subset; returns the curves and the suggested peak-LR candidates."""
+    # Calculate project paths for the following step.
     import torch
     from . import bshi_data as D
     from . import bshi_measure as M
@@ -111,6 +124,7 @@ def lr_range_all(root=".", steps=300, batch_size=256, write=True):
     loader = D.store_train_loader(tr, batch_size, None, 5052, "natural")
     curves, sugg = {}, {}
     for name, o in OPTIMIZERS.items():
+        # Calculate the window boundary and the feature name for the following step.
         hi = 1.0 if o["optimizer"] == "adamw" else 3.0
         lo = 1e-5 if o["optimizer"] == "adamw" else 1e-4
         c = M.m2_lr_range(loader, pre, o["optimizer"], lr_lo=lo, lr_hi=hi, steps=steps, beta2=o.get("beta2", 0.999), channels_last=False)
@@ -118,6 +132,7 @@ def lr_range_all(root=".", steps=300, batch_size=256, write=True):
         sugg[name] = M.suggest_lrs(c)
         torch.cuda.empty_cache()
     if write:
+        # Store the settings and results as JSON for later inspection.
         import json
         p = root / "results" / "train" / "lr_range.json"
         p.parent.mkdir(parents=True, exist_ok=True)
@@ -141,6 +156,7 @@ def rank(df):
 
 def run_sweep(spark, root, suggestions, epoch_windows=29000, epochs=6, deadline_min=40.0, log=print, partial_path=None):
     """B1-B3 through ``cluster.run_trials``; stops starting new stages when the wall-time budget is used. Returns the trials DataFrame (all stages) and the final ranking."""
+    # Use the same trial budget to compare optimizers and nearby configuration choices.
     from . import cluster as C
     t0 = time.time()
     base = {"epochs": epochs, "patience": 2, "epoch_windows": epoch_windows, "batch_size": 256, "weight_decay": 0.01, "schedule": "cosine", "seed": 5052}
@@ -162,13 +178,16 @@ def run_sweep(spark, root, suggestions, epoch_windows=29000, epochs=6, deadline_
     b1_cfgs = [{**base, "name": f"{o}_lr{lr:g}", "opt": o, "lr": lr} for o, s in suggestions.items() for lr in s["candidates"]]
     b1 = stage("B1 optimizer x peak LR", b1_cfgs)
     best = rank(b1).iloc[0]
+    # Collect the per-record values into a table for comparison.
     b2_cfgs = [{**base, "name": f"{best.opt}_wd0.05", "opt": best.opt, "lr": best.lr, "weight_decay": 0.05},
                {**base, "name": f"{best.opt}_bs128", "opt": best.opt, "lr": best.lr, "batch_size": 128},
                {**base, "name": f"{best.opt}_bs384", "opt": best.opt, "lr": best.lr, "batch_size": 384},
                {**base, "name": f"{best.opt}_onecycle", "opt": best.opt, "lr": best.lr, "schedule": "onecycle"}]
+    # Collect the per-record values into a table for comparison.
     b2 = stage("B2 weight decay / batch size / one-cycle", b2_cfgs)
     allr = pd.concat([x for x in stages if len(x)], ignore_index=True)
     top = rank(allr).head(3)
+    # Collect the per-record values into a table for comparison.
     cfg_of = {c["name"]: c for c in b1_cfgs + b2_cfgs}
     b3_cfgs = [{**cfg_of[r["name"]], "name": f"{r['name']}_seed{s}", "seed": s} for _, r in top.iterrows() for s in (5053, 5054)]
     stage("B3 top-3 x 2 more seeds", b3_cfgs)

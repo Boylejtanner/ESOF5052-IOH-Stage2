@@ -1,3 +1,4 @@
+# Check case quality using controlled inputs and isolated files.
 import json
 import tempfile
 import unittest
@@ -26,11 +27,13 @@ class TestFlags(unittest.TestCase):
         return C.flag_cases(df).set_index("case_id")
 
     def test_healthy_case_is_clean_and_usable(self):
+        # Compare the result with the expected value or tolerance.
         f = self.flags(ok={})
         self.assertFalse(f.loc["ok", ["ecg_dead", "art_dead", "ppg_dead", "ppg_suspect_case"]].any())
         self.assertTrue(f.loc["ok", "bshi_core_possible"] and f.loc["ok", "bshi_full_possible"])
 
     def test_dead_ecg_variants_are_flagged_with_their_kind(self):
+        # Verify dead ECG variants are flagged with their kind.
         f = self.flags(noise=dict(sqi_ecg_median=0.13, art_ok_frac=0.0, hr_median=140.0, ecg_amp_ratio=0.004),
                        contradiction=dict(sqi_ecg_median=0.19, art_ok_frac=0.0, hr_median=113.0, art_rate_bpm=65.0, ecg_amp_ratio=5.0),
                        weak=dict(sqi_ecg_median=0.3, art_ok_frac=0.0, hr_median=65.0, art_rate_bpm=67.0, ecg_amp_ratio=0.19))
@@ -39,12 +42,14 @@ class TestFlags(unittest.TestCase):
         self.assertFalse(f.bshi_core_possible.any())
 
     def test_ppg_association_failure_alone_does_not_make_the_ecg_dead(self):
+        # Verify PPG association failure alone does not make the ECG dead.
         f = self.flags(case=dict(assoc_failed_share=1.0, art_ok_frac=0.3, ppg_ok_frac=0.0, sqi_ecg_median=0.28, ecg_amp_ratio=0.2, sqi_ppg_median=0.0, n_m_ppg=0))
         self.assertFalse(f.loc["case", "ecg_dead"])
         self.assertTrue(f.loc["case", "ppg_dead"])
         self.assertFalse(f.loc["case", "bshi_full_possible"])
 
     def test_flat_arterial_line_is_art_dead_not_ecg_dead(self):
+        # Verify flat arterial line is ART dead not ECG dead.
         f = self.flags(case=dict(art_ok_frac=0.0, art_rate_bpm=np.nan, art_pp_mmhg=np.nan, sqi_ecg_median=0.9, ecg_amp_ratio=1.0, n_m_art=0, n_m_ppg=0))
         self.assertTrue(f.loc["case", "art_dead"])
         self.assertFalse(f.loc["case", "ecg_dead"])
@@ -55,6 +60,7 @@ class TestFlags(unittest.TestCase):
         self.assertFalse(f.loc["case", "ecg_dead"])
 
     def test_late_ppg_marks_the_case_suspect_and_limits_full_set(self):
+        # Verify late PPG marks the case suspect and limits full set.
         f = self.flags(case=dict(ppg_late_share=0.7, n_m_ppg=10))
         self.assertTrue(f.loc["case", "ppg_suspect_case"])
         self.assertTrue(f.loc["case", "bshi_core_possible"])
@@ -70,24 +76,29 @@ class TestBeatAndRawFeatures(unittest.TestCase):
     CFG = {"sqi_ecg_min": 0.5, "ppg_delay_max_sec": 0.9, "min_usable_beats": 54}
 
     def test_beat_features_apply_the_bshi_masks(self):
+        # Verify beat features apply the bshi masks.
         n = 100
         b = pd.DataFrame({"t_r": np.arange(n, dtype=float), "rr_sec": np.ones(n), "hr_bpm": 60.0, "sqi_ecg": 0.9, "sqi_ppg": 0.9, "flags": 0, "valid_beat": True,
                           "art_ok": True, "ppg_ok": True, "ptt_ecg_ppg": 0.5})
+        # Compare the result with the expected value or tolerance.
         b.loc[:9, "valid_beat"] = False
         b.loc[10:19, "art_ok"] = False
         b.loc[20:29, "ptt_ecg_ppg"] = 1.1
         b.loc[30:39, "sqi_ecg"] = 0.2
+        # Compare the result with the expected value or tolerance.
         f = C.beat_features(b, self.CFG)
         self.assertEqual((f["n_m_ecg"], f["n_m_art"], f["n_m_ppg"]), (80, 70, 60))
         self.assertAlmostEqual(f["ppg_late_share"], 10 / 90)
 
     def test_chunk_starts_fall_inside_ready_spans(self):
+        # Verify chunk starts fall inside ready spans.
         starts = C._chunk_starts(np.array([0.0, 1000.0]), np.array([300.0, 1400.0]), 6, 60.0)
         self.assertEqual(len(starts), 6)
         for s in starts:
             self.assertTrue((0 <= s <= 240) or (1000 <= s <= 1340))
 
     def test_raw_features_measure_amplitude_and_independent_art_rate(self):
+        # Verify raw features measure amplitude and independent ART rate.
         t, r, ecg, art, ppg = synth(duration=400.0, hr=72.0, seed=3)
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "waveform.parquet"
@@ -102,9 +113,11 @@ class TestBeatAndRawFeatures(unittest.TestCase):
 
 class TestSavedDecision(unittest.TestCase):
     def test_decision_json_matches_the_case_quality_table(self):
+        # Verify decision json matches the case quality table.
         path, parquet = ROOT / "results" / "dead_ecg_decision.json", C.quality_path(ROOT)
         if not (path.exists() and parquet.exists()):
             self.skipTest("run the dead-ECG decision first")
+        # Check flagged ecg dead cases against the expected result.
         out = json.loads(path.read_text(encoding="utf-8"))
         q = pd.read_parquet(parquet)
         self.assertEqual(out["evidence"]["flagged_ecg_dead_cases"], int(q.ecg_dead.sum()))

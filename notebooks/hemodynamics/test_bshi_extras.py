@@ -1,3 +1,4 @@
+# Check bshi extras using controlled inputs and isolated files.
 import os
 import tempfile
 import threading
@@ -20,6 +21,7 @@ class PrefetchTests(unittest.TestCase):
         self.assertEqual(list(D.prefetch(iter(range(50)), depth=3)), list(range(50)))
 
     def test_early_close_stops_the_thread(self):
+        # Verify early close stops the thread.
         before = threading.active_count()
         g = D.prefetch(iter(range(10 ** 9)), depth=2)
         next(g)
@@ -28,6 +30,7 @@ class PrefetchTests(unittest.TestCase):
         self.assertLessEqual(threading.active_count(), before)
 
     def test_errors_reach_the_consumer(self):
+        # Verify errors reach the consumer.
         def bad():
             yield 1
             raise ValueError("boom")
@@ -50,6 +53,7 @@ def fake_index():
 
 class ExperimentFramesTests(unittest.TestCase):
     def test_stride_weights_and_all_validation_test(self):
+        # Verify stride weights and all validation test.
         idx = fake_index()
         fr = ST.experiment_frames(idx, "pooled", stride=2)
         full_train = idx[idx.split_pooled == "train"]
@@ -60,6 +64,7 @@ class ExperimentFramesTests(unittest.TestCase):
         self.assertTrue((fr["test"].sampling_weight == 1).all())
 
     def test_every_experiment_keeps_its_own_split_and_patients_stay_disjoint(self):
+        # Verify every experiment keeps its own split and patients stay disjoint.
         idx = fake_index()
         for train_on in ("pooled", "vitaldb", "mover"):
             fr = ST.experiment_frames(idx, train_on, stride=2)
@@ -78,6 +83,7 @@ class ExperimentFramesTests(unittest.TestCase):
 
 class ModeTests(unittest.TestCase):
     def test_modes_fall_back_without_a_laptop(self):
+        # Verify modes fall back without a laptop.
         none = {"master_running": False, "master": None, "workers": [], "remote": []}
         one = {"master_running": True, "master": "10.0.0.19", "workers": [], "remote": [{"host": "100.64.1.2"}]}
         self.assertEqual(NB.resolve_mode(".", "single_gpu", none)[0], "single_gpu")
@@ -93,6 +99,7 @@ class ModeTests(unittest.TestCase):
             self.assertEqual(NB.resolve_mode(".", "single_gpu")[0], "single_gpu")
 
     def test_cluster_status_without_a_master_is_a_normal_answer(self):
+        # Verify cluster status without a master is a normal answer.
         with mock.patch.object(C, "load_config", return_value={"master_ui": 8080}), mock.patch.object(C, "master_host", return_value="10.0.0.19"), \
                 mock.patch.object(C, "master_view", return_value=None):
             st = NB.cluster_status(".")
@@ -100,6 +107,7 @@ class ModeTests(unittest.TestCase):
         self.assertEqual(st["remote"], [])
 
     def test_remote_worker_is_the_one_on_another_host(self):
+        # Verify remote worker is the one on another host.
         view = {"workers": [{"id": "w1", "host": "10.0.0.19", "cores": 8, "memory": 24000, "state": "ALIVE"}, {"id": "w2", "host": "100.64.3.4", "cores": 6, "memory": 8000, "state": "ALIVE"}]}
         with mock.patch.object(C, "load_config", return_value={"master_ui": 8080}), mock.patch.object(C, "master_host", return_value="10.0.0.19"), \
                 mock.patch.object(C, "master_view", return_value=view), mock.patch.object(C, "alive_workers", return_value=view["workers"]):
@@ -109,12 +117,14 @@ class ModeTests(unittest.TestCase):
 
 class VpnHostTests(unittest.TestCase):
     def test_default_is_the_lan_address(self):
+        # Verify default is the lan address.
         with mock.patch.dict(os.environ, {}, clear=False), mock.patch.object(C, "lan_ipv4", return_value="10.0.0.19"):
             os.environ.pop("BSHI_NETWORK", None)
             os.environ.pop("BSHI_MASTER_HOST", None)
             self.assertEqual(C.master_host({"master_host": "auto"}), "10.0.0.19")
 
     def test_vpn_uses_the_vpn_address_and_falls_back_to_lan(self):
+        # Verify vpn uses the vpn address and falls back to lan.
         env = {k: v for k, v in os.environ.items() if k not in ("BSHI_NETWORK", "BSHI_MASTER_HOST")}
         with mock.patch.dict(os.environ, env, clear=True), mock.patch.object(C, "lan_ipv4", return_value="10.0.0.19"):
             with mock.patch.object(C, "vpn_ipv4", return_value="100.101.102.103"):
@@ -132,6 +142,7 @@ class BaselineColumnsTests(unittest.TestCase):
     ROOT = os.environ.get("BSHI_ROOT") or os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
     def test_every_rung_column_is_in_the_index_or_the_feature_file(self):
+        # Verify every rung column is in the index or the feature file.
         import pyarrow.parquet as pq
         from hemodynamics import eda_models as M
         idx_path = os.path.join(self.ROOT, "data", "derived", "bshi", "window_index_v1.parquet")
@@ -144,14 +155,17 @@ class BaselineColumnsTests(unittest.TestCase):
 
 class ProgressStateTests(unittest.TestCase):
     def test_paused_and_stalled_runs_are_named(self):
+        # Verify paused and stalled runs are named.
         with tempfile.TemporaryDirectory() as td:
             p = P.Progress(td, label="unit", console=False, notebook=False, gpu=False, html_page=False)
             p.start_run(epochs=5, steps_per_epoch=10, windows_per_step=128)
+            # Check line against the expected result.
             p.begin_epoch(2)
             p.pause()
             line = P.status_line(P.read_status(td))
             self.assertIn("paused", line)
             self.assertIn("epoch 3/5", line)
+            # Compare the result with the expected value or tolerance.
             st = P.read_status(td)
             st["phase"], st["updated"] = "train", "2000-01-01 00:00:00"
             self.assertIn("NO UPDATE", P.status_line(st))

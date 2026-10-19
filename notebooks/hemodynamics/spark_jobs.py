@@ -9,6 +9,7 @@ Data are read by the TASKS from the worker's own project root (``BSHI_ROOT``) wi
 desktop's paths. Nothing here writes through Spark (no winutils): results come back to the driver and are written from Python.
 """
 from __future__ import annotations
+# Compare partitioned processing and streaming replay with local reference results.
 
 import os
 import time
@@ -77,10 +78,12 @@ def smoke_aggregate(spark, root, native=False):
         if rec[0] == "agg":
             n, w = agg.get(rec[1], (0, 0.0))
             agg[rec[1]] = (n + rec[2][0], w + rec[2][1])
+    # Summarize the records separately within each requested group.
     tasks = pd.DataFrame([r[1:] for r in out if r[0] == "task"], columns=["partition", "worker", "host", "rows", "seconds"])
     ref = pd.concat([pd.read_parquet(Path(root) / DEV_REL / rel, columns=["split", "dataset", "y_event", "sampling_weight"]) for rel in files])
     ref["y_event"] = ref.y_event.astype(bool)
     ref = ref.groupby(["split", "dataset", "y_event"]).agg(n=("sampling_weight", "size"), w=("sampling_weight", lambda s: float(s.astype("float64").sum())))
+    # Summarize the records separately within each requested group.
     table = pd.DataFrame([{"split": k[0], "dataset": k[1], "y_event": k[2], "windows_spark": v[0], "windows_pandas": int(ref.loc[k, "n"]), "weight_spark": v[1], "weight_pandas": float(ref.loc[k, "w"])}
                           for k, v in sorted(agg.items())])
     res = {"seconds": round(seconds, 2), "windows": int(table.windows_spark.sum()), "counts_equal": bool((table.windows_spark == table.windows_pandas).all()),
@@ -103,6 +106,7 @@ def features_from_batch(b):
     x, bm, ctx = b["x"], b["beat_mask"], b["context"]
     cols = {f"ctx_{n}": ctx[:, i].astype(np.float64) for i, n in enumerate(S.CONTEXT_NAMES)}
     for p, name in enumerate(PLANES):
+        # Calculate valid-sample flags and the mean level for the following step.
         valid = bm[:, p, :].astype(np.float64)
         plane = x[:, p].astype(np.float64)
         cnt = valid.sum(axis=1) * x.shape[3]
@@ -116,6 +120,7 @@ def features_from_batch(b):
 
 def features_for_file(base, rel):
     """Read one dev-subset part, decode it and return meta columns + features (pandas)."""
+    # Read the stored table required for this calculation.
     import pyarrow.parquet as pq
     t = pq.read_table(Path(base) / rel, columns=RAW_COLUMNS + ["split", "dataset", "sampling_weight"]).to_pandas()
     feats = features_from_batch(S.decode_compact(t[RAW_COLUMNS].to_dict("list")))
@@ -138,6 +143,7 @@ def _features_map(batches):
 
 def run_features(spark, root, files=None):
     """B1: the features of every dev-subset window, one Spark partition per file. Returns (pandas result, timing dict)."""
+    # Summarize the records separately within each requested group.
     files = files or dev_files(root)
     df = spark.createDataFrame(pd.DataFrame({"rel": files})).repartition(len(files))
     t0 = time.perf_counter()
@@ -150,9 +156,11 @@ def run_features(spark, root, files=None):
 
 def verify_features(root, pdf, n=100, seed=5052):
     """The Spark features of ``n`` random windows against features computed from a FRESH ``bshi.assemble`` of the same windows (context exact; planes differ by float16 storage only)."""
+    # Build the requested beat images, numerical context, and beat masks.
     ids = pdf.sample(n, random_state=seed).window_id.to_numpy()
     idx = S.load_window_index(root)
     rows = idx[idx.window_id.isin(ids)].sort_values(["dataset", "case_id", "beat_lo"]).reset_index(drop=True)
+    # Build the requested beat images, numerical context, and beat masks.
     fresh = features_from_batch(S.assemble(root, rows, "eap", cache=S.CaseCache())).assign(window_id=rows.window_id.to_numpy()).set_index("window_id")
     got = pdf.set_index("window_id").loc[rows.window_id.to_numpy(), FEATURE_NAMES]
     ctx = [c for c in FEATURE_NAMES if c.startswith("ctx_") or c.startswith("n_")]
@@ -203,15 +211,18 @@ def _stream_map_factory(plan_records, score_path):
         mod, name = score_path.split(":")
         score = getattr(importlib.import_module(mod), name)
         base, worker = _base(), os.environ.get("BSHI_WORKER_NAME", "?")
+        # Process the selected records in order and retain their individual results.
         for pdf in batches:
             pdf = pdf[pdf["value"] < len(plan)].sort_values("value")
             parts = []
             for rel, g in plan.iloc[pdf["value"].to_numpy()].groupby("rel", sort=False):
+                # Read the stored table required for this calculation.
                 t = pq.read_table(base / rel, columns=RAW_COLUMNS).to_pandas().iloc[g["row"].to_numpy()]
                 feats = features_from_batch(S.decode_compact(t.to_dict("list")))
                 parts.append(pd.concat([g.reset_index(drop=True)[["window_id", "patient_key", "t_end_sec"]], feats], axis=1))
             if not parts:
                 continue
+            # Collect the per-record values into a table for comparison.
             out = pd.concat(parts, ignore_index=True)
             seq_of = dict(zip(plan.window_id, range(len(plan))))
             out.insert(0, "seq", out.window_id.map(seq_of).astype("int64"))
@@ -228,6 +239,7 @@ def _stream_map_factory(plan_records, score_path):
 def stream_replay(spark, root, n_windows=1500, rate=100, concurrent_patients=4, score="hemodynamics.spark_jobs:default_score", timeout=180):
     """B2: replay ``n_windows`` dev-subset windows at ``rate`` windows/s through Structured Streaming and record the end-to-end latency (scheduled emission time of a window until its
     result is back on the driver), p50/p95/p99, throughput and the micro-batch sizes. The session must be created with ``streaming=True`` (Windows checkpoint support)."""
+    # Calculate the observation count and the saved run state for the following step.
     plan = replay_plan(root, n_windows, concurrent_patients)
     n = len(plan)
     fn = _stream_map_factory(list(plan.itertuples(index=False, name=None)), score)
@@ -260,6 +272,7 @@ def stream_replay(spark, root, n_windows=1500, rate=100, concurrent_patients=4, 
     res = pd.concat(got, ignore_index=True) if got else pd.DataFrame()
     if res.empty:
         return {"ok": False, "windows": 0}, res
+    # Summarize the records separately within each requested group.
     lat = (res.recv_ms - res.emit_ms).to_numpy(dtype=float)
     span = (res.recv_ms.max() - res.emit_ms.min()) / 1000
     stats = {"ok": True, "windows": int(len(res)), "requested": n, "rate_windows_per_s": rate, "latency_ms_p50": float(np.percentile(lat, 50)), "latency_ms_p95": float(np.percentile(lat, 95)),

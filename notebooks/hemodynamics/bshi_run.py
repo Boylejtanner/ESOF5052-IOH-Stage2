@@ -3,6 +3,7 @@ resumable ``Trainer``, evaluation with patient-bootstrap CIs, G0/G4 baselines on
 The test split is only read by ``evaluate_test`` and nothing in training or selection calls it.
 """
 from __future__ import annotations
+# Connect input recipes, data loaders, training, and saved evaluation results.
 
 import json
 import math
@@ -49,6 +50,7 @@ def make_data(root, cfg, smoke=False, epoch_windows=None, device="cuda", use_sto
     """Everything ``Trainer`` needs: preprocessor, train / validation loaders, steps per epoch, the prior shift (stratified sampler) and bookkeeping.
     FULL mode reads the compact store of the experiment (``data/derived/bshi/store_<train_on>_v1``; built by ``bshi_store.build_experiment_store``) when it exists: shuffled training from the
     on-the-fly assembler reads a different surgery's beat file for almost every window and runs at about 60-150 windows/s (measured, the analysis workflow), the store at the GPU's speed."""
+    # Choose the correct store and partition before creating training and evaluation loaders.
     root = Path(root)
     stats = D.load_stats(root)
     pre = D.Preprocessor(cfg.variant, stats, clamp=cfg.clamp, device=device, channels_last=cfg.channels_last)
@@ -109,6 +111,7 @@ def evaluate_frame(root, trainer, pre, cfg, frame, flags, shift=None, reps=200, 
 
 def baselines_on(root, frames, rungs=("G0", "G4")):
     """Logistic-regression ladder rungs trained on the POOLED train windows and evaluated on the given frames {name: frame}: the numbers to compare the network with, on the same windows."""
+    # Calculate the required feature columns for the following step.
     from sklearn.linear_model import LogisticRegression
     from sklearn.preprocessing import StandardScaler
     from . import eda_models as M
@@ -127,6 +130,7 @@ def baselines_on(root, frames, rungs=("G0", "G4")):
         sc = StandardScaler().fit(df.loc[train.window_id, c])
         clf = LogisticRegression(max_iter=500).fit(sc.transform(df.loc[train.window_id, c]), train.y_event.astype(int))
         for name, f in frames.items():
+            # Calculate predicted risk without refitting on evaluation windows.
             f = f[f.window_id.isin(df.index)]
             p = clf.predict_proba(sc.transform(df.loc[f.window_id, c]))[:, 1]
             out[(r, name)] = {"auroc": L.auroc(f.y_event.to_numpy(), p), "auprc": L.auprc(f.y_event.to_numpy(), p), "n": int(len(f))}
@@ -146,6 +150,7 @@ def gray_zone_table(df, gray):
 
 def baseline_table(root, setting, set_name="full"):
     """G0 and G4 AUROC / AUPRC of the project's baseline ladder (``results/eda/table_baseline_ladder_all.csv``) for a setting, e.g. 'pooled_train->pooled_test'."""
+    # Read the saved table and retain its named columns.
     t = pd.read_csv(Path(root) / "results" / "eda" / "table_baseline_ladder_all.csv")
     t = t[(t.set == set_name) & (t.setting == setting) & (t.rung.isin(["G0", "G4"]))]
     return t[["rung", "learner", "auroc", "auroc_lo", "auroc_hi"]].rename(columns={"learner": "learner (lr = logistic, hgb = boosting)"}).reset_index(drop=True)
@@ -159,9 +164,11 @@ BASELINE_SETTING = {("pooled", "pooled_test"): "pooled_test", ("pooled", "vitald
 def compare_with_baselines(root, cfg, res):
     """One row per evaluated set: the network's AUROC (with CI) next to the G0 (MAP only) and G4 (all features) logistic / boosting AUROCs of ``results/eda`` (same full-set windows; the dev-subset
     smoke test is only a rough context)."""
+    # Read the saved table and retain its named columns.
     t = pd.read_csv(Path(root) / "results" / "eda" / "table_baseline_ladder_all.csv")
     t = t[t.set == "full"]
     rows = []
+    # Apply the same operation to each named field in this group.
     for name, m in res.items():
         key = BASELINE_SETTING.get((cfg.train_on, name))
         if name.startswith("_") or key is None or name == "validation":
@@ -178,9 +185,11 @@ def compare_with_baselines(root, cfg, res):
 def evaluate_run(root, trainer, data, cfg, smoke, reps=200):
     """Validation and TEST metrics with patient-bootstrap CIs plus the calibration / lead-time / gray-zone inputs. SMOKE: validation from the sweep subset, test from the dev subset's test split.
     FULL: the real validation windows and every test frame of the experiment. Returns (results dict, predictions per set)."""
+    # Load the saved run and evaluate its fixed model on the requested partitions.
     pre, shift = data["pre"], data["shift"]
     res, preds = {}, {}
     if smoke:
+        # Read the stored table required for this calculation.
         res["validation"], preds["validation"] = evaluate_loader(trainer, pre, data["val_loader"](), cfg, data["meta"]["val"].set_index("window_id").patient_key, reps, shift)
         files = sorted((Path(root) / D.DEV_DIR / "split=test").glob("part-*.parquet"))
         meta = pd.concat([pd.read_parquet(f, columns=["window_id", "patient_key", "time_to_event_sec", "gray_zone"]) for f in files]).set_index("window_id")
@@ -223,6 +232,7 @@ def metrics_table(res):
                      "MAE AUT65 (mmHg*min)": round(m.get("mae_aut65", float("nan")), 3)})
     return pd.DataFrame(rows)
 def plot_history(history, path=None):
+    # Collect the per-record values into a table for comparison.
     import matplotlib.pyplot as plt
     from . import figstyle as F
     h = pd.DataFrame(history)
@@ -230,13 +240,16 @@ def plot_history(history, path=None):
     ax[0].plot(h.epoch, h.total, marker="o", label="training loss")
     if "val_loss" in h:
         ax[0].plot(h.epoch, h.val_loss, marker="s", label="validation loss")
+    # Label the panel with the measurement names and their units.
     ax[0].legend(fontsize=8)
     F.finish_axes(ax[0], "epoch", "multi-task loss (dimensionless)", "loss")
     ax[1].plot(h.epoch, h.val_auprc, marker="o", color="#2ca02c", label="AUPRC")
     ax[1].plot(h.epoch, h.val_auroc, marker="s", color="#1f77b4", label="AUROC")
+    # Label the panel with the measurement names and their units.
     ax[1].legend(fontsize=8)
     F.finish_axes(ax[1], "epoch", "validation metric (0-1, natural prevalence)", "validation")
     ax[2].plot(h.epoch, h.train_windows_per_s, marker="o", color="#ff7f0e")
+    # Label the panel with the measurement names and their units.
     F.finish_axes(ax[2], "epoch", "training speed (windows/s)", "speed")
     fig.tight_layout()
     F.audit_figure(fig, "fig_training_history")
@@ -252,6 +265,7 @@ def plot_calibration(df, shift=None, bins=10, path=None):
     logit = df.logit.to_numpy()
     if shift:
         logit = logit + np.where(df.dataset_code.to_numpy() == 1, shift.get("vitaldb", 0.0), shift.get("mover", 0.0))
+    # Summarize the records separately within each requested group.
     p = 1 / (1 + np.exp(-logit))
     q = pd.qcut(p, bins, duplicates="drop")
     g = pd.DataFrame({"p": p, "y": df.y.to_numpy(), "q": q}).groupby("q", observed=True).agg(p=("p", "mean"), y=("y", "mean"))

@@ -4,6 +4,7 @@ Run as ``python -m hemodynamics.bshi_input_eda --root <workspace>``.
 The completed v5 study/configuration and its test results are never modified.
 """
 from __future__ import annotations
+# Compare physiological feature sets on patient-separated development data.
 
 import argparse
 import hashlib
@@ -50,22 +51,28 @@ def subsample(frame):
 
 def load_data(root):
     """Load train/validation core windows and create a patient-disjoint inner partition."""
+    # Read development partitions only and check patient separation before feature comparisons.
     cols = ["window_id", "dataset", "case_id", "patient_key", "split_pooled", "t_end_sec", "primary_eligible", "in_core", "in_full",
             "y_event", "gray_zone", "time_to_event_sec"] + G0
     idx = pd.read_parquet(root / "data" / "derived" / "bshi" / "window_index_v1.parquet", columns=cols,
                           filters=[("split_pooled", "in", ["train", "validation"]), ("primary_eligible", "==", True), ("in_core", "==", True)])
+    # Join related tables by window id to keep measurements aligned.
     assert set(idx.split_pooled) == {"train", "validation"}
     assert idx.window_id.is_unique
     params = pd.read_parquet(root / "data" / "derived" / "independence" / F.PARAMS_NAME, columns=["window_id"] + F.column_names())
+    # Join related tables by window id to keep measurements aligned.
     assert params.window_id.is_unique
     df = idx.merge(params, on="window_id", how="inner", validate="one_to_one").dropna(subset=G0)
     df["y"] = df.y_event.astype(np.int8)
+    # Summarize the records separately within each requested group.
     df = df.sort_values(["dataset", "case_id", "t_end_sec"], kind="stable").reset_index(drop=True)
     train = df[df.split_pooled == "train"].copy()
     val = df[df.split_pooled == "validation"].copy()
+    # Confirm that no patient appears in both fitting and validation data.
     assert not set(train.patient_key) & set(val.patient_key)
     pats = train.groupby("patient_key", sort=True).agg(dataset=("dataset", "first"), event=("y", "max"))
     strata = pats.dataset + "_" + pats.event.astype(str)
+    # Reserve whole patients for the inner check, stratified by hospital and event status.
     fit_pats, check_pats = train_test_split(pats.index.to_numpy(), test_size=0.2, random_state=SEED, stratify=strata)
     fit = subsample(train[train.patient_key.isin(fit_pats)])
     check = subsample(train[train.patient_key.isin(check_pats)])
@@ -76,6 +83,7 @@ def load_data(root):
 
 def recipes(root):
     """Define candidate feature bundles using physiological groups and the training screen."""
+    # Compare physiological feature bundles without changing the target or window cohort.
     base = G0 + IND
     specs = {
         "g0": G0,
@@ -91,6 +99,7 @@ def recipes(root):
         "ind3_quality": base + ["a_q_l60", "e_q_l60", "a_cover_l60", "e_cover_l60"],
         "ind3_self_normalized": G0 + ["e_sdnn_l300_sn", "a_map_slope_l60", "a_dpdt_min_l60_sn"],
     }
+    # Read the saved table and retain its named columns.
     screen = pd.read_csv(root / "results" / "independence" / "table_feasibility.csv")
     safe = screen[screen.domain_auroc.le(0.70)]
     ea = safe[safe.signal.isin(["E", "A"])].param.tolist()
@@ -103,6 +112,7 @@ def recipes(root):
 
 def fit_predict(train, evaluation, spec):
     """Fit a missing-value-aware booster on training rows and predict evaluation risks."""
+    # Use fixed booster settings so differences primarily reflect features and sample weighting.
     strategy = spec["strategy"]
     options = dict(max_iter=150, learning_rate=0.1, max_leaf_nodes=31, min_samples_leaf=200,
                    l2_regularization=1.0, early_stopping=False, random_state=SEED)
@@ -116,9 +126,11 @@ def fit_predict(train, evaluation, spec):
     elif strategy == "patient_balanced":
         weights = (1 / train.patient_key.map(train.patient_key.value_counts())).to_numpy()
         weights = weights / weights.mean()
+    # Calculate predicted risk without refitting on evaluation windows.
     model = HistGradientBoostingClassifier(**options)
     x = train[spec["features"]].to_numpy(dtype=np.float64)
     assert np.isfinite(x).sum() > 0 and not np.isinf(x).any()
+    # Fit only on training rows; missing features follow the booster's learned missing-value route.
     model.fit(x, train.y.to_numpy(), sample_weight=weights)
     p = model.predict_proba(evaluation[spec["features"]].to_numpy(dtype=np.float64))[:, 1]
     assert np.isfinite(p).all() and ((p >= 0) & (p <= 1)).all()
@@ -140,6 +152,7 @@ def metric_row(df, p, name, setting):
 def inner_compare(fit, check, specs, out, log):
     """Compare recipes on held-out training patients in pooled and source-only settings."""
     rows, predictions = [], {}
+    # Apply the same operation to each named field in this group.
     for name, spec in specs.items():
         start = time.perf_counter()
         pooled = fit_predict(fit, check, spec)
@@ -166,6 +179,7 @@ def select_shortlist(inner):
 
 def train_eda(train, specs, root, out):
     """Summarize training-only feature coverage, correlations, and risk stratified by MAP."""
+    # Read the saved table and retain its named columns.
     tr = subsample(train)
     catalog = pd.read_csv(root / "results" / "independence" / "table_param_catalogue.csv")
     screen = pd.read_csv(root / "results" / "independence" / "table_feasibility.csv")
@@ -173,6 +187,7 @@ def train_eda(train, specs, root, out):
     all_features = unique([c for s in specs.values() for c in s["features"]])
     for ds, frame in tr.groupby("dataset"):
         for c in all_features:
+            # Exclude or flag missing values before using these measurements.
             x = frame[c]
             ok = x.notna()
             rows.append({"dataset": ds, "feature": c, "coverage": float(ok.mean()), "median": float(x.median()),
@@ -198,6 +213,7 @@ def domain_check(fit, check, specs, out):
     a["y"], b["y"] = a.dataset.eq("mover").astype(int), b.dataset.eq("mover").astype(int)
     rows = []
     for name, spec in specs.items():
+        # Calculate prediction metrics from these labels and model scores.
         ds_spec = {**spec, "strategy": "standard"}
         p = fit_predict(a, b, ds_spec)
         rows.append({"recipe": name, "inner_domain_auroc": float(roc_auc_score(b.y, p)), "features": len(spec["features"])})
@@ -206,6 +222,7 @@ def domain_check(fit, check, specs, out):
 
 def confirmation(train, val, specs, out, reps, log):
     """Evaluate the fixed shortlist on validation patients with paired cluster intervals."""
+    # Score the fixed shortlist on matched validation windows and retain subgroup results.
     rows, preds, strata = [], {}, []
     fit = subsample(train)
     for name, spec in specs.items():
@@ -220,6 +237,7 @@ def confirmation(train, val, specs, out, reps, log):
         preds[("vitaldb_to_mover_validation", name)] = ep
         rows.append(metric_row(mover, ep, name, "vitaldb_to_mover_validation"))
         for setting, frame, values in [("pooled_validation", val, p), ("vitaldb_to_mover_validation", mover, ep)]:
+            # Exclude or flag missing values before using these measurements.
             groups = {"gray_65_75": frame.gray_zone.to_numpy(bool), "outside_gray": ~frame.gray_zone.to_numpy(bool),
                       "PPG_available": frame.in_full.to_numpy(bool), "PPG_unavailable": ~frame.in_full.to_numpy(bool),
                       "long_ART_available": frame.a_map_sd_l300.notna().to_numpy(), "long_ART_missing": frame.a_map_sd_l300.isna().to_numpy()}
@@ -232,9 +250,11 @@ def confirmation(train, val, specs, out, reps, log):
     pd.DataFrame(strata).to_csv(out / "validation_subgroups.csv", index=False)
     uncertainty = []
     for setting, frame in [("pooled_validation", val), ("vitaldb_to_mover_validation", val[val.dataset.eq("mover")])]:
+        # Use matched patient resamples when comparing the models.
         boot = I.Boot(frame.patient_key, frame.dataset, reps, SEED)
         selected = {name: preds[(setting, name)] for name in specs}
         dist = I.boot_metrics(frame.y.to_numpy(), selected, boot)
+        # Apply the same operation to each named field in this group.
         for name, p in selected.items():
             row = {"recipe": name, "setting": setting, "bootstrap_reps": reps, **scores(frame, p)}
             for metric in ["auroc", "auprc"]:
@@ -256,6 +276,7 @@ def confirmation(train, val, specs, out, reps, log):
 
 def render_figures(root):
     """Plot the stored validation comparison without fitting or evaluating new models."""
+    # Read the saved table and retain its named columns.
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -263,14 +284,17 @@ def render_figures(root):
     labels = {"g0": "MAP Baseline", "ind3": "Original Three", "ind3_multiscale": "Three + Multiscale ART",
               "ind3_all_eap_low_domain": "Large Feature Set", "ind3_all_eap_low_domain__smoother": "Large Set + Smoother Trees"}
     fig, axes = plt.subplots(1, 2, figsize=(11, 4.6), sharey=True)
+    # Process the selected records in order and retain their individual results.
     for ax, setting, title in zip(axes, ["pooled_validation", "vitaldb_to_mover_validation"], ["Pooled Validation", "VitalDB To MOVER Validation"]):
         d = results[results.setting.eq(setting)].set_index("recipe").reindex(labels)
         y = np.arange(len(d))
         for pos, (name, row) in enumerate(d.iterrows()):
+            # Plot the observed results, including uncertainty where it is available.
             color = "#147d64" if name == "ind3_multiscale" else ("#777777" if name == "g0" else "#356a9e")
             ax.errorbar(row.auroc, pos, xerr=[[max(0, row.auroc-row.auroc_lo)], [max(0, row.auroc_hi-row.auroc)]],
                         fmt="o", color=color, capsize=3)
             ax.annotate(f"{row.auroc:.3f}", (row.auroc, pos), xytext=(0, 9), textcoords="offset points", ha="center", fontsize=9)
+        # Label the panel with the measurement names and their units.
         ax.set_yticks(y, list(labels.values()))
         ax.set_title(title)
         ax.set_xlabel("AUROC (Patient-Cluster 95% Interval)")
@@ -289,6 +313,7 @@ def render_figures(root):
 
 def main():
     """Run the bounded feature-selection workflow or render figures from saved results."""
+    # Choose candidates on the inner patient split before measuring outer-validation performance.
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--root", type=Path, default=Path.cwd())
     ap.add_argument("--bootstrap", type=int, default=200)
@@ -302,6 +327,7 @@ def main():
     out.mkdir(parents=True, exist_ok=False)
     def log(text):
         print(f"[{time.perf_counter()-started:7.1f}s] {text}", flush=True)
+    # Limit worker lifetime to this block and collect their processing results.
     with threadpool_limits(limits=4):
         train, val, fit, check = load_data(root)
         log(f"loaded: train {len(train)}, validation {len(val)}, inner fit {len(fit)}, inner check {len(check)}; TEST excluded")
@@ -309,13 +335,16 @@ def main():
         for label, frame in [("train", train), ("validation", val), ("inner_fit_subsample", fit), ("inner_check_subsample", check)]:
             for ds, group in frame.groupby("dataset"):
                 cohort.append({"partition": label, "dataset": ds, "windows": len(group), "patients": group.patient_key.nunique(), "positive_windows": int(group.y.sum())})
+        # Save the comparison table so the same measurements can be inspected later.
         pd.DataFrame(cohort).to_csv(out / "cohort.csv", index=False)
         specs = recipes(root)
         assert all(not c.startswith("x_") for spec in specs.values() for c in spec["features"])
         write_json(out / "candidate_recipes.json", specs)
+        # Order the measurements before matching intervals or comparing rows.
         train_eda(train, specs, root, out)
         inner, _ = inner_compare(fit, check, specs, out, log)
         shortlist = select_shortlist(inner)
+        # Save the comparison table so the same measurements can be inspected later.
         best = inner[inner.setting.eq("inner_pooled") & ~inner.recipe.eq("g0")].sort_values("auroc", ascending=False).recipe.iloc[0]
         strategies = {best + "__" + strategy: {"features": specs[best]["features"], "strategy": strategy}
                       for strategy in ["smoother", "longer", "patient_balanced", "hospital_balanced"]}
@@ -326,9 +355,11 @@ def main():
         frozen = {name: specs[name] for name in shortlist}
         if strategy_inner.loc[strategy_inner.recipe.eq(best_strategy) & strategy_inner.setting.eq("inner_pooled"), "auroc"].iloc[0] > base_score:
             frozen[best_strategy] = strategies[best_strategy]
+        # Save the chosen candidates before examining their outer-validation scores.
         write_json(out / "shortlist_before_validation.json", {"selected_using": "patient-held-out portion of pooled TRAIN only", "recipes": frozen,
                    "selection_rule": "G0 + IND3 references; best inner pooled and best inner source->MOVER with pooled loss <= .002 vs IND3; best strategy only if inner pooled improves",
                    "test_evaluated": False})
+        # Hash the content so later runs can detect changed inputs.
         log("shortlist frozen before validation: " + ", ".join(frozen))
         domain_check(fit, check, frozen, out)
         result = confirmation(train, val, frozen, out, args.bootstrap, log)
@@ -342,6 +373,7 @@ def main():
                     "caveats": ["Not a CNN experiment; tabular proxies only", "Validation previously examined during v5; no new confirmatory claim",
                                 "Nominal cluster-bootstrap intervals are not corrected for feature search", "No window IDs, hospital identity, future values or test outcomes used as predictors",
                                 "Positive-window counts are not unique clinical events", "Missing parameters remain NaN; HGB learns missing-value routing without dropping windows"]}
+        # Display the recorded values for this step.
         write_json(out / "analysis_manifest.json", manifest)
         render_figures(root)
         log("complete; wrote " + str(out))

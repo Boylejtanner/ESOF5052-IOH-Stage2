@@ -1,5 +1,6 @@
 """Support training notebooks with run identifiers, progress paths, and experiment summaries."""
 from __future__ import annotations
+# Keep experiment setup, run paths, and summaries out of notebook training cells.
 
 import dataclasses
 import hashlib
@@ -89,6 +90,7 @@ def run_trials_local(root, cfgs, log=print):
     from . import bshi_sweep as W
     os.environ["BSHI_ROOT"] = str(root)
     out = []
+    # Process the selected records in order and retain their individual results.
     for i, c in enumerate(cfgs):
         t0, m, err = time.time(), None, None
         for attempt in (1, 2):
@@ -116,6 +118,7 @@ def store_status(root, train_on="pooled"):
 
 def store_estimate(root, train_on, stride=2, windows="eap_full"):
     """Windows and disk size a store of this experiment would take (77 kB per window), and the free disk: look before building one."""
+    # Calculate the observation count for the following step.
     import shutil
     from . import bshi_data as D
     from . import bshi_store as ST
@@ -127,6 +130,7 @@ def store_estimate(root, train_on, stride=2, windows="eap_full"):
 
 def paths_table(root, rid, train_on="pooled"):
     """Where everything of a run is written (relative to the project folder)."""
+    # Calculate the result array for the following step.
     from . import bshi_store as ST
     r = Path(root)
     rows = [("checkpoints: best.pt (best validation AUPRC), last.pt (to resume), epochs.csv", f"models/{rid}/"),
@@ -148,9 +152,11 @@ def launch_commands(root, cfg, master_ip, speeds="2500,900", accum=4, compress="
 
 def save_results(root, rid, cfg, res, extra=None):
     """``results/train/run_<id>.json`` and a model card next to the checkpoints in ``models/<id>/``."""
+    # Store the settings and results as JSON for later inspection.
     out = {"run_id": rid, "config": cfg.to_dict(), "created": time.strftime("%Y-%m-%d %H:%M:%S"), "metrics": {k: v for k, v in res.items() if not k.startswith("_")}, **(extra or {})}
     p = Path(root) / "results" / "train" / f"run_{rid}.json"
     p.parent.mkdir(parents=True, exist_ok=True)
+    # Store the settings and results as JSON for later inspection.
     p.write_text(json.dumps(out, indent=1, default=lambda o: o.item() if hasattr(o, "item") else str(o)), encoding="utf-8")
     card = Path(root) / "models" / rid / "MODEL_CARD.md"
     card.parent.mkdir(parents=True, exist_ok=True)

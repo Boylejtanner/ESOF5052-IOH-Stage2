@@ -8,6 +8,7 @@ Paired differences use ONE set of patient-cluster bootstrap weights (multinomial
 so each resample contains the same patients for both models. Point estimates come from ``labels._metrics``.
 """
 from __future__ import annotations
+# Screen single-signal features for value beyond MAP, coverage, and hospital transfer.
 
 import json
 import os
@@ -38,6 +39,7 @@ OLD_FAMILIES = {"old ART morphology (ECG-segmented)": (EM.G1_ADD, "core"), "old 
 # data
 def load_frame(root, params_name=F.PARAMS_NAME):
     """Core windows (``load_ladder_frame``: index, G0, old wf2 features, ``y``) + ``delta_map``, ``t_end_sec`` + the independent window parameters."""
+    # Join related tables by window id to keep measurements aligned.
     root = Path(root)
     from .bshi import load_window_index
     df = EM.load_ladder_frame(root)
@@ -64,6 +66,7 @@ class Boot:
     """Patient-cluster bootstrap weights shared across models: W[r, patient] = times the patient is drawn in resample r (stratified by dataset)."""
 
     def __init__(self, patient_key, strata, reps, seed=SEED):
+        # Summarize the records separately within each requested group.
         codes, uniq = pd.factorize(pd.Series(patient_key).to_numpy())
         strat = pd.Series(strata).to_numpy()
         pat_stratum = pd.Series(strat).groupby(codes).first().reindex(range(len(uniq))).to_numpy()
@@ -91,6 +94,7 @@ class Ranked:
     """Scores sorted once; weighted AUROC / average precision for any window weights (ties grouped)."""
 
     def __init__(self, y, s):
+        # Order the measurements before matching intervals or comparing rows.
         s = np.asarray(s, dtype=np.float64)
         self.order = np.argsort(s, kind="mergesort")
         ss = s[self.order]
@@ -134,6 +138,7 @@ def ci(a):
 
 def paired_delta(y, p_new, p_ref, boot, metric="auroc"):
     """(point delta, CI lo, CI hi, two-sided normal-approximation p) of metric(p_new) - metric(p_ref) with shared patient resamples."""
+    # Use the same resampled patients for both models so their difference is paired.
     f = {"auroc": L.auroc, "auprc": L.auprc}[metric]
     d0 = f(y, p_new) - f(y, p_ref)
     a, b = Ranked(y, p_new), Ranked(y, p_ref)
@@ -146,11 +151,13 @@ def paired_delta(y, p_new, p_ref, boot, metric="auroc"):
 
 def bh(p, q=0.05):
     """Benjamini-Hochberg: (adjusted p-values, reject mask); NaN p-values are never rejected."""
+    # Exclude or flag missing values before using these measurements.
     p = np.asarray(p, dtype=np.float64)
     ok = np.isfinite(p)
     adj = np.full(len(p), np.nan)
     m = int(ok.sum())
     if m:
+        # Reserve output arrays and masks with explicit initial values.
         pv = p[ok]
         order = np.argsort(pv)
         ranked = pv[order] * m / np.arange(1, m + 1)
@@ -206,6 +213,7 @@ def corr_boot(ex, ey, boot_codes, W):
 
 def partial_spearman(df, col, outcome="delta_map", W=None, codes=None):
     """Partial Spearman of ``col`` with ``outcome`` given G0 (rows with a finite parameter and outcome); optional bootstrap via (W, codes)."""
+    # Exclude or flag missing values before using these measurements.
     x = df[col].to_numpy(np.float64)
     y = df[outcome].to_numpy(np.float64)
     Z = df[G0].to_numpy(np.float64)
@@ -229,6 +237,7 @@ def _plt():
 
 
 def save_figure(fig, root, name, panel_letters=True):
+    # Create the destination directory before writing any outputs.
     from . import figstyle as FS
     FS.capitalize_figure(fig, panel_letters=panel_letters)
     FS.audit_figure(fig, name)
@@ -240,6 +249,7 @@ def save_figure(fig, root, name, panel_letters=True):
 
 
 def save_table(df, root, name):
+    # Save the comparison table so the same measurements can be inspected later.
     path = Path(root) / OUT / name
     path.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(path, index=False)
@@ -254,6 +264,7 @@ def catalogue_frame():
 def cluster_order(rho):
     """Average-linkage order and cluster labels (cut at |rho| >= 0.8) from a Spearman matrix."""
     from scipy.cluster.hierarchy import fcluster, leaves_list, linkage
+    # Calculate the working array for the following step.
     from scipy.spatial.distance import squareform
     d = 1.0 - np.abs(rho.to_numpy(np.float64))
     d = np.nan_to_num((d + d.T) / 2.0, nan=1.0)
@@ -270,11 +281,13 @@ def _upper(m):
 
 def within_signal_atlas(tr, root):
     """Spearman matrices per signal and dataset, redundancy clusters (pooled), cross-hospital stability; fig 01."""
+    # Create the plotting panels for this comparison.
     plt = _plt()
     cat = catalogue_frame()
     sig_cols = {s: F.candidate_names(s) for s in ("A", "E", "P")}
     clusters, stab, orders = {}, [], {}
     fig, axes = plt.subplots(3, 2, figsize=(11, 15))
+    # Apply the same operation to each named field in this group.
     for i, (s, cols) in enumerate(sig_cols.items()):
         base = tr[tr.in_full] if s == "P" else tr
         pooled = spearman_matrix(base, cols)
@@ -283,13 +296,16 @@ def within_signal_atlas(tr, root):
         clusters.update({c: f"{s}{int(k)}" for c, k in lab.items()})
         mats = {}
         for j, ds in enumerate(("vitaldb", "mover")):
+            # Save the comparison table so the same measurements can be inspected later.
             m = spearman_matrix(base[base.dataset == ds], cols)
             mats[ds] = m
             m.reset_index(names="param").to_csv(Path(root) / OUT / f"table_corr_within_{ {'A': 'art', 'E': 'ecg', 'P': 'ppg'}[s] }_{ds}.csv", index=False)
+            # Label the panel with the measurement names and their units.
             ax = axes[i, j]
             im = ax.imshow(m.loc[order, order].to_numpy(), vmin=-1, vmax=1, cmap="RdBu_r", interpolation="nearest")
             name = {"A": "Arterial Pressure", "E": "ECG", "P": "PPG"}[s]
             ax.set_xticks([]); ax.set_yticks([])
+            # Label the panel with the measurement names and their units.
             ax.set_title(f"{name} Parameters, {'VitalDB' if ds == 'vitaldb' else 'MOVER'} (n = {len(cols)})")
             ax.set_xlabel("Parameter (Clustered Order, Index)"); ax.set_ylabel("Parameter (Clustered Order, Index)")
             cb = fig.colorbar(im, ax=ax, fraction=0.046)
@@ -319,6 +335,7 @@ def between_signal_atlas(tr, root, orders):
     full = tr[tr.in_full]
     rows = []
     mats = {}
+    # Process the selected records in order and retain their individual results.
     for ds in ("vitaldb", "mover"):
         sub = full[full.dataset == ds]
         cols = F.candidate_names("A") + F.candidate_names("E") + F.candidate_names("P")
@@ -335,6 +352,7 @@ def between_signal_atlas(tr, root, orders):
     save_table(tab.sort_values(["block", "dataset", "abs_rho"], ascending=[True, True, False]), root, "table_corr_between.csv")
     fig, axes = plt.subplots(2, 2, figsize=(13, 11))
     for ax, (s1, s2) in zip(axes.ravel()[:3], (("A", "E"), ("A", "P"), ("E", "P"))):
+        # Label the panel with the measurement names and their units.
         m = mats["vitaldb"].loc[orders[s1], orders[s2]]
         im = ax.imshow(m.to_numpy(), vmin=-1, vmax=1, cmap="RdBu_r", aspect="auto", interpolation="nearest")
         nm = {"A": "Arterial Pressure", "E": "ECG", "P": "PPG"}
@@ -348,13 +366,16 @@ def between_signal_atlas(tr, root, orders):
     for k, (ds, off, col) in enumerate((("vitaldb", -0.18, "#34495e"), ("mover", 0.18, "#e67e22"))):
         vals = [mats[ds].loc[a, b] for a, b, _ in NAMED_PAIRS]
         ax.barh(y + off, vals, height=0.34, color=col, label="VitalDB" if ds == "vitaldb" else "MOVER")
+    # Label the panel with the measurement names and their units.
     ax.set_yticks(y)
     ax.set_yticklabels([t for _, _, t in NAMED_PAIRS], fontsize=8)
     ax.axvline(0, color="k", lw=0.6)
     ax.set_xlim(-1, 1)
+    # Collect the per-record values into a table for comparison.
     ax.legend(loc="lower right", fontsize=8)
     ax.set_title("Same Physiology Measured by Two Signals")
     ax.set_xlabel("Spearman Rho (Unitless)"); ax.set_ylabel("Parameter Pair (Signal vs Signal)")
+    # Collect the per-record values into a table for comparison.
     fig.suptitle("Between-Signal Correlation of Independent Parameters (Training Windows With All Three Signals)")
     save_figure(fig, root, "fig_ind_02_between_signal_correlation.png")
     named = pd.DataFrame([{"pair": t, "param_1": a, "param_2": b, "rho_vitaldb": mats["vitaldb"].loc[a, b], "rho_mover": mats["mover"].loc[a, b]} for a, b, t in NAMED_PAIRS])
@@ -372,6 +393,7 @@ def temporal_before_ioh(tr, root, reps=200):
     plt = _plt()
     rows = []
     for ds in ("vitaldb", "mover"):
+        # Reserve output arrays and masks with explicit initial values.
         d = tr[tr.dataset == ds].reset_index(drop=True)
         dec = pd.qcut(d.map_current.rank(method="first"), 10, labels=False).to_numpy()
         ev = d.y.to_numpy() == 1
@@ -382,6 +404,7 @@ def temporal_before_ioh(tr, root, reps=200):
         boot = Boot(d.patient_key, np.zeros(len(d)), reps, SEED)
         nb, npat = len(LEAD_BINS), boot.W.shape[1]
         for col, _, _ in TC_INDICATORS:
+            # Exclude or flag missing values before using these measurements.
             v = d[col].to_numpy(np.float64)
             ok = np.isfinite(v)
             ne = ok & ~ev
@@ -407,6 +430,7 @@ def temporal_before_ioh(tr, root, reps=200):
     fig, axes = plt.subplots(2, 4, figsize=(17, 8), sharex=True)
     for ax, (col, title, unit) in zip(axes.ravel(), TC_INDICATORS):
         for ds, color in (("vitaldb", "#34495e"), ("mover", "#e67e22")):
+            # Plot the observed results, including uncertainty where it is available.
             t = tab[(tab.dataset == ds) & (tab.indicator == col) & (tab.event_windows > 0)]
             ax.plot(t.bin_mid_sec, t.diff_vs_matched, "o-", color=color, label="VitalDB" if ds == "vitaldb" else "MOVER")
             ax.fill_between(t.bin_mid_sec, t.ci_lo, t.ci_hi, color=color, alpha=0.2)
@@ -426,13 +450,16 @@ def outcome_correlations(tr, root, reps=200):
     new = F.candidate_names()
     old = old_columns() + ["x_hr_map_corr_l60"]
     rows = []
+    # Process the selected records in order and retain their individual results.
     for ds in ("vitaldb", "mover"):
         d = tr[tr.dataset == ds].reset_index(drop=True)
         boot = Boot(d.patient_key, np.zeros(len(d)), reps, SEED)
         for col in new + old:
+            # Exclude or flag missing values before using these measurements.
             base = d[d.in_full].reset_index(drop=True) if (col in new and cat.loc[col, "signal"] == "P") or col in EM.G3_ADD + EM.G4_ADD else d
             bb = boot if base is d else Boot(base.patient_key, np.zeros(len(base)), reps, SEED)
             x = base[col].to_numpy(np.float64)
+            # Exclude or flag missing values before using these measurements.
             ok = np.isfinite(x)
             r, lo, hi = partial_spearman(base, col, "delta_map", bb.W, bb.codes)
             au = L.auroc(base.y.to_numpy()[ok], x[ok]) if ok.sum() > 200 else np.nan
@@ -450,12 +477,14 @@ def domain_table(tr, root):
     cat = catalogue_frame()
     rows = []
     for col in F.candidate_names() + old_columns() + ["x_hr_map_corr_l60"]:
+        # Calculate the working array for the following step.
         is_new = col in cat.index and cat.loc[col, "candidate"]
         full_only = (is_new and cat.loc[col, "signal"] == "P") or col in EM.G3_ADD + EM.G4_ADD
         d = tr[tr.in_full] if full_only else tr
         rows.append({"param": col, "kind": "new" if is_new else "old", "signal": cat.loc[col, "signal"] if is_new else "old",
                      "family": cat.loc[col, "family"] if is_new else "old", "normalization": cat.loc[col, "normalization"] if is_new else "raw",
                      "domain_auroc": domain_auroc(d[col], d.is_mover)})
+    # Join related tables by raw, param to keep measurements aligned.
     tab = pd.DataFrame(rows)
     sn = tab[tab.param.str.endswith("_sn")].assign(raw=lambda t: t.param.str[:-3])
     pair = sn.merge(tab[["param", "domain_auroc"]].rename(columns={"param": "raw", "domain_auroc": "domain_auroc_raw"}), on="raw")
@@ -465,6 +494,7 @@ def domain_table(tr, root):
 
 
 def partial_corr_figure(pc, root):
+    # Create the plotting panels for this comparison.
     plt = _plt()
     cat = catalogue_frame()
     w = pc.pivot_table(index=["param", "kind"], columns="dataset", values=["partial_rho", "partial_lo", "partial_hi"]).reset_index()
@@ -478,13 +508,16 @@ def partial_corr_figure(pc, root):
         ax.errorbar(r.partial_rho_vitaldb, r.partial_rho_mover, xerr=[[max(r.partial_rho_vitaldb - r.partial_lo_vitaldb, 0)], [max(r.partial_hi_vitaldb - r.partial_rho_vitaldb, 0)]],
                     yerr=[[max(r.partial_rho_mover - r.partial_lo_mover, 0)], [max(r.partial_hi_mover - r.partial_rho_mover, 0)]], fmt=marker, color=color, ms=5,
                     elinewidth=0.5, alpha=0.8 if r.kind == "new" else 0.5)
+    # Plot the observed results, including uncertainty where it is available.
     lim = np.nanmax(np.abs(w[["partial_rho_vitaldb", "partial_rho_mover"]].to_numpy())) * 1.15
     ax.plot([-lim, lim], [-lim, lim], "k--", lw=0.7)
     ax.axhline(0, color="k", lw=0.4); ax.axvline(0, color="k", lw=0.4)
     from matplotlib.lines import Line2D
+    # Save the labeled figure for the analysis report.
     handles = [Line2D([], [], marker="o", ls="", color=SIG_COLOR[s], label=l) for s, l in (("A", "Arterial pressure (A)"), ("E", "ECG (E)"), ("P", "PPG (P)"), ("old", "Old parameters (cross-signal era)"))]
     handles += [Line2D([], [], marker=m, ls="", color="k", label=f.replace("_", " ")) for f, m in FAM_MARKER.items() if f != "old"]
     ax.legend(handles=handles, fontsize=7, loc="upper left")
+    # Save the labeled figure for the analysis report.
     ax.set_title("Partial Spearman With Future MAP Drop Given Current MAP (G0), Training Windows")
     ax.set_xlabel("VitalDB Partial Rho (Unitless)"); ax.set_ylabel("MOVER Partial Rho (Unitless)")
     save_figure(fig, root, "fig_ind_04_partial_correlation_vitaldb_vs_mover.png", panel_letters=False)
@@ -513,6 +546,7 @@ def oof(d, cols, learner, folds, seed=SEED):
 
 def transfer_auroc(d, cols, learner="lr", seed=SEED):
     """Fit on the VitalDB rows of ``d`` (training split), AUROC on its MOVER rows (MOVER training windows)."""
+    # Calculate predicted risk without refitting on evaluation windows.
     v = (d.dataset == "vitaldb").to_numpy()
     X, y = d[cols].to_numpy(np.float64), d.y.to_numpy()
     p = EM._model(learner, seed).fit(X[v], y[v]).predict_proba(X[~v])[:, 1]
@@ -530,6 +564,7 @@ _WK = {}
 
 
 def _worker_init(frame_path, reps, threads):
+    # Read the stored table required for this calculation.
     os.environ["OMP_NUM_THREADS"] = str(threads)
     import sklearn.ensemble  # noqa: F401  (loads the OpenMP runtime so the limit below applies)
     from threadpoolctl import threadpool_limits
@@ -566,6 +601,7 @@ def _deltas(prefix, y, p1, p0, boot, d):
     for ds in ("vitaldb", "mover"):
         mk = (d.dataset == ds).to_numpy()
         out[f"{prefix}d_auroc_{ds}"] = float(L.auroc(y[mk], p1[mk]) - L.auroc(y[mk], p0[mk]))
+    # Calculate output values for the following step.
     gz = d.gray_zone.to_numpy(bool)
     out[f"{prefix}d_auroc_gray"] = float(L.auroc(y[gz], p1[gz]) - L.auroc(y[gz], p0[gz]))
     out[f"{prefix}d_auprc_gray"] = float(L.auprc(y[gz], p1[gz]) - L.auprc(y[gz], p0[gz]))
@@ -576,6 +612,7 @@ def _deltas(prefix, y, p1, p0, boot, d):
 
 def _lr_job(name, cols, wset):
     """F3 (5-fold OOF lr, paired bootstrap) + F4 (VitalDB -> MOVER training) for one parameter or one old family added to G0."""
+    # Calculate the working array and the target or processed signal for the following step.
     d = _WK[wset]
     y = d.y.to_numpy()
     p1 = oof(d, G0 + list(cols), "lr", _set(wset, "folds5"))
@@ -597,6 +634,7 @@ def _hgb_job(name, cols, wset):
 
 def _oof_metric_job(tag, cols, wset):
     """Greedy step: point OOF AUROC / AUPRC of hgb on ``cols`` (3 folds)."""
+    # Reserve output arrays and masks with explicit initial values.
     d = _WK[wset]
     y = d.y.to_numpy()
     p = oof(d, list(cols), "hgb", _set(wset, "folds3")) if cols else np.full(len(d), 0.5)
@@ -621,6 +659,7 @@ class Pool:
         self.ex.shutdown(wait=True, cancel_futures=True)
 
     def run(self, jobs, log=None):
+        # Submit bounded jobs and collect completed work without losing pending tasks.
         from concurrent.futures import as_completed
         t0 = time.perf_counter()
         futs = {self.ex.submit(self.FNS[f], n, c, w): i for i, (f, n, c, w) in enumerate(jobs)}
@@ -650,13 +689,16 @@ def quality_col(signal):
 
 def robustness_f7(tr, col, signal):
     """Pooled partial rho and partial rho in the bottom / top tertile (rank-based) of the parameter's own signal quality."""
+    # Exclude or flag missing values before using these measurements.
     base = tr[tr.in_full] if signal == "P" else tr
     r_all, _, _ = partial_spearman(base, col)
     q = base[quality_col(signal)]
+    # Exclude or flag missing values before using these measurements.
     ok = q.notna()
     terc = pd.Series(np.nan, index=base.index)
     terc[ok] = pd.qcut(q[ok].rank(method="first"), 3, labels=False)
     r_lo, _, _ = partial_spearman(base[terc == 0], col)
+    # Exclude or flag missing values before using these measurements.
     r_hi, _, _ = partial_spearman(base[terc == 2], col)
     ok7 = np.isfinite([r_all, r_lo, r_hi]).all() and np.sign(r_lo) == np.sign(r_all) == np.sign(r_hi)
     return r_all, r_lo, r_hi, bool(ok7)
@@ -664,9 +706,11 @@ def robustness_f7(tr, col, signal):
 
 def feasibility_screen(tr, root, frame_path, pc, dom, workers=16, reps=200, log=print):
     """Every F1-F7 metric for each of the 147 candidates (+ old parameters and old families as reference); boosting check for cluster representatives."""
+    # Measure every candidate against the same coverage, gain, transfer, and domain gates.
     cat = catalogue_frame()
     cands = F.candidate_names()
     old = old_columns() + ["x_hr_map_corr_l60"]
+    # Collect the per-record values into a table for comparison.
     jobs = [("lr", c, [c], wset_of(c)) for c in cands + old]
     jobs += [("lr", f"[family] {k}", v, w) for k, (v, w) in OLD_FAMILIES.items()]
     log(f"F3/F4 lr jobs: {len(jobs)}")
@@ -674,6 +718,7 @@ def feasibility_screen(tr, root, frame_path, pc, dom, workers=16, reps=200, log=
     rows = []
     rho_map = tr[cands + old].corrwith(tr.map_current, method="spearman")
     for c in cands:
+        # Exclude or flag missing values before using these measurements.
         s = cat.loc[c, "signal"]
         base = tr[tr.in_full] if s == "P" else tr
         cov_all = float(base[c].notna().mean())
@@ -682,23 +727,29 @@ def feasibility_screen(tr, root, frame_path, pc, dom, workers=16, reps=200, log=
         rows.append({"param": c, "signal": s, "family": cat.loc[c, "family"], "lookback": cat.loc[c, "lookback"], "normalization": cat.loc[c, "normalization"],
                      "coverage": cov_all, "coverage_mover": cov_mov, "rho_map_current": float(rho_map[c]),
                      "partial_rho_pooled": r_all, "partial_rho_q_low": r_lo, "partial_rho_q_high": r_hi, "F7": f7})
+    # Join related tables by param to keep measurements aligned.
     t = pd.DataFrame(rows)
     pcw = pc[pc.kind == "new"].pivot_table(index="param", columns="dataset", values=["partial_rho", "partial_lo", "partial_hi", "auroc_oriented"])
     pcw.columns = [f"{a}_{b}" for a, b in pcw.columns]
     t = t.merge(pcw.reset_index(), on="param", how="left").merge(dom[["param", "domain_auroc", "domain_auroc_raw"]], on="param", how="left")
     t = t.merge(lr, on="param", how="left")
+    # Apply the minimum overall and MOVER coverage requirements.
     t["F1"] = (t.coverage >= 0.90) & (t.coverage_mover >= 0.85)
     vit_ok = (t.partial_lo_vitaldb > 0) | (t.partial_hi_vitaldb < 0)
     t["F2"] = vit_ok & (np.sign(t.partial_rho_mover) == np.sign(t.partial_rho_vitaldb))
+    # Control repeated feature comparisons before accepting an incremental discrimination gain.
     t["bh_auroc"], rej_a = bh(t.lr_p_auroc.to_numpy())
     t["bh_auprc"], rej_p = bh(t.lr_p_auprc.to_numpy())
     t["F3"] = ((t.lr_d_auroc_lo > 0) & rej_a & (t.lr_d_auroc > 0)) | ((t.lr_d_auprc_lo > 0) & rej_p & (t.lr_d_auprc > 0))
+    # Summarize the records separately within each requested group.
     t["F4"] = t.transfer_d_auroc >= -0.002
     t["F5"] = t.domain_auroc <= 0.70
     rho = spearman_matrix(tr, cands)
+    # Summarize the records separately within each requested group.
     _, lab = cluster_order(rho)
     t["cluster"] = t.param.map(lab).astype(int)
     t["cluster_size"] = t.groupby("cluster").param.transform("size")
+    # Combine coverage, association, model gain, transfer, and domain checks before redundancy filtering.
     pre = t.F1 & t.F2 & t.F3 & t.F4 & t.F5
     rep = t[pre].sort_values("lr_d_auprc", ascending=False).groupby("cluster").param.first()
     t["cluster_representative"] = t.param.isin(rep.values)
@@ -716,6 +767,7 @@ def feasibility_screen(tr, root, frame_path, pc, dom, workers=16, reps=200, log=
 
 
 def feasibility_figures(t, ref, dom, root):
+    # Join related tables by param to keep measurements aligned.
     plt = _plt()
     fig, ax = plt.subplots(figsize=(10, 7.5))
     ax.axvspan(0.5, 0.70, ymin=0, ymax=1, color="#d5f5e3", alpha=0.5, zorder=0)
@@ -723,34 +775,42 @@ def feasibility_figures(t, ref, dom, root):
     ax.errorbar(old.domain_auroc, old.lr_d_auroc, yerr=[np.maximum(old.lr_d_auroc - old.lr_d_auroc_lo, 0), np.maximum(old.lr_d_auroc_hi - old.lr_d_auroc, 0)],
                 fmt="v", color=SIG_COLOR["old"], ms=4, elinewidth=0.5, alpha=0.6, label="Old parameters (G1-G4, cross-signal)")
     for s, lab in (("A", "Arterial pressure (A)"), ("E", "ECG (E)"), ("P", "PPG (P)")):
+        # Plot the observed results, including uncertainty where it is available.
         u = t[t.signal == s]
         ax.errorbar(u.domain_auroc, u.lr_d_auroc, yerr=[np.maximum(u.lr_d_auroc - u.lr_d_auroc_lo, 0), np.maximum(u.lr_d_auroc_hi - u.lr_d_auroc, 0)],
                     fmt="o", color=SIG_COLOR[s], ms=4, elinewidth=0.5, alpha=0.75, label=lab)
+    # Plot the observed results, including uncertainty where it is available.
     f = t[t.feasible]
     ax.scatter(f.domain_auroc, f.lr_d_auroc, s=90, facecolors="none", edgecolors="k", lw=1.2, label="Feasible (F1-F6)", zorder=5)
     ax.axhline(0, color="k", lw=0.6)
     ax.axvline(0.70, color="k", ls="--", lw=0.7)
+    # Save the labeled figure for the analysis report.
     ax.set_xlim(0.5, 1.0)
     ax.legend(fontsize=8, loc="upper right")
     ax.set_title("Feasibility Quadrant: Hospital Identifiability vs Incremental Value Over Current MAP (Training, Out-of-Fold)")
+    # Collect the per-record values into a table for comparison.
     ax.set_xlabel("Univariate Domain AUROC, VitalDB vs MOVER (Unitless)"); ax.set_ylabel("Delta AUROC of G0 + Parameter vs G0, Logistic (Unitless)")
     save_figure(fig, root, "fig_ind_05_feasibility_quadrant.png", panel_letters=False)
 
+    # Collect the per-record values into a table for comparison.
     top = t.sort_values("lr_d_auprc", ascending=False).head(30)
     fam = ref[ref.param.str.startswith("[family]")].assign(signal="old")
     rows = pd.concat([fam[["param", "signal", "lr_d_auroc", "lr_d_auroc_lo", "lr_d_auroc_hi", "lr_d_auprc", "lr_d_auprc_lo", "lr_d_auprc_hi"]],
                       top[["param", "signal", "lr_d_auroc", "lr_d_auroc_lo", "lr_d_auroc_hi", "lr_d_auprc", "lr_d_auprc_lo", "lr_d_auprc_hi", "feasible"]]], ignore_index=True)
+    # Create the plotting panels for this comparison.
     rows = rows.iloc[::-1].reset_index(drop=True)
     fig, axes = plt.subplots(1, 2, figsize=(15, 12), sharey=True)
     yy = np.arange(len(rows))
     for ax, m, lab in ((axes[0], "auroc", "Delta AUROC vs G0 (Unitless)"), (axes[1], "auprc", "Delta AUPRC vs G0 (Unitless)")):
         for i, r in rows.iterrows():
+            # Plot the observed results, including uncertainty where it is available.
             ax.errorbar(r[f"lr_d_{m}"], i, xerr=[[max(r[f"lr_d_{m}"] - r[f"lr_d_{m}_lo"], 0)], [max(r[f"lr_d_{m}_hi"] - r[f"lr_d_{m}"], 0)]],
                         fmt="s" if r.signal == "old" else "o", color=SIG_COLOR[r.signal], ms=4, elinewidth=0.8,
                         mfc="white" if (r.signal != "old" and not bool(r.get("feasible", False))) else SIG_COLOR[r.signal])
         ax.axvline(0, color="k", lw=0.6)
         ax.set_xlabel(lab)
         ax.set_title(f"Incremental {m.upper()} Over G0, Logistic, 5-Fold Out-of-Fold")
+    # Save the labeled figure for the analysis report.
     axes[0].set_yticks(yy)
     axes[0].set_yticklabels([p.replace("[family] ", "FAMILY: ") for p in rows.param], fontsize=7)
     axes[0].set_ylabel("Parameter (Top 30 by Delta AUPRC) and Old Families (Reference)")
@@ -770,6 +830,7 @@ def slug(s):
 
 def selection_pools(t, cap=20):
     """Feasible parameters per set, ordered by the boosting check (hgb Delta AUPRC; lr Delta AUPRC when absent), capped at ``cap``."""
+    # Order the measurements before matching intervals or comparing rows.
     f = t[t.feasible.astype(bool)].copy()
     key = "hgb_d_auprc" if "hgb_d_auprc" in f.columns else "lr_d_auprc"
     f = f.sort_values([key, "lr_d_auprc"], ascending=False)
@@ -783,6 +844,7 @@ def greedy_select(pools, px, log=print, max_k=12):
     st = {n: {"cols": [], "cur": ref[f"G0|{w}"], "active": bool(pools[n])} for n, (_, w) in SETS.items()}
     path = [{"set": n, "window_set": SETS[n][1], "step": 0, "added": "(G0 only)", "auroc": st[n]["cur"]["auroc"], "auprc": st[n]["cur"]["auprc"], "d_auroc": 0.0,
              "d_auprc": 0.0, "accepted": True, "candidates_tried": 0, "pool_size": len(pools[n])} for n in SETS]
+    # Accumulate the calculation over the required samples or iterations.
     for step in range(1, max_k + 1):
         jobs = [("oof", f"{n}|{c}", G0 + st[n]["cols"] + [c], SETS[n][1]) for n in SETS if st[n]["active"] for c in pools[n] if c not in st[n]["cols"]]
         if not jobs:
@@ -791,6 +853,7 @@ def greedy_select(pools, px, log=print, max_k=12):
         for r in px.run(jobs, log):
             n, c = r["tag"].split("|", 1)
             by.setdefault(n, []).append((c, r))
+        # Apply the same operation to each named field in this group.
         for n, lst in by.items():
             c, r = max(lst, key=lambda z: z[1]["auprc"])
             da, dp = r["auroc"] - st[n]["cur"]["auroc"], r["auprc"] - st[n]["cur"]["auprc"]
@@ -813,6 +876,7 @@ def l1_path(tr, pools, sets, Cs=None):
     from sklearn.preprocessing import StandardScaler
     Cs = np.logspace(-4, 0, 13) if Cs is None else Cs
     rows = []
+    # Apply the same operation to each named field in this group.
     for n, (_, wset) in SETS.items():
         pool = pools[n]
         if not pool:
@@ -837,6 +901,7 @@ def l1_path(tr, pools, sets, Cs=None):
 def selection_figure(path, ref, root):
     plt = _plt()
     fig, axes = plt.subplots(1, 2, figsize=(14, 5.5))
+    # Process the selected records in order and retain their individual results.
     for ax, m in zip(axes, ("auroc", "auprc")):
         for n in SETS:
             p = path[(path.set == n) & path.accepted.astype(bool)]
@@ -863,6 +928,7 @@ def compare_models(y, preds, boot, refs, base_row):
     """Rows with point metrics, bootstrap CIs and paired deltas vs each reference (same resampled patients)."""
     bm = boot_metrics(y, preds, boot)
     rows = []
+    # Apply the same operation to each named field in this group.
     for m, p in preds.items():
         r = {**base_row, "model": m, **L._metrics(y, p)}
         for k in ("auroc", "auprc"):
@@ -884,10 +950,12 @@ def confirm_validation(df, sets, reps=1000, log=print):
             "full": ({"G0": G0, "old G4": EM.RUNGS["G4"], "G0 + IND-EA": G0 + sets["IND-EA"], "G0 + IND-P": G0 + sets["IND-P"], "G0 + IND-EAP": G0 + sets["IND-EAP"]},
                      ["G0", "old G4", "G0 + IND-EA"])}
     rows = []
+    # Apply the same operation to each named field in this group.
     for wset, (models, refs) in spec.items():
         frame = df[df.in_full] if wset == "full" else df
         for sname, (trm, tests) in clean_settings(frame, "validation").items():
             train = frame[trm.to_numpy()]
+            # Apply the same operation to each named field in this group.
             for tname, tm in tests.items():
                 test = frame[tm.to_numpy()]
                 y = test.y.to_numpy()
@@ -908,9 +976,11 @@ def confirm_validation(df, sets, reps=1000, log=print):
 
 def ppg_rule(val, sets, t):
     """Pre-registered PPG rule on validation: keep PPG only if G0 + IND-EAP beats G0 + IND-EA (paired Delta AUROC CI > 0) pooled AND VitalDB -> MOVER, P parameters pass F5."""
+    # Exclude or flag missing values before using these measurements.
     p_in = [c for c in sets["IND-EAP"] if c.startswith("p_")]
     f5 = bool(t.set_index("param").loc[p_in, "F5"].astype(bool).all()) if p_in else False
     col = f"d_auroc_vs_{slug('G0 + IND-EA')}"
+    # Exclude or flag missing values before using these measurements.
     r = val[(val.window_set == "full") & (val.model == "G0 + IND-EAP")]
     los = {s: float(r.loc[r.setting == s, col + "_lo"].iloc[0]) if col + "_lo" in r and (r.setting == s).any() else np.nan for s in val.setting.unique()}
     beats = bool(los) and all(np.isfinite(v) and v > 0 for v in los.values())
@@ -941,11 +1011,13 @@ def freeze_config(root, block):
         return None
     raw = path.read_bytes().decode("utf-8")
     nl = "\r\n" if "\r\n" in raw else "\n"
+    # Store the settings and results as JSON for later inspection.
     marker = f',{nl}  "independence":'
     i = raw.find(marker)
     body = (raw[:i] + nl + "}" if i >= 0 else raw).rstrip()
     assert body.endswith("}")
     body = body[:-1].rstrip()
+    # Load the recorded settings or metadata for this processing step.
     blk = json.dumps(block, indent=2).replace("\n", nl + "  ")
     new = f'{body},{nl}  "independence": {blk}{nl}}}{nl}'
     json.loads(new)
@@ -961,11 +1033,13 @@ def select_and_confirm(df, tr, t, root, frame_path, workers=16, reps=1000, log=p
         sets, path, ref = greedy_select(pools, px, log)
     save_table(path, root, "table_selection.csv")
     l1 = l1_path(tr, pools, sets)
+    # Calculate the PPG signal for the following step.
     save_table(l1, root, "table_selection_l1.csv")
     selection_figure(path, ref, root)
     nonin, nonin_src = noninvasive_set(sets, t)
     val = confirm_validation(df, sets, reps=reps, log=log)
     save_table(val, root, "table_validation_confirm.csv")
+    # Load the recorded settings or metadata for this processing step.
     ppg = ppg_rule(val, sets, t)
     summ = json.loads((Path(config_root or root) / OUT / "summary.json").read_text(encoding="utf-8")) if (Path(config_root or root) / OUT / "summary.json").exists() else {}
     hgb = {k: v for k, v in EM._model("hgb", SEED).get_params().items() if k in ("max_iter", "learning_rate", "max_leaf_nodes", "min_samples_leaf", "l2_regularization")}
@@ -977,6 +1051,7 @@ def select_and_confirm(df, tr, t, root, frame_path, workers=16, reps=1000, log=p
              "sets": sets, "window_sets": {n: w for n, (_, w) in SETS.items()}, "noninvasive": {"params": nonin, "source": nonin_src},
              "learners": {"hgb": hgb, "lr": "SimpleImputer(median) + StandardScaler + LogisticRegression(max_iter=300)"}, "fit_subsample": 3,
              "ppg_rule_validation": ppg["decision"]}
+    # Store the settings and results as JSON for later inspection.
     (Path(root) / OUT / "frozen_independence.json").write_text(json.dumps(block, indent=2), encoding="utf-8")
     freeze_config(config_root, block) if config_root else None
     log("frozen: " + json.dumps(sets))
@@ -990,6 +1065,7 @@ KEY_MODELS = {"G0", "old G2", "old G4", "G0 + IND-EA", "G0 + IND-EAP", "noninvas
 
 def final_settings(df):
     """Pre-registered ``eda_models._settings`` (kept for comparability; transfer settings NOT clean, deviation 4) + clean pooled-split transfer settings."""
+    # Calculate the spread of the observations for the following step.
     ds, sd, sp = df.dataset, df.split_within_dataset, df.split_pooled
     return {"pooled_train": (sp == "train", {"pooled_test": sp == "test", "pooled_test:vitaldb": (sp == "test") & (ds == "vitaldb"),
                                              "pooled_test:mover": (sp == "test") & (ds == "mover")}),
@@ -1020,10 +1096,12 @@ def sens_at_spec(y, p, spec=0.90):
 
 def pick_examples(df, seed=SEED, before=600, min_windows=18):
     """One VitalDB and one MOVER training event drawn at random among events with >= ``min_windows`` windows in the ``before`` s preceding onset."""
+    # Seed the generated values so this check can be repeated.
     tr = df[df.split_pooled == "train"]
     rng = np.random.default_rng(seed)
     out = {}
     for ds in ("vitaldb", "mover"):
+        # Summarize the records separately within each requested group.
         d = tr[tr.dataset == ds]
         ev = d[(d.y == 1) & (d.time_to_event_sec <= 60)].assign(onset=lambda e: (e.t_end_sec + e.time_to_event_sec).round(-1))
         cands = ev[["case_id", "onset"]].drop_duplicates().sort_values(["case_id", "onset"]).to_numpy()
@@ -1067,6 +1145,7 @@ def _final_job(train_key, wset, learner, models, refs, reps, extras):
         y = test.y.to_numpy()
         if len(np.unique(y)) < 2:
             continue
+        # Calculate predicted risk without refitting on evaluation windows.
         preds = {n: m.predict_proba(test[models[n]].to_numpy(np.float64))[:, 1] for n, m in fitted.items()}
         boot = Boot(test.patient_key, test.dataset, reps, SEED)
         bm = boot_metrics(y, preds, boot)
@@ -1074,6 +1153,7 @@ def _final_job(train_key, wset, learner, models, refs, reps, extras):
                 "patients": int(test.patient_key.nunique()), "train_windows_used": int(len(fit_rows))}
         point = {}
         for n, p in preds.items():
+            # Calculate prediction metrics from these labels and model scores.
             met = L._metrics(y, p)
             point[n] = met
             r = {**base, "model": n, "features": len(models[n]), **met}
@@ -1089,6 +1169,7 @@ def _final_job(train_key, wset, learner, models, refs, reps, extras):
             rows.append(r)
         tte = test.time_to_event_sec.to_numpy(np.float64)
         gz = test.gray_zone.to_numpy(bool)
+        # Process the selected records in order and retain their individual results.
         for n in [m for m in preds if m in KEY_MODELS]:
             p = preds[n]
             for lo_s, hi_s in LEAD_BINS:
@@ -1108,6 +1189,7 @@ def _final_job(train_key, wset, learner, models, refs, reps, extras):
     extra_out = {}
     if extras:
         for tag, ids in extras.items():
+            # Calculate predicted risk without refitting on evaluation windows.
             sub = df[df.window_id.isin(ids)]
             extra_out[tag] = {"window_id": sub.window_id.tolist(), "y": sub.y.tolist(),
                               **{n: fitted[n].predict_proba(sub[models[n]].to_numpy(np.float64))[:, 1].tolist() for n in ("G0", "G0 + IND-EA") if n in fitted}}
@@ -1128,6 +1210,7 @@ def _domain_job(feature_sets, reps):
     for name, (cols, kind) in feature_sets.items():
         if not cols:
             continue
+        # Calculate predicted risk without refitting on evaluation windows.
         m = EM._model("hgb", SEED).fit(fit_rows[cols].to_numpy(np.float64), fit_rows.is_mover.to_numpy())
         p = m.predict_proba(test[cols].to_numpy(np.float64))[:, 1]
         rk = Ranked(y, p)
@@ -1161,6 +1244,7 @@ def load_frozen(root, config_root=None):
     frozen = json.loads((Path(root) / OUT / "frozen_independence.json").read_text(encoding="utf-8"))
     cfgp = Path(config_root or root) / "configs" / "hemodynamics.json"
     if cfgp.exists():
+        # Load the recorded settings or metadata for this processing step.
         cfg = json.loads(cfgp.read_text(encoding="utf-8")).get("independence")
         assert cfg and cfg["sets"] == frozen["sets"], "configs/hemodynamics.json 'independence' must match the frozen sets"
         frozen = cfg
@@ -1169,9 +1253,11 @@ def load_frozen(root, config_root=None):
 
 def final_comparison(df, root, data_root, params_name=F.PARAMS_NAME, reps=1000, workers=8, threads=4, log=print, config_root=None):
     """+ single test pass. Every model in a comparison is scored on the same windows; paired deltas use the same patient resamples."""
+    # Evaluate the frozen feature sets rather than selecting a new model on test patients.
     import multiprocessing as mp
     from concurrent.futures import ProcessPoolExecutor, as_completed
     root = Path(root)
+    # Read the saved table and retain its named columns.
     frozen = load_frozen(root, config_root)
     sets, nonin = frozen["sets"], frozen["noninvasive"]["params"]
     t = pd.read_csv(root / OUT / "table_feasibility.csv")
@@ -1181,10 +1267,12 @@ def final_comparison(df, root, data_root, params_name=F.PARAMS_NAME, reps=1000, 
     jobs = [(k, w, l) for k in final_settings(df) for w in ("core", "full") for l in ("lr", "hgb")]
     rows, lead, gray, extra, dom = [], [], [], {}, []
     t0 = time.perf_counter()
+    # Limit worker lifetime to this block and collect their processing results.
     with ProcessPoolExecutor(max_workers=workers, mp_context=mp.get_context("spawn"), initializer=_final_init, initargs=(str(data_root), params_name, threads)) as px:
         futs = {px.submit(_domain_job, _domain_sets(sets, nonin), reps): "domain"}
         for k, w, l in jobs:
             futs[px.submit(_final_job, k, w, l, models[w], refs[w], reps, extras if (k, w, l) == ("pooled_train", "core", "hgb") else None)] = f"{k}/{w}/{l}"
+        # Collect completed jobs and retain the remaining work for the next pass.
         for i, fu in enumerate(as_completed(futs), 1):
             r = fu.result()
             if futs[fu] == "domain":
@@ -1195,6 +1283,7 @@ def final_comparison(df, root, data_root, params_name=F.PARAMS_NAME, reps=1000, 
                 gray += r[2]
                 extra.update(r[3])
             log(f"  final {i}/{len(futs)} {futs[fu]} [{time.perf_counter() - t0:.0f}s]")
+    # Collect the per-record values into a table for comparison.
     res, lead, gray, dom = pd.DataFrame(rows), pd.DataFrame(lead), pd.DataFrame(gray), pd.DataFrame(dom)
     save_table(res, root, "table_old_vs_new.csv")
     save_table(lead, root, "table_lead_time.csv")
@@ -1223,6 +1312,7 @@ def _pick(res, setting, wset, model, col, learner="hgb"):
 
 def ppg_table(res, cost, root, frozen):
     rows = []
+    # Process the selected records in order and retain their individual results.
     for setting in ("pooled_test", "E3x vitaldb_train->all_mover (not clean)", "clean vitaldb_train->mover_test"):
         for m in ("G0 + IND-EA", "G0 + IND-EAP", "G0 + IND-EA + PPG raw", "G0 + IND-EA + PPG self-normalized", "G0 + IND-P", "noninvasive IND-E + IND-P", "G0"):
             if np.isnan(_pick(res, setting, "full", m, "auroc")):
@@ -1253,6 +1343,7 @@ def criteria(res, dom, root, frozen, t):
     def add(name, passed, detail):
         out.append({"criterion": name, "pass": passed if isinstance(passed, str) else bool(passed), "detail": detail})
 
+    # Calculate the working array for the following step.
     ea_empty = not sets["IND-EA"]
     pt, e3, cl = "pooled_test", "E3x vitaldb_train->all_mover (not clean)", "clean vitaldb_train->mover_test"
     d = {k: _pick(res, pt, "core", "G0 + IND-EA", k) for k in ("d_auroc_vs_G0", "d_auroc_vs_G0_lo", "d_auroc_vs_G0_hi", "d_auprc_vs_G0")}
@@ -1267,10 +1358,12 @@ def criteria(res, dom, root, frozen, t):
     a_new, a_old = _pick(res, e3, "full", "G0 + IND-EA", "auroc"), _pick(res, e3, "full", "old G4", "auroc")
     c_new, c_old = _pick(res, cl, "full", "G0 + IND-EA", "auroc"), _pick(res, cl, "full", "old G4", "auroc")
     s2 = (not ea_empty) and g4["d_auroc_vs_old_G4"] >= -0.003 and d_new < d_old and a_new >= a_old
+    # Read the saved table and retain its named columns.
     add("S2 better than old (pre-registered, point non-inferiority)", s2, f"pooled test dAUROC vs G4 {g4['d_auroc_vs_old_G4']:+.4f} (CI lo {g4['d_auroc_vs_old_G4_lo']:+.4f}); "
         f"domain AUROC {d_new:.3f} vs G4 {d_old:.3f}; VitalDB->all MOVER AUROC {a_new:.3f} vs G4 {a_old:.3f}")
     add("S2 strict (CI lower bound >= -0.003) and clean transfer", (not ea_empty) and g4["d_auroc_vs_old_G4_lo"] >= -0.003 and d_new < d_old and c_new >= c_old,
         f"clean VitalDB->MOVER test AUROC {c_new:.3f} vs G4 {c_old:.3f}")
+    # Read the saved table and retain its named columns.
     s3 = {k: _pick(res, pt, "core", "IND-EA alone", k) for k in ("auroc", "auprc", "d_auroc_vs_G0")}
     add("S3 IND-EA without G0 vs G0 (descriptive)", "descriptive", f"pooled test AUROC {s3['auroc']:.3f}, AUPRC {s3['auprc']:.3f}, dAUROC vs G0 {s3['d_auroc_vs_G0']:+.4f}")
     val = pd.read_csv(root / OUT / "table_validation_confirm.csv")
@@ -1281,6 +1374,7 @@ def criteria(res, dom, root, frozen, t):
     h1 = n_a >= 1 and len(h1_pool) and float(h1_pool.iloc[0]) > 0 and len(h1_mov) and float(h1_mov.iloc[0]) >= 0
     add("H1 ART single-signal parameters predict beyond G0 in both datasets", h1, f"feasible A {n_a}; validation pooled dAUROC CI lo "
         f"{float(h1_pool.iloc[0]) if len(h1_pool) else np.nan:+.4f}; VitalDB->MOVER validation dAUROC {float(h1_mov.iloc[0]) if len(h1_mov) else np.nan:+.4f}")
+    # Read the saved table and retain its named columns.
     e = t[t.signal == "E"]
     e_ok = int((e.F2.astype(bool) & e.F3.astype(bool) & e.F4.astype(bool)).sum())
     esn = e[e.param.str.endswith("_sn")]
@@ -1301,6 +1395,7 @@ def criteria(res, dom, root, frozen, t):
     p = t[t.signal == "P"]
     med_p_raw, med_p_sn = float(p[~p.param.str.endswith("_sn")].domain_auroc.median()), float(p[p.param.str.endswith("_sn")].domain_auroc.median())
     drop = "remove" in frozen.get("ppg_rule_validation", "")
+    # Collect the per-record values into a table for comparison.
     add("H4 PPG adds nothing beyond E+A and stays hospital-specific", drop and med_p_raw > 0.70 and med_p_sn > 0.70,
         f"PPG rule: {frozen.get('ppg_rule_validation')}; median domain AUROC P raw {med_p_raw:.3f}, P self-normalized {med_p_sn:.3f}")
     add("H5 G0 + IND-EA beats G0, non-inferior to G4, transfers", s1 and s2, "S1 and S2")
@@ -1329,9 +1424,11 @@ def _model_color(model):
 
 
 def figs_old_vs_new(res, lead, gray, dom, root):
+    # Create the plotting panels for this comparison.
     plt = _plt()
     h = res[res.learner == "hgb"]
     fig, axes = plt.subplots(len(FIG8_SETTINGS), 2, figsize=(15, 4.6 * len(FIG8_SETTINGS)))
+    # Process the selected records in order and retain their individual results.
     for i, (s, title) in enumerate(FIG8_SETTINGS):
         for j, m in enumerate(("auroc", "auprc")):
             ax, labels = axes[i, j], []
@@ -1346,6 +1443,7 @@ def figs_old_vs_new(res, lead, gray, dom, root):
             g0 = h[(h.setting == s) & (h.window_set == "core") & (h.model == "G0")]
             if len(g0):
                 ax.axvline(g0[m].iloc[0], color="k", ls=":", lw=0.8)
+            # Label the panel with the measurement names and their units.
             ax.set_yticks(range(len(labels)))
             ax.set_yticklabels(labels, fontsize=7)
             ax.invert_yaxis()
@@ -1356,6 +1454,7 @@ def figs_old_vs_new(res, lead, gray, dom, root):
     save_figure(fig, root, "fig_ind_08_old_vs_new.png")
 
     fig, axes = plt.subplots(2, 2, figsize=(15, 10))
+    # Process the selected records in order and retain their individual results.
     for i, (s, title) in enumerate((("pooled_test", "Pooled Test"), ("clean vitaldb_train->mover_test", "VitalDB Train to MOVER Test (Clean)"))):
         ax = axes[i, 0]
         models = ("G0", "old G4", "G0 + IND-EA", "G0 + IND-EAP")
@@ -1365,6 +1464,7 @@ def figs_old_vs_new(res, lead, gray, dom, root):
                 continue
             mid = np.array([np.mean([float(x) for x in b.split("-")]) for b in u.lead_bin_sec]) + (k - 1.5) * 4
             ax.errorbar(mid, u.auroc, yerr=[np.maximum(u.auroc - u.auroc_lo, 0), np.maximum(u.auroc_hi - u.auroc, 0)], fmt="o-", color=KEY_COLOR[model], capsize=2, label=model)
+        # Label the panel with the measurement names and their units.
         ax.invert_xaxis()
         ax.legend(fontsize=8)
         ax.set_title(f"{title}: AUROC by Lead Time (Full Windows)")
@@ -1390,6 +1490,7 @@ def figs_old_vs_new(res, lead, gray, dom, root):
 
     fig, ax = plt.subplots(figsize=(11, 7))
     if len(dom):
+        # Plot the observed results, including uncertainty where it is available.
         d = dom.sort_values("domain_auroc").reset_index(drop=True)
         colors = [SIG_COLOR["old"] if k == "old" else ("#000000" if k == "baseline" else SET_COLOR["IND-EA"]) for k in d.kind]
         ax.barh(np.arange(len(d)), d.domain_auroc - 0.5, left=0.5, color=colors)
@@ -1397,6 +1498,7 @@ def figs_old_vs_new(res, lead, gray, dom, root):
                     fmt="none", ecolor="k", capsize=2)
         ax.set_yticks(np.arange(len(d)))
         ax.set_yticklabels([f"{n} ({c} features)" for n, c in zip(d.feature_set, d.features)], fontsize=8)
+    # Save the labeled figure for the analysis report.
     ax.axvline(0.5, color="k", lw=0.6)
     ax.set_xlim(0.45, 1.01)
     ax.set_title("Multivariate Hospital Identifiability of Each Feature Set (Old = Grey, New = Purple, G0 = Black)")
@@ -1414,15 +1516,18 @@ def fig_examples(df, ex, extra, thr, sets, t, root):
         params += more[:3 - len(params)]
     nrow = 2 + len(params)
     fig, axes = plt.subplots(nrow, 2, figsize=(14, 2.7 * nrow))
+    # Process the selected records in order and retain their individual results.
     for j, ds in enumerate(("vitaldb", "mover")):
         name = "VitalDB" if ds == "vitaldb" else "MOVER"
         col = axes[:, j]
         if ds not in ex:
             for ax in col:
+                # Label the panel with the measurement names and their units.
                 ax.set_title(f"{name}: No Eligible Training Event")
                 ax.set_xlabel("Time Relative to IOH Onset (s)")
                 ax.set_ylabel("Not Available (None)")
             continue
+        # Plot the observed results, including uncertainty where it is available.
         e = ex[ds]
         w = df[df.window_id.isin(e["window_ids"])].sort_values("t_end_sec")
         x = w.t_end_sec.to_numpy() - e["onset_sec"]
@@ -1432,6 +1537,7 @@ def fig_examples(df, ex, extra, thr, sets, t, root):
         col[0].set_title(f"{name} Training Case {e['case_id']}: Current MAP Before Onset")
         col[0].set_ylabel("Current MAP (mmHg)")
         for i, p in enumerate(params, 1):
+            # Label the panel with the measurement names and their units.
             col[i].plot(x, w[p], ".-", color=SIG_COLOR[cat.loc[p, "signal"]])
             col[i].set_title(f"{p}: {cat.loc[p, 'definition'][:70]}")
             col[i].set_ylabel(f"{p} ({cat.loc[p, 'unit']})")
@@ -1455,11 +1561,13 @@ def fig_examples(df, ex, extra, thr, sets, t, root):
 
 
 def fig_ppg(res, cost, root):
+    # Create the plotting panels for this comparison.
     plt = _plt()
     fig, axes = plt.subplots(2, 2, figsize=(15, 10))
     h = res[(res.learner == "hgb") & (res.window_set == "full")]
     ax = axes[0, 0]
     models = ["G0 + IND-EAP", "G0 + IND-EA + PPG raw", "G0 + IND-EA + PPG self-normalized"]
+    # Process the selected records in order and retain their individual results.
     for k, (s, lab) in enumerate((("pooled_test", "Pooled test"), ("clean vitaldb_train->mover_test", "VitalDB to MOVER test (clean)"),
                                   ("E3x vitaldb_train->all_mover (not clean)", "VitalDB to all MOVER (not clean)"))):
         for i, m in enumerate(models):
@@ -1470,10 +1578,12 @@ def fig_ppg(res, cost, root):
             ax.errorbar(r.d_auroc_vs_G0_plus_INDEA, i + (k - 1) * 0.22, xerr=[[max(r.d_auroc_vs_G0_plus_INDEA - r.d_auroc_vs_G0_plus_INDEA_lo, 0)],
                         [max(r.d_auroc_vs_G0_plus_INDEA_hi - r.d_auroc_vs_G0_plus_INDEA, 0)]], fmt="os^"[k], color=["#34495e", "#e67e22", "#95a5a6"][k], capsize=2,
                         label=lab if i == 0 else None)
+    # Label the panel with the measurement names and their units.
     ax.axvline(0, color="k", lw=0.6)
     ax.set_yticks(range(len(models)))
     ax.set_yticklabels(models, fontsize=8)
     ax.legend(fontsize=7)
+    # Label the panel with the measurement names and their units.
     ax.set_title("A Adding PPG to G0 + IND-EA (Test, Full Windows)")
     ax.set_xlabel("Delta AUROC vs G0 + IND-EA (Unitless, 95% CI)")
     ax.set_ylabel("Model")
@@ -1483,13 +1593,16 @@ def fig_ppg(res, cost, root):
     for k, ds in enumerate(("vitaldb", "mover")):
         u = c[c.dataset == ds].set_index("quantity").reindex(qs)
         ax.bar(np.arange(len(qs)) + (k - 0.5) * 0.38, u.lost_pct, width=0.36, color=["#34495e", "#e67e22"][k], label="VitalDB" if ds == "vitaldb" else "MOVER")
+    # Label the panel with the measurement names and their units.
     ax.set_xticks(np.arange(len(qs)))
     ax.set_xticklabels([q.title() for q in qs])
     ax.legend(fontsize=8)
     ax.set_title("B Cost of Requiring PPG (Core to Full Windows, All Splits)")
+    # Read the saved table and retain its named columns.
     ax.set_xlabel("Quantity Lost")
     ax.set_ylabel("Lost When PPG Is Required (%)")
     ax = axes[1, 0]
+    # Read the saved table and retain its named columns.
     dom = pd.read_csv(Path(root) / OUT / "table_domain_auroc.csv")
     p = dom[(dom.kind == "new") & (dom.signal == "P")]
     sn = p[p.param.str.endswith("_sn")].dropna(subset=["domain_auroc_raw"])
@@ -1497,13 +1610,16 @@ def fig_ppg(res, cost, root):
     ax.scatter(np.zeros(len(raw_only)) + np.linspace(-0.08, 0.08, max(len(raw_only), 1))[:len(raw_only)], raw_only.domain_auroc, color=SIG_COLOR["P"], alpha=0.6, label="Raw PPG parameters")
     for _, r in sn.iterrows():
         ax.plot([0, 1], [r.domain_auroc_raw, r.domain_auroc], "-", color="#7f8c8d", lw=0.8)
+    # Plot the observed results, including uncertainty where it is available.
     ax.scatter(np.ones(len(sn)), sn.domain_auroc, color="#1abc9c", label="Self-normalized PPG parameters")
     ax.axhline(0.70, color="k", ls="--", lw=0.8, label="F5 limit 0.70")
     ax.set_xticks([0, 1])
     ax.set_xticklabels(["Raw", "Self-Normalized"])
+    # Label the panel with the measurement names and their units.
     ax.set_ylim(0.45, 1.02)
     ax.legend(fontsize=7)
     ax.set_title("C Hospital Identifiability of PPG Parameters (Training)")
+    # Label the panel with the measurement names and their units.
     ax.set_xlabel("Normalization of the PPG Parameter")
     ax.set_ylabel("Univariate Domain AUROC (Unitless)")
     ax = axes[1, 1]
@@ -1517,6 +1633,7 @@ def fig_ppg(res, cost, root):
             r = r.iloc[0]
             ax.errorbar(r.auroc, i + (k - 1) * 0.22, xerr=[[max(r.auroc - r.auroc_lo, 0)], [max(r.auroc_hi - r.auroc, 0)]], fmt="os^"[k],
                         color=["#34495e", "#e67e22", "#95a5a6"][k], capsize=2, label=lab if i == 0 else None)
+    # Label the panel with the measurement names and their units.
     ax.set_yticks(range(len(ms)))
     ax.set_yticklabels(ms, fontsize=8)
     ax.legend(fontsize=7)

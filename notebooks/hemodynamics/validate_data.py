@@ -1,4 +1,5 @@
 """Verify persisted signals; sample success never implies cohort completeness."""
+# Check that the selected cases exist and match their committed metadata.
 from pathlib import Path
 import json
 
@@ -13,17 +14,20 @@ def validate_outputs(root):
     results = {}
     representatives = {}
     for dataset, selected_name, case_column in (("vitaldb", "usable_cohort", "caseid"), ("mover", "mover_selected_cohort", "case_id")):
+        # Read the stored table required for this calculation.
         selected_path = root / "data" / "manifests" / f"{selected_name}.parquet"
         selected = pd.read_parquet(selected_path) if selected_path.exists() else pd.DataFrame()
         expected = set(selected[case_column].astype(str)) if len(selected) else set()
         completed, failed = [], []
         directory = root / "data" / "parquet" / dataset
+        # Process the selected records in order and retain their individual results.
         for metadata_path in sorted(directory.glob("case_id=*/metadata.json")):
             try:
                 metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
                 if not verify_case(root, metadata):
                     raise ValueError("Hash/readback verification failed")
                 if dataset not in representatives:
+                    # Load the verified case with separate waveform and numeric-MAP time axes.
                     case = load_case(root, dataset, metadata["case_id"])
                     times = case["waveform_time_sec"]
                     expected_fs = metadata.get("art_final_fs", metadata.get("target_waveform_fs", 100))
@@ -43,6 +47,7 @@ def validate_outputs(root):
             overlaps = assert_patient_independence(pd.read_parquet(split_path))
         patient_assignments_valid = False
         if len(completed) and split_path.exists():
+            # Read the stored table required for this calculation.
             splits = pd.read_parquet(split_path)
             mapping = dict(zip(splits.patient_id.astype(str), splits.split))
             patient_assignments_valid = all(mapping.get(str(m.get("patient_id"))) == m.get("split") for m in completed)
@@ -60,6 +65,7 @@ def validate_outputs(root):
 
 
 if __name__ == "__main__":
+    # Store the settings and results as JSON for later inspection.
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("root", type=Path)

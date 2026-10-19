@@ -16,6 +16,7 @@ Native series (one row per beat, ``t`` = time the cycle is complete):
 * PPG: polarity from the PPG alone (steeper upstroke), amplitude, AC/DC, rise time, width at 50% (fraction of the cycle), interval, quality, validity.
 """
 from __future__ import annotations
+# Calculate causal features from each signal without borrowing another signal's detections.
 
 import json
 import os
@@ -110,6 +111,7 @@ def ecg_vote(x):
     high = B._sos("high", FS, 0.5, 0.0)
     score = 0.0
     for a, b in zip(*B.finite_segments(x, int(B.MIN_SEG_SEC * FS))):
+        # Filter the continuous signal before estimating its peak positions.
         seg = x[a:b].astype(np.float64)
         f = sosfiltfilt(high, seg - np.median(seg))
         score += len(seg) * (1.0 if np.percentile(f, 99.5) >= -np.percentile(f, 0.5) else -1.0)
@@ -121,6 +123,7 @@ def ppg_vote(x):
     low = B._sos("low", FS, 0.0, 12.0)
     score = 0.0
     for a, b in zip(*B.finite_segments(x, int(B.MIN_SEG_SEC * FS))):
+        # Filter the continuous signal before estimating its peak positions.
         seg = x[a:b].astype(np.float64)
         d = np.gradient(sosfiltfilt(low, seg - np.median(seg))) * FS
         score += len(seg) * (1.0 if np.percentile(d, 99.5) >= -np.percentile(d, 0.5) else -1.0)
@@ -144,19 +147,23 @@ def native_ecg(ts, x, starts, ends):
     """ECG-only beat series (one row per R-R interval, ``t`` = time of the closing R)."""
     t0, x = dense(ts, x)
     parts, vote = [], 0.0
+    # Process the selected records in order and retain their individual results.
     for j, toff, xc, xnew in _iter_chunks(t0, x, starts, ends):
         vote += ecg_vote(xnew)
         sign = 1.0 if vote >= 0 else -1.0
         r, conf, _ = B.detect_r_peaks(xc, FS, sign=sign)
         if len(r) < 2:
             continue
+        # Calculate beat intervals for the following step.
         g = sign * xc
         ri = np.clip(np.rint(r).astype(np.int64), 0, len(xc) - 1)
         half = int(0.5 * FS)
         ramp = np.array([g[k] - np.nanmedian(g[max(0, k - half):k + half]) for k in ri])
+        # Calculate beat intervals and valid-sample flags for the following step.
         nanc = _nan_count(xc)
         rr = np.diff(r) / FS
         gap = (nanc[ri[1:] + 1] - nanc[ri[:-1]]) > 0
+        # Collect the per-record values into a table for comparison.
         valid = (conf[1:] >= 0.3) & (conf[:-1] >= 0.3) & (rr >= 0.286) & (rr <= 2.0) & ~gap
         t = toff + r[1:] / FS
         keep = _keep(t, starts[j], ends[j])
@@ -182,6 +189,7 @@ def _smooth_segments(x, hi=12.0):
     sos = B._sos("low", FS, 0.0, hi)
     y = np.full(len(x), np.nan)
     for a, b in zip(*B.finite_segments(x, int(B.MIN_SEG_SEC * FS))):
+        # Filter the continuous signal before estimating its peak positions.
         seg = x[a:b].astype(np.float64)
         m = np.median(seg)
         y[a:b] = sosfiltfilt(sos, seg - m) + m
@@ -214,6 +222,7 @@ def decay_tau(y, a, b):
     seg = y[a:b + 1]
     if not (np.isfinite(seg).all() and (seg > 0).all()):
         return np.nan
+    # Fit the pressure decay on a seconds-based clock after taking its logarithm.
     t = np.arange(len(seg)) / FS
     ly = np.log(seg)
     tc = t - t.mean()
@@ -225,6 +234,7 @@ def decay_tau(y, a, b):
 
 
 def _shape(cyc):
+    # Resample the available measurements onto the required time or phase grid.
     s = np.interp(_GRID * (len(cyc) - 1), np.arange(len(cyc)), cyc)
     sd = s.std()
     return (s - s.mean()) / sd if sd > 0 else np.full(SHAPE_N, np.nan)
@@ -232,24 +242,29 @@ def _shape(cyc):
 
 def _art_cycles(xc, y, d1, d2, nanc, det):
     """Per-cycle ART quantities for cycles foot[k] -> foot[k+1]."""
+    # Measure each arterial cycle between successive pulse feet, excluding incomplete cycles.
     foot, peak, top, base, dpdt = det["foot"], det["peak"], det["top"], det["base"], det["dpdt"]
     n = len(foot) - 1
     cols = [c for c in ART_COLS if c not in ("t", "q", "ok")]
     out = {c: np.full(n, np.nan) for c in cols}
     ok = np.zeros(n, dtype=bool)
     shapes = np.full((n, SHAPE_N), np.nan)
+    # Measure one complete pulse at a time, leaving rejected cycles marked as missing.
     for k in range(n):
         f0, f1, P = foot[k], foot[k + 1], int(peak[k])
         i0, i1 = int(np.ceil(f0)), int(np.floor(f1))
         if i1 - i0 < 10 or not (f0 < P < f1) or nanc[i1 + 1] - nanc[i0] > 0:
             continue
+        # Summarize the observed levels and variability for this set of measurements.
         cyc = xc[i0:i1 + 1]
         T = (f1 - f0) / FS
         sbp, dbp = float(top[k]), float(base[k])
         pp = sbp - dbp
+        # Summarize the observed levels and variability for this set of measurements.
         mapp = float(cyc.mean())
         sd = float(cyc.std())
         out["sbp"][k], out["dbp"][k], out["pp"][k], out["mapp"][k] = sbp, dbp, pp, mapp
+        # Separate the steepest upstroke from the fastest pressure fall after the pulse peak.
         out["dpdt_max"][k], out["dpdt_min"][k] = dpdt[k], float(np.nanmin(d1[P:i1 + 1]))
         out["rise"][k], out["interval"][k] = (P - f0) / FS, T
         if pp > 0:
@@ -265,6 +280,7 @@ def _art_cycles(xc, y, d1, d2, nanc, det):
             if dia_a > 0:
                 out["area_ratio"][k] = sys_a / dia_a
             out["tau"][k] = decay_tau(y, notch + int(0.4 * (i1 - notch)), i1 - 2)
+        # Reject clipped or physiologically implausible pulses before using their measurements.
         clipped = max(np.mean(cyc >= cyc.max() - 0.1), np.mean(cyc <= cyc.min() + 0.1)) >= 0.15
         ok[k] = (15 <= pp <= 150) and sbp <= 300 and dbp >= -20 and (20 <= mapp <= 200) and sd >= 0.5 and not clipped and 0.286 <= T <= 2.0
         shapes[k] = _shape(cyc)
@@ -272,11 +288,13 @@ def _art_cycles(xc, y, d1, d2, nanc, det):
 
 
 def _ppg_cycles(xc, pol, nanc, det):
+    # Measure pulse amplitude, timing, and shape using only the PPG waveform.
     foot, peak, top, base = det["foot"], det["peak"], det["top"], det["base"]
     n = len(foot) - 1
     out = {c: np.full(n, np.nan) for c in ("amp", "acdc", "rise", "width50", "interval")}
     ok = np.zeros(n, dtype=bool)
     shapes = np.full((n, SHAPE_N), np.nan)
+    # Measure one complete pulse at a time, leaving rejected cycles marked as missing.
     for k in range(n):
         f0, f1, P = foot[k], foot[k + 1], int(peak[k])
         i0, i1 = int(np.ceil(f0)), int(np.floor(f1))
@@ -298,9 +316,11 @@ def _ppg_cycles(xc, pol, nanc, det):
 
 def block_quality(shapes, ok):
     """Correlation of each valid pulse's shape with the median shape of the PREVIOUS block of QBLOCK valid pulses (causal; first block NaN)."""
+    # Use an earlier pulse block as the reference so quality does not use future samples.
     q = np.full(len(shapes), np.nan)
     idx = np.flatnonzero(ok & np.isfinite(shapes).all(axis=1))
     for b in range(1, int(np.ceil(len(idx) / QBLOCK))):
+        # Compare current pulses with an earlier shape template so quality remains causal.
         prev, cur = idx[(b - 1) * QBLOCK:b * QBLOCK], idx[b * QBLOCK:(b + 1) * QBLOCK]
         tmpl = np.median(shapes[prev], axis=0)
         sd = tmpl.std()
@@ -315,6 +335,7 @@ def _empty(cols):
 
 def native_pulses(ts, x, starts, ends, kind):
     """ART-only (``kind='art'``) or PPG-only (``kind='ppg'``) pulse series; one row per foot-to-foot cycle, ``t`` = time of the closing foot."""
+    # Detect complete arterial or PPG cycles using that signal alone.
     t0, x = dense(ts, x)
     parts, vote = [], 0.0
     for j, toff, xc, xnew in _iter_chunks(t0, x, starts, ends):
@@ -339,6 +360,7 @@ def native_pulses(ts, x, starts, ends, kind):
     cols = ART_COLS if kind == "art" else PPG_COLS
     if not parts:
         return _empty(cols)
+    # Collect the per-record values into a table for comparison.
     df = pd.concat([p[0] for p in parts], ignore_index=True)
     shapes = np.concatenate([p[1] for p in parts])
     order = np.argsort(df.t.to_numpy(), kind="stable")
@@ -388,6 +410,7 @@ def dfa_alpha1(v, scales=(4, 5, 6, 8, 10, 12, 14, 16)):
         return NAN
     y = np.cumsum(v - v.mean())
     logn, logf = [], []
+    # Process the selected records in order and retain their individual results.
     for n in scales:
         m = len(y) // n
         seg = y[:m * n].reshape(m, n)
@@ -405,6 +428,7 @@ def dfa_alpha1(v, scales=(4, 5, 6, 8, 10, 12, 14, 16)):
 
 def sample_entropy(v, m=2, r_frac=0.2, max_n=300):
     """SampEn(m, r = r_frac * SD) of the last ``max_n`` values (self-matches excluded, n - m templates for both lengths)."""
+    # Exclude or flag missing values before using these measurements.
     v = np.asarray(v, dtype=np.float64)
     v = v[np.isfinite(v)][-max_n:]
     n = len(v)
@@ -485,6 +509,7 @@ def span_variation(v, k=8, relative=True):
 
 def slope_per_min(t, v):
     """Fit a linear trend against time in seconds and express its slope per minute."""
+    # Exclude or flag missing values before using these measurements.
     t, v = np.asarray(t, dtype=np.float64), np.asarray(v, dtype=np.float64)
     ok = np.isfinite(v)
     t, v = t[ok], v[ok]
@@ -521,6 +546,7 @@ def spearman(a, b):
     ok = np.isfinite(a) & np.isfinite(b)
     if ok.sum() < 10:
         return NAN
+    # Order the measurements before matching intervals or comparing rows.
     ra = np.argsort(np.argsort(a[ok])).astype(np.float64)
     rb = np.argsort(np.argsort(b[ok])).astype(np.float64)
     ra -= ra.mean()
@@ -546,9 +572,11 @@ SN_RULES = {**{f"a_{c}_l60": "ratio" for c in ("sbp", "dbp", "pp", "dpdt_max", "
 
 def _slices(t, e, iv):
     """{lookback: (slice or None when coverage is insufficient, covered fraction)} of beats completed in (e - LATENCY - L, e - LATENCY]."""
+    # Use only beats completed before the prediction time and its detection margin.
     hi = int(np.searchsorted(t, e - LATENCY, "right"))
     out = {}
     for lb, L in LOOKBACKS.items():
+        # Locate the requested interval within the sorted sample times.
         lo = int(np.searchsorted(t, e - LATENCY - L, "right"))
         n = hi - lo
         cov = min(float(np.nansum(iv[lo:hi])) / L, 1.0) if n else 0.0
@@ -558,6 +586,7 @@ def _slices(t, e, iv):
 
 def art_window(A, e):
     """Summarize native ART pulses over causal 60-second and 300-second lookbacks."""
+    # Use separate one-minute and five-minute histories for native arterial dynamics.
     o = {}
     sl = _slices(A["t"], e, A["interval"])
     s60, s300 = sl["l60"][0], sl["l300"][0]
@@ -570,12 +599,14 @@ def art_window(A, e):
         o["a_q_l60"] = _med(A["q"][s60])
         o["a_int_sbp_corr_l60"] = spearman(A["interval"][s60], A["sbp"][s60])
         o["a_pp_dbp_corr_l60"] = spearman(A["pp"][s60], A["dbp"][s60])
+    # Calculate the same measurements over the one-minute and five-minute histories.
     for lb, s in (("l60", s60), ("l300", s300)):
         if s is None:
             continue
         t, mp, pp, iv = A["t"][s], A["mapp"][s], A["pp"][s], A["interval"][s]
         o[f"a_ppv_{lb}"] = span_variation(pp)
         o[f"a_spv_{lb}"] = span_variation(A["sbp"][s], relative=False)
+        # Measure pressure variability separately at each lookback length.
         o[f"a_map_sd_{lb}"] = float(mp.std())
         o[f"a_pp_cv_{lb}"] = float(pp.std() / pp.mean()) if pp.mean() > 0 else NAN
         o[f"a_int_sdnn_{lb}"], o[f"a_int_rmssd_{lb}"] = hrv(t, iv)[:2]
@@ -590,6 +621,7 @@ def art_window(A, e):
     if s300 is not None:
         t = A["t"][s300]
         for nm, col in ART_TC.items():
+            # Summarize the observed levels and variability for this set of measurements.
             v = A[col][s300]
             r = detrend(v)
             o[f"a_{nm}_rsd_l300"] = float(r.std())
@@ -605,15 +637,18 @@ def art_window(A, e):
 
 def ecg_window(E, e):
     """Summarize ECG intervals, variability, and dynamics while excluding ectopic intervals."""
+    # Use normal ECG intervals for variability and retain ectopy as a separate measurement.
     o = {}
     sl = _slices(E["t"], e, E["rr"])
     s60, s300 = sl["l60"][0], sl["l300"][0]
     o["e_cover_l60"] = sl["l60"][1]
     nn = {}
+    # Calculate the same measurements over the one-minute and five-minute histories.
     for lb, s in (("l60", s60), ("l300", s300)):
         if s is None:
             continue
         t, rr, ect = E["t"][s], E["rr"][s], E["ectopic"][s]
+        # Remove ectopic ECG intervals before calculating normal-beat variability.
         tn, rn = t[~ect], rr[~ect]
         if len(rn) < MIN_BEATS[lb] // 2:
             continue
@@ -629,6 +664,7 @@ def ecg_window(E, e):
         o[f"e_hr_slope_{lb}"] = slope_per_min(tn, 60.0 / rn)
         o[f"e_rr_ac1_{lb}"] = ac1(detrend(rn))
         if lb == "l300":
+            # Remove the interval trend before measuring residual dynamics and irregularity.
             r = detrend(rn)
             o["e_rr_rsd_l300"] = float(r.std() * 1000.0)
             o["e_rr_rskew_l300"] = skewness(r)
@@ -643,6 +679,7 @@ def ecg_window(E, e):
 
 def ppg_window(P, e):
     """Summarize PPG morphology and interval dynamics using PPG-only detections."""
+    # Summarize PPG shape and pulse timing only when its own history has enough coverage.
     o = {}
     sl = _slices(P["t"], e, P["interval"])
     s60, s300 = sl["l60"][0], sl["l300"][0]
@@ -657,10 +694,12 @@ def ppg_window(P, e):
         o["p_q_l60"] = _med(P["q"][s60])
         o["p_hr_slope_l60"] = slope_per_min(P["t"][s60], P["hr"][s60])
         o["p_int_amp_corr_l60"] = spearman(P["interval"][s60], P["amp"][s60])
+    # Calculate the same measurements over the one-minute and five-minute histories.
     for lb, s in (("l60", s60), ("l300", s300)):
         if s is None:
             continue
         t, amp, iv = P["t"][s], P["amp"][s], P["interval"][s]
+        # Summarize the observed levels and variability for this set of measurements.
         med[lb] = _med(amp)
         o[f"p_amp_cv_{lb}"] = float(amp.std() / amp.mean()) if amp.mean() > 0 else NAN
         o[f"p_pvi_{lb}"] = span_variation(amp)
@@ -723,6 +762,7 @@ def window_params(ecg, art, ppg, t_end):
     e = np.unique(np.asarray(t_end, dtype=np.float64))
     A, E, P = _arrays(art, "art"), _arrays(ecg, "ecg"), _arrays(ppg, "ppg")
     rows = []
+    # Process the selected records in order and retain their individual results.
     for ei in e:
         o = {"t_end_sec": ei}
         if A is not None:
@@ -775,6 +815,7 @@ def catalogue():
     add("a_cover_l60", "A", "meta", "fraction of the last 60 s covered by valid ART pulses", "fraction", "L60", candidate=False)
     add("a_int_sbp_corr_l60", "A", "within_coupling", "Spearman of pulse interval vs SBP over valid pulses", "unitless", "L60")
     add("a_pp_dbp_corr_l60", "A", "within_coupling", "Spearman of PP vs DBP over valid pulses", "unitless", "L60")
+    # Process the selected records in order and retain their individual results.
     for lb in ("l60", "l300"):
         L = lb.upper()
         add(f"a_ppv_{lb}", "A", "variability", "PPV: median over 8-beat spans of (PPmax - PPmin)/mean PP", "ratio", L)
@@ -803,6 +844,7 @@ def catalogue():
     add("e_hr_l60", "E", "level_shape", "ECG heart rate 60 / median NN interval", "bpm", "L60")
     add("e_q_l60", "E", "meta", "median R-peak confidence (own quality)", "unitless", "L60", candidate=False)
     add("e_cover_l60", "E", "meta", "fraction of the last 60 s covered by valid R-R intervals", "fraction", "L60", candidate=False)
+    # Process the selected records in order and retain their individual results.
     for lb in ("l60", "l300"):
         L = lb.upper()
         add(f"e_sdnn_{lb}", "E", "variability", "SDNN of NN intervals (ectopy excluded)", "ms", L)
@@ -917,6 +959,7 @@ def _sha(path):
 
 def build(root, workers=28, cases=None, write_native=True, out_name=PARAMS_NAME, log=None):
     """Window parameter table for every ea_core window (``cases`` = optional list of (dataset, case_id) for timing runs)."""
+    # Use settings and input fingerprints to decide which case outputs need rebuilding.
     from concurrent.futures import ProcessPoolExecutor, as_completed
     import multiprocessing as mp
     from .bshi import load_window_index
@@ -948,6 +991,7 @@ def build(root, workers=28, cases=None, write_native=True, out_name=PARAMS_NAME,
     table = idx.merge(params, on=["dataset", "case_id", "t_end_sec"], how="left", validate="many_to_one")
     for c in column_names():
         table[c] = table[c].astype(np.float32)
+    # Write the verified values in the pipeline's Parquet table format.
     out_dir = root / OUT_DIR
     out_dir.mkdir(parents=True, exist_ok=True)
     table.to_parquet(out_dir / out_name, compression="zstd", index=False)
@@ -965,6 +1009,7 @@ def build(root, workers=28, cases=None, write_native=True, out_name=PARAMS_NAME,
 
 def write_catalogue(root):
     """Save parameter definitions, units, lookbacks, and candidate status as a CSV table."""
+    # Save the comparison table so the same measurements can be inspected later.
     out = Path(root) / "results" / "independence"
     out.mkdir(parents=True, exist_ok=True)
     cat = pd.DataFrame(catalogue())

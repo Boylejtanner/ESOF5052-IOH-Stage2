@@ -9,6 +9,7 @@ Beat times (``t_rel``, ``rr``) come from ``bshi.assemble(..., return_times=True)
 Batch keys used: x (B,7,60,200), beat_mask (B,3,60) bool [ecg, art, ppg], context (B,25), t_rel and rr (B,60) seconds.
 """
 from __future__ import annotations
+# Apply controlled signal corruption to test how the model handles poor inputs.
 
 import json
 from pathlib import Path
@@ -34,6 +35,7 @@ def band_slice(plane_name, band):
 # MOVER gap statistics
 def measure_mover_gaps(root, n_cases=40, seed=5052, write=True):
     """Valid-run and gap-length quantiles (s) of MOVER capture (all of ART, ECG, PPG finite) from a direct measurement on ``n_cases`` MOVER waveforms."""
+    # Read the stored table required for this calculation.
     import pandas as pd
     import pyarrow.parquet as pq
     root = Path(root)
@@ -42,9 +44,11 @@ def measure_mover_gaps(root, n_cases=40, seed=5052, write=True):
     rng = np.random.default_rng(seed)
     runs, gaps, fracs = [], [], []
     for _, r in idx.iloc[rng.choice(len(idx), min(n_cases, len(idx)), replace=False)].iterrows():
+        # Exclude or flag missing values before using these measurements.
         t = pq.read_table(root / r.waveform_path, columns=["time_sec", "ART", "ECG", "PPG"]).to_pandas()
         ts = t.time_sec.to_numpy()
         n = int(round((ts[-1] - ts[0]) * 100)) + 1
+        # Exclude or flag missing values before using these measurements.
         ok = np.zeros(n, dtype=bool)
         ok[np.rint((ts - ts[0]) * 100).astype(np.int64)] = np.isfinite(t[["ART", "ECG", "PPG"]].to_numpy()).all(axis=1)
         edges = np.flatnonzero(np.diff(np.r_[False, ok, False].astype(np.int8)))
@@ -111,6 +115,7 @@ def mover_gaps(batch, gap_stats, gen):
 
 def ppg_dropout(batch, p_window, p_beat, gen):
     """With probability ``p_window`` a window loses all PPG, otherwise each beat loses PPG with probability ``p_beat``: PPG plane and PPG bands zero, mask False, count updated."""
+    # Calculate output values and the input array for the following step.
     dev = batch["x"].device
     b = batch["x"].shape[0]
     window = torch.rand((b, 1), generator=gen, device=dev) < p_window
@@ -131,6 +136,7 @@ def ppg_dropout(batch, p_window, p_beat, gen):
 
 def ecg_noise(batch, snr_db, gen):
     """Add white Gaussian noise to the ECG plane at the given SNR (dB) relative to the window's ECG power over unmasked beats (APPROXIMATION)."""
+    # Calculate output values and the input array for the following step.
     out = _copy(batch)
     x = out["x"]
     live = out["beat_mask"][:, 0].unsqueeze(2).to(x.dtype)
@@ -142,6 +148,7 @@ def ecg_noise(batch, snr_db, gen):
 
 def art_damping(batch, width):
     """Over-damped arterial line: moving average of ``width`` phase samples on the ART plane (lower pulse pressure, rounder waveform) (APPROXIMATION)."""
+    # Calculate output values and the input array for the following step.
     out = _copy(batch)
     x = out["x"]
     b, n = x.shape[0], x.shape[2]
@@ -155,6 +162,7 @@ def art_damping(batch, width):
 
 def art_flatline(batch, p_beat, gen):
     """A random share of beats show a flat arterial trace (the beat mean) while the masks stay as they were: robustness to an undetected failure (APPROXIMATION)."""
+    # Calculate output values and the input array for the following step.
     dev = batch["x"].device
     out = _copy(batch)
     x = out["x"]
@@ -168,6 +176,7 @@ def art_flatline(batch, p_beat, gen):
 def timing_jitter(batch, sigma_s, gen):
     """R-wave anchoring jitter: every beat's ECG, ART and PPG waveform is circularly shifted along the phase axis by N(0, sigma_s) seconds converted to phase samples with the beat's
     own R-R interval (needs ``rr``) (APPROXIMATION: the stored delay bands are not recomputed)."""
+    # Calculate output values and the input array for the following step.
     out = _copy(batch)
     x = out["x"]
     b, n, p = x.shape[0], x.shape[2], x.shape[3]

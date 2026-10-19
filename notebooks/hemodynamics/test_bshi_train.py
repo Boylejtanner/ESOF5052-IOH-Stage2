@@ -1,3 +1,4 @@
+# Check bshi train using controlled inputs and isolated files.
 import math
 import tempfile
 import unittest
@@ -18,6 +19,7 @@ CUDA = torch.cuda.is_available()
 
 
 def fake_batch(n, seed):
+    # Seed the generated values so this check can be repeated.
     g = torch.Generator().manual_seed(seed)
     ctx = torch.randn((n, len(S.CONTEXT_NAMES)), generator=g)
     y = (ctx[:, 0] + 0.3 * torch.randn(n, generator=g) > 0.7).float()
@@ -43,6 +45,7 @@ def small_trainer(out, epochs=4, **over):
 
 class TestSchedule(unittest.TestCase):
     def test_warmup_then_cosine(self):
+        # Verify warmup then cosine.
         cfg = T.TrainConfig(lr=1e-3, warmup_epochs=1.0, min_lr_frac=0.01, schedule="cosine")
         spe, total = 10, 100
         lrs = [T.lr_at(cfg, s, total, spe) for s in range(total)]
@@ -53,6 +56,7 @@ class TestSchedule(unittest.TestCase):
         self.assertAlmostEqual(lrs[55], 1e-3 * (0.01 + 0.99 * 0.5 * (1 + math.cos(math.pi * 45 / 90))), places=9)
 
     def test_onecycle_peaks_at_thirty_percent_and_constant_is_flat(self):
+        # Verify onecycle peaks at thirty percent and constant is flat.
         cfg = T.TrainConfig(lr=1e-3, schedule="onecycle")
         lrs = [T.lr_at(cfg, s, 100, 10) for s in range(100)]
         self.assertEqual(int(np.argmax(lrs)), 30)
@@ -63,6 +67,7 @@ class TestSchedule(unittest.TestCase):
 
 class TestOptimizers(unittest.TestCase):
     def test_no_weight_decay_on_biases_and_norms(self):
+        # Verify no weight decay on biases and norms.
         m = BshiNet(ModelConfig())
         o = T.build_optimizer(m, T.TrainConfig(weight_decay=0.05), "cpu")
         decay, plain = o.param_groups
@@ -72,6 +77,7 @@ class TestOptimizers(unittest.TestCase):
         self.assertEqual(len(decay["params"]) + len(plain["params"]), len(list(m.parameters())))
 
     def test_sgd_is_nesterov_and_adamw_takes_beta2(self):
+        # Verify sgd is nesterov and adamw takes beta2.
         m = BshiNet(ModelConfig(variant="map_only"))
         s = T.build_optimizer(m, T.TrainConfig(optimizer="sgd", momentum=0.9), "cpu")
         self.assertTrue(s.defaults["nesterov"])
@@ -88,6 +94,7 @@ class TestOptimizers(unittest.TestCase):
 
 class TestEarlyStopping(unittest.TestCase):
     def test_scripted_sequence(self):
+        # Verify scripted sequence.
         s = T.EarlyStopper(patience=3, min_delta=5e-4)
         flags = [s.update(v, i) for i, v in enumerate([0.50, 0.60, 0.6004, 0.59, 0.58, 0.57])]
         self.assertEqual([f[0] for f in flags], [True, True, False, False, False, False])      # 0.6004 does not beat 0.60 by min_delta
@@ -95,6 +102,7 @@ class TestEarlyStopping(unittest.TestCase):
         self.assertEqual((s.best, s.best_epoch), (0.60, 1))
 
     def test_nan_never_improves_and_state_round_trips(self):
+        # Verify nan never improves and state round trips.
         s = T.EarlyStopper(2, 0.0)
         self.assertTrue(s.update(0.5, 0)[0])
         self.assertFalse(s.update(float("nan"), 1)[0])
@@ -103,9 +111,11 @@ class TestEarlyStopping(unittest.TestCase):
         self.assertEqual(t.state(), s.state())
 
     def test_trainer_stops_and_restores_the_best_weights(self):
+        # Verify trainer stops and restores the best weights.
         with tempfile.TemporaryDirectory() as tmp:
             tr = small_trainer(tmp, epochs=8, patience=2)
             seq = iter([0.5, 0.6, 0.55, 0.54, 0.53, 0.52, 0.51, 0.5])
+            # Check stopped early against the expected result.
             tr.validate = lambda: {"auprc": next(seq), "auroc": 0.7}
             res = tr.fit(resume=False)
             self.assertTrue(res["stopped_early"])
@@ -118,13 +128,16 @@ class TestEarlyStopping(unittest.TestCase):
 
 class TestLoss(unittest.TestCase):
     def test_masks_remove_unobserved_targets_and_all_false_is_zero(self):
+        # Verify masks remove unobserved targets and all false is zero.
         pre = D.Preprocessor("eap", FAKE, device="cpu", channels_last=False)
         n = 6
         out = {k: torch.randn(n) for k in ("event", "delta_map", "aut_logit", "aut_mag")}
+        # Compare the result with the expected value or tolerance.
         t = pre({**fake_batch(n, 1), "delta_map": torch.tensor([1.0, 2.0, float("nan"), 4.0, 5.0, 6.0]), "aut65": torch.tensor([0, 0, 3.0, float("nan"), 2.0, 0]), "reg_mask": torch.tensor([1, 1, 1, 1, 0, 1], dtype=torch.bool)})
         total, parts = T.multitask_loss(out, t, {"event": 1.0, "delta_map": 0.3, "aut65": 0.3})
         self.assertTrue(torch.isfinite(total))
         keep = t["m_delta"]
+        # Compare the result with the expected value or tolerance.
         manual = torch.nn.functional.huber_loss(out["delta_map"][keep], t["delta"][keep], delta=1.0)
         self.assertAlmostEqual(float(parts["delta_map"]), float(manual), places=6)
         mag_keep = t["m_mag"]
@@ -135,6 +148,7 @@ class TestLoss(unittest.TestCase):
         self.assertEqual((float(p0["delta_map"]), float(p0["aut_pos"]), float(p0["aut_mag"])), (0.0, 0.0, 0.0))
 
     def test_pos_weight_raises_the_loss_on_positives(self):
+        # Verify pos weight raises the loss on positives.
         pre = D.Preprocessor("eap", FAKE, device="cpu", channels_last=False)
         out = {k: torch.zeros(8) for k in ("event", "delta_map", "aut_logit", "aut_mag")}
         t = pre(fake_batch(8, 3))
@@ -145,6 +159,7 @@ class TestLoss(unittest.TestCase):
 
 class TestMetrics(unittest.TestCase):
     def frame(self, n=400, seed=0, weights=False):
+        # Collect the per-record values into a table for comparison.
         rng = np.random.default_rng(seed)
         y = (rng.random(n) < 0.2).astype(np.float32)
         logit = rng.normal(size=n) + 1.5 * y
@@ -155,6 +170,7 @@ class TestMetrics(unittest.TestCase):
         return df
 
     def test_equal_to_sklearn(self):
+        # Verify equal to sklearn.
         for weighted in (False, True):
             df = self.frame(weights=weighted)
             m = T.metrics_from_predictions(df)
@@ -165,18 +181,21 @@ class TestMetrics(unittest.TestCase):
             self.assertAlmostEqual(m["brier"], brier_score_loss(df.y > 0.5, p, sample_weight=w), places=9)
 
     def test_prior_shift_changes_calibration_not_the_ranking_within_a_dataset(self):
+        # Verify prior shift changes calibration not the ranking within a dataset.
         df = self.frame()
         a, b = T.metrics_from_predictions(df), T.metrics_from_predictions(df, {"mover": -2.4, "vitaldb": -2.4})
         self.assertAlmostEqual(a["auroc"], b["auroc"], places=9)
         self.assertNotAlmostEqual(a["brier"], b["brier"], places=3)
 
     def test_single_class_gives_nan_not_an_error(self):
+        # Verify single class gives nan not an error.
         df = self.frame()
         df["y"] = 0.0
         m = T.metrics_from_predictions(df)
         self.assertTrue(math.isnan(m["auroc"]) and math.isnan(m["auprc"]))
 
     def test_mae_against_the_median_reference(self):
+        # Verify mae against the median reference.
         df = self.frame()
         df["delta_pred"] = df.delta_true
         m = T.metrics_from_predictions(df)
@@ -186,6 +205,7 @@ class TestMetrics(unittest.TestCase):
 
 class TestCheckpointResume(unittest.TestCase):
     def test_a_resumed_run_continues_exactly(self):
+        # Verify a resumed run continues exactly.
         with tempfile.TemporaryDirectory() as ta, tempfile.TemporaryDirectory() as tb:
             a = small_trainer(ta, epochs=4)
             ra = a.fit(resume=False)["history"]
@@ -195,6 +215,7 @@ class TestCheckpointResume(unittest.TestCase):
             rb = b2.fit(resume=True)["history"]
             self.assertEqual(len(rb), 4)
             for e in (2, 3):
+                # Compare the result with the expected value or tolerance.
                 self.assertAlmostEqual(float(ra.loc[e, "total"]), float(rb.loc[e, "total"]), places=4)
                 self.assertAlmostEqual(float(ra.loc[e, "lr"]), float(rb.loc[e, "lr"]), places=12)
                 self.assertAlmostEqual(float(ra.loc[e, "val_auprc"]), float(rb.loc[e, "val_auprc"]), places=4)
@@ -202,6 +223,7 @@ class TestCheckpointResume(unittest.TestCase):
                 self.assertTrue(torch.allclose(v, b2.model.state_dict()[k], atol=1e-4), k)
 
     def test_log_and_checkpoints_are_written(self):
+        # Verify log and checkpoints are written.
         with tempfile.TemporaryDirectory() as tmp:
             small_trainer(tmp, epochs=2).fit(resume=False)
             self.assertTrue((Path(tmp) / "epochs.csv").exists() and (Path(tmp) / "last.pt").exists() and (Path(tmp) / "best.pt").exists())
@@ -213,12 +235,14 @@ class TestCheckpointResume(unittest.TestCase):
 
 class TestEMA(unittest.TestCase):
     def test_shadow_follows_the_weights_and_swaps_back(self):
+        # Verify shadow follows the weights and swaps back.
         m = BshiNet(ModelConfig(variant="map_only"))
         e = T.EMA(m, 0.5)
         before = {k: v.clone() for k, v in m.state_dict().items() if v.dtype.is_floating_point}
         with torch.no_grad():
             for p in m.parameters():
                 p.add_(1.0)
+        # Compare the result with the expected value or tolerance.
         e.update(m)
         k = "h_event.bias"
         self.assertTrue(torch.allclose(e.shadow[k], before[k] + 0.5))
@@ -231,6 +255,7 @@ class TestEMA(unittest.TestCase):
 @unittest.skipUnless(CUDA, "needs a GPU (256 windows through the full network)")
 class TestOverfit(unittest.TestCase):
     def test_a_fixed_batch_of_256_windows_is_memorized(self):
+        # Verify a fixed batch of 256 windows is memorized.
         torch.manual_seed(5052)
         pre = D.Preprocessor("eap", FAKE, device="cuda", channels_last=True)
         raw = fake_batch(256, 7)
@@ -254,6 +279,7 @@ class TestOverfit(unittest.TestCase):
 @unittest.skipUnless(CUDA, "needs a GPU")
 class TestBenchmark(unittest.TestCase):
     def test_step_benchmark_reports_throughput_and_memory(self):
+        # Verify step benchmark reports throughput and memory.
         r = T.benchmark_step(ModelConfig(), 64, bf16=True, channels_last=True, iters=3, warmup=2)
         self.assertFalse(r["oom"])
         self.assertGreater(r["windows_per_s"], 50)

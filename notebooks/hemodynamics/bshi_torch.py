@@ -1,5 +1,6 @@
 """torch side of the BSHI loader (imports torch at module level on purpose: the class must be importable by Windows spawn DataLoader workers)."""
 from __future__ import annotations
+# Expose the window iterator through an importable PyTorch dataset.
 
 import torch
 

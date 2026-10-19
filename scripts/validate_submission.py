@@ -1,4 +1,5 @@
 """Check submission structure, notebook hygiene, and aggregate-only result files."""
+# Check source syntax, notebook output hygiene, and report dependencies.
 from pathlib import Path
 import ast
 import csv

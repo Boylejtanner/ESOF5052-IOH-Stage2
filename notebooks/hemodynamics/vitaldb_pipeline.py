@@ -1,5 +1,6 @@
 """Audited, case-bounded VitalDB retrieval; original references/cohorts are read-only."""
 from __future__ import annotations
+# Retrieve and verify the selected VitalDB tracks with bounded, resumable work.
 
 from collections import Counter, deque
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed, wait, FIRST_COMPLETED
@@ -41,6 +42,7 @@ PHASES = ("network", "resampling", "writing", "readback")
 
 
 def load_settings(root: Path | None = None) -> dict[str, Any]:
+    # Load the recorded settings or metadata for this processing step.
     path = Path(root or PROJECT_ROOT) / "configs" / "hemodynamics.json"
     settings = json.loads(path.read_text(encoding="utf-8"))
     required = ("random_seed", "patient_split_seed", "min_free_space_gb", "target_waveform_fs", "max_retries", "allow_full_vitaldb_download", "vitaldb")
@@ -57,6 +59,7 @@ def load_settings(root: Path | None = None) -> dict[str, Any]:
 
 
 def processing_signature(settings: dict[str, Any] | None = None) -> str:
+    # Store the settings and results as JSON for later inspection.
     settings = settings or load_settings()
     vital = settings["vitaldb"]
     payload = {"resampling_version": RESAMPLING_VERSION, "time_reference": "seconds_since_recording_start", "dataset_version": vital_dataset.DATASET_VERSION,
@@ -136,6 +139,7 @@ def load_track_index(root: Path, refresh: bool = False) -> pd.DataFrame:
     path = Path(root) / "data" / "checkpoints" / "vitaldb" / "track_index.csv"
     if refresh or not path.exists():
         def fetch():
+            # Read the saved table and retain its named columns.
             response = requests.get(f"{vital_dataset.api_url}/trks", timeout=(options["request_connect_timeout_seconds"], options["index_read_timeout_seconds"]))
             response.raise_for_status()
             from io import StringIO
@@ -192,6 +196,7 @@ def patient_splits(cohort: pd.DataFrame, clinical: pd.DataFrame, seed: int | Non
     linkage = cohort[["caseid"]].merge(clinical[["caseid", "subjectid"]], on="caseid", how="left", validate="one_to_one")
     if linkage.subjectid.isna().any():
         raise ValueError("Missing documented patient linkage: splits cannot be assigned")
+    # Seed the generated values so this check can be repeated.
     patients = np.sort(linkage.subjectid.unique())
     np.random.default_rng(seed).shuffle(patients)
     train_end = int(len(patients) * fractions["train"])
@@ -199,6 +204,7 @@ def patient_splits(cohort: pd.DataFrame, clinical: pd.DataFrame, seed: int | Non
     mapping = {int(pid): ("train" if i < train_end else "validation" if i < validation_end else "test") for i, pid in enumerate(patients)}
     linkage = linkage.rename(columns={"caseid": "case_id", "subjectid": "patient_id"})
     linkage["patient_id"] = linkage.patient_id.astype("int64")
+    # Summarize the records separately within each requested group.
     linkage["split"] = linkage.patient_id.map(mapping)
     linkage["patient_id_source"] = "clinical_data.csv:subjectid (EMR deidentified hospital patient ID)"
     linkage["seed"] = seed
@@ -236,6 +242,7 @@ def representative_order(links: pd.DataFrame, seed: int, done=(), cases=None) ->
     frame["case_id"] = frame.case_id.astype("int64")
     if frame.case_id.duplicated().any():
         raise ValueError("Duplicate case IDs in patient linkage")
+    # Seed the generated values so this check can be repeated.
     wanted = None if cases is None else {int(case) for case in cases}
     done = {int(case) for case in done}
     frame = frame.sort_values("case_id", kind="stable").reset_index(drop=True)
@@ -249,6 +256,7 @@ def representative_order(links: pd.DataFrame, seed: int, done=(), cases=None) ->
         rank[int(patient)] += 1
         tiers.setdefault(tier, {}).setdefault(str(split), []).append(int(case))
     order: list[int] = []
+    # Process the selected records in order and retain their individual results.
     for tier in sorted(tiers):
         splits = sorted(tiers[tier], key=lambda name: (SPLIT_ORDER.index(name) if name in SPLIT_ORDER else len(SPLIT_ORDER), name))
         queues = {name: deque(tiers[tier][name]) for name in splits}
@@ -264,13 +272,16 @@ def representative_order(links: pd.DataFrame, seed: int, done=(), cases=None) ->
 
 
 def audit_project(root: Path, refresh_index: bool = False, phase=None, strict_tracks: bool = True) -> dict[str, Any]:
+    # Check cohort and track evidence before any selected recording is downloaded.
     root = Path(root)
     settings = load_settings(root)
     options = settings["vitaldb"]
+    # Read the saved table and retain its named columns.
     quality = options["quality_thresholds"]
     signature = processing_signature(settings)
     manifest_dir = root / "data" / "manifests"
     reference = root / "data" / "reference" / "vitaldb"
+    # Read the saved table and retain its named columns.
     cohort = pd.read_csv(manifest_dir / "usable_cohort.csv")
     full = pd.read_csv(manifest_dir / "stage_d_full_cohort.csv")
     clinical = pd.read_csv(reference / "clinical_data.csv")
@@ -284,6 +295,7 @@ def audit_project(root: Path, refresh_index: bool = False, phase=None, strict_tr
     pd.testing.assert_frame_equal(
         full.loc[full.usable].reset_index(drop=True), cohort.reset_index(drop=True), check_dtype=False,
     )
+    # Process the selected records in order and retain their individual results.
     for name, csv in (("usable_cohort", cohort), ("stage_d_full_cohort", full)):
         parquet = pd.read_parquet(manifest_dir / f"{name}.parquet")
         for column in csv:
@@ -325,6 +337,7 @@ def audit_project(root: Path, refresh_index: bool = False, phase=None, strict_tr
             if strict_tracks:
                 raise
             track_failures[str(int(caseid))] = str(error)
+    # Summarize the records separately within each requested group.
     protected = [root / "notebooks" / "00_environment_check.ipynb", root / "notebooks" / "01-vitaldbaccess.ipynb"]
     protected += [manifest_dir / f"{stem}.{ext}" for stem in ("stage_d_full_cohort", "usable_cohort") for ext in ("csv", "parquet")]
     protected += [reference / f for f in ("clinical_data.csv", "clinical_parameters.csv", "track_names.csv")]
@@ -332,6 +345,7 @@ def audit_project(root: Path, refresh_index: bool = False, phase=None, strict_tr
         split: {"patients": int(group.patient_id.nunique()), "surgeries": len(group)}
         for split, group in splits.groupby("split")
     }
+    # Exclude or flag missing values before using these measurements.
     audit = {
         "dataset": "vitaldb", "audit_version": 2, "cohort_path": "data/manifests/usable_cohort.csv",
         "configuration_path": "configs/hemodynamics.json", "configuration_sha256": _digest(root / "configs" / "hemodynamics.json"),
@@ -371,6 +385,7 @@ def audit_project(root: Path, refresh_index: bool = False, phase=None, strict_tr
         "pilot_passed": False, "pilot_results": [],
     }
     path = manifest_dir / "vitaldb_project_audit.json"
+    # Handle an existing output or checkpoint before starting new work.
     if path.exists():
         previous = json.loads(path.read_text(encoding="utf-8"))
         if previous.get("protected_sha256") != audit["protected_sha256"]:
@@ -387,6 +402,7 @@ def audit_project(root: Path, refresh_index: bool = False, phase=None, strict_tr
 
 
 def write_audit_markdown(root: Path, audit: dict[str, Any]) -> None:
+    # Store the settings and results as JSON for later inspection.
     lines = [
         "# VitalDB project audit", "", "## Existing evidence and cohort provenance",
         f"- Original notebook `notebooks/01-vitaldbaccess.ipynb` StageD resumes checkpointed inspections and saves all {audit['original_cohort_rows']:,} cases, then filters `usable` into `usable_cohort`.",
@@ -536,6 +552,7 @@ def load_vital_case(case_id: int, tracks: dict[str, str], timeout_seconds: float
 
 
 def _valid_runs(values: np.ndarray):
+    # Exclude or flag missing values before using these measurements.
     finite = np.isfinite(values)
     edges = np.flatnonzero(np.diff(np.r_[False, finite, False]))
     return zip(edges[::2], edges[1::2])
@@ -553,10 +570,12 @@ def _resample_track(track, origin: float, duration: float, interval: float, opti
     native = np.full(math.ceil(duration * rate), np.nan, dtype=np.float32)
     count = math.ceil(duration / interval)
     support = np.zeros(count, dtype=bool)
+    # Process the selected records in order and retain their individual results.
     for record in track.recs:
         values = np.asarray(record["val"], dtype=np.float32)
         if track.fmt > 2:
             values = values * track.gain + track.offset
+        # Exclude or flag missing values before using these measurements.
         values = values.copy()
         values[~np.isfinite(values) | (values > 4e9)] = np.nan
         start = float(record["dt"] - origin)
@@ -572,6 +591,7 @@ def _resample_track(track, origin: float, duration: float, interval: float, opti
             if last > first:
                 support[first:last] = True
     output = np.full(count, np.nan, dtype=np.float32)
+    # Process the selected records in order and retain their individual results.
     for start, end in _valid_runs(native):
         if end - start < 2:
             continue
@@ -592,6 +612,7 @@ def _resample_track(track, origin: float, duration: float, interval: float, opti
 
 def native_to_frames(vf, tracks: dict[str, str], interval: float | None = None, settings: dict | None = None):
     """Anti-aliased finite-run downsampling; no filtering across NaNs or time gaps."""
+    # Collect the per-record values into a table for comparison.
     settings = settings or load_settings()
     interval = 1.0 / float(settings["target_waveform_fs"]) if interval is None else interval
     duration = float(vf.dtend - vf.dtstart)
@@ -607,6 +628,7 @@ def native_to_frames(vf, tracks: dict[str, str], interval: float | None = None, 
     numeric_track = vf.trks[tracks["MAP"]]
     if numeric_track.type != 2:
         raise ValueError("MAP is not numeric")
+    # Exclude or flag missing values before using these measurements.
     numeric = pd.DataFrame({
         "time_sec": [float(rec["dt"] - vf.dtstart) for rec in numeric_track.recs],
         "MAP": [float(rec["val"]) for rec in numeric_track.recs],
@@ -633,6 +655,7 @@ def frame_metrics(wave: pd.DataFrame, numeric: pd.DataFrame, interval: float | N
     valid = numeric.loc[np.isfinite(numeric.MAP), "time_sec"].to_numpy()
     if len(valid) < 2 or np.any(np.diff(numeric.time_sec) <= 0):
         raise ValueError("Native MAP has insufficient observations or invalid timestamps")
+    # Exclude or flag missing values before using these measurements.
     gaps = np.diff(valid)
     metrics = {
         "waveform_rows": len(wave), "map_rows": len(numeric), "duration_sec": duration,
@@ -643,6 +666,7 @@ def frame_metrics(wave: pd.DataFrame, numeric: pd.DataFrame, interval: float | N
         "map_max_gap_sec": float(gaps.max()), "map_measurements_per_minute": float(len(valid) * 60 / duration),
         "map_coverage_span_pct": float((valid[-1] - valid[0]) / duration * 100),
     }
+    # Exclude or flag missing values before using these measurements.
     metrics["missingness"] = {name: float(wave[name].isna().mean() * 100) for name in ("ART", "ECG", "PPG")}
     metrics["measured_quality_passed"] = bool(
         duration >= quality["duration_minutes_min"] * 60 and all(p < quality["waveform_missing_pct_strict_max"] for p in metrics["missingness"].values())
@@ -761,6 +785,7 @@ def _process_case(job):
 
 
 def _process_case_attempt(job, clock):
+    # Keep waveform timing, quality checks, and provenance together for this case attempt.
     from types import SimpleNamespace
     root, case_id = Path(job["root"]), job["case_id"]
     settings = job["settings"]
@@ -772,10 +797,12 @@ def _process_case_attempt(job, clock):
     patient = SimpleNamespace(**job["patient"])
     vf = wave = numeric = loaded = reloaded_wave = reloaded_map = None
     try:
+        # Decode the measurements while retaining their signal timing.
         _canonical().ensure_disk_space(root, reserve_bytes=reserve_bytes, additional_bytes=job["projected_bytes"])
         clock.enter("network")
         vf = load_vital_case(case_id, exact, timeout_seconds=float(options["track_timeout_seconds"]))
         clock.enter("resampling")
+        # Resample waveforms while preserving the native numeric-MAP timestamps.
         wave, numeric, rates = native_to_frames(vf, exact, interval, settings)
         source_origin = float(vf.dtstart)
         source_end = float(vf.dtend)
@@ -784,6 +811,7 @@ def _process_case_attempt(job, clock):
         metrics = frame_metrics(wave, numeric, interval, options["quality_thresholds"])
         if not metrics["measured_quality_passed"]:
             raise ValueError(f"Current packed-file quality fails audited provisional thresholds: {metrics}")
+        # Exclude or flag missing values before using these measurements.
         metadata = {
             "case_id": str(case_id), "patient_id": int(patient.patient_id), "split": str(patient.split),
             "min_free_space_bytes": reserve_bytes,
@@ -814,6 +842,7 @@ def _process_case_attempt(job, clock):
             raise RuntimeError("Canonical case hash/schema verification failed")
         del wave, numeric
         wave = numeric = None
+        # Read committed outputs back and compare them with the expected signal content.
         clock.enter("readback")
         loaded = _canonical().load_case(root, "vitaldb", case_id)
         reloaded_wave = pd.DataFrame({"time_sec": loaded["waveform_time_sec"], **{name: loaded[name] for name in ("ART", "ECG", "PPG")}})
@@ -861,6 +890,7 @@ def _clean_case_temps(root, case_id):
 def _recover_case(root, case_id, settings):
     path = Path(root) / "data" / "parquet" / "vitaldb" / f"case_id={int(case_id)}" / "metadata.json"
     try:
+        # Load the recorded settings or metadata for this processing step.
         written = json.loads(path.read_text(encoding="utf-8"))
         written.update(status="complete", error=None, readback_verified=True)
         return written if _completed(root, written, settings) else None
@@ -913,10 +943,12 @@ class _LiveProgress:
         self.last_tick = now
         while self.recent and now - self.recent[0] > 60:
             self.recent.popleft()
+        # Calculate elapsed processing time for the following step.
         elapsed = now - self.started
         rate = len(self.recent) * 60 / max(0.001, min(60, elapsed))
         remaining = self.bar.total - self.bar.n if self.bar else 0
         eta = remaining * 60 / rate if rate else None
+        # Calculate the group counts for the following step.
         ages = [now - entry["started"] for entry in inflight.values()]
         request_ages = [now - entry.get("phase_started", entry["started"]) for entry in inflight.values() if entry.get("phase") == "network"]
         ids = sorted(entry["job"]["case_id"] for entry in inflight.values())
@@ -1000,6 +1032,7 @@ def _run_pipeline_impl(root: Path, mode: str = "PILOT", resume_target: str = "PI
     For a repeat of a bounded smoke batch, pass its selected_cases as case_ids;
     otherwise max_cases deliberately selects the next unfinished sorted batch.
     """
+    # Calculate project paths for the following step.
     started = time.monotonic()
     root = Path(root).resolve()
     settings = load_settings(root)
@@ -1026,6 +1059,7 @@ def _run_pipeline_impl(root: Path, mode: str = "PILOT", resume_target: str = "PI
         if progress:
             print(f"[{datetime.now():%H:%M:%S} +{time.monotonic() - started:5.1f}s] {message}", flush=True)
 
+    # Read the saved table and retain its named columns.
     phase(f"Start: mode={mode} target={target} workers={workers} max_cases={max_cases}")
     phase("Loading cohort")
     cohort = pd.read_csv(root / "data" / "manifests" / "usable_cohort.csv")
@@ -1068,14 +1102,17 @@ def _run_pipeline_impl(root: Path, mode: str = "PILOT", resume_target: str = "PI
         pending = pending[:max_cases]
     selected = sorted(set(skipped) | set(pending))
     phase(f"Resolving tracks for {len(pending)} cases and preparing case-bounded worker jobs")
+    # Read the saved table and retain its named columns.
     prepare_started = time.monotonic()
     index = load_track_index(root)
     lookup = track_lookup(index) if {"caseid", "tname"}.issubset(index.columns) else index
     phase(f"Track index ready in {time.monotonic() - prepare_started:.1f}s")
     links = links_frame.set_index("case_id")
+    # Read the saved table and retain its named columns.
     clinical = pd.read_csv(root / "data" / "reference" / "vitaldb" / "clinical_data.csv",
                           usecols=["caseid", "casestart", "caseend", "anestart", "aneend", "opstart", "opend"]).set_index("caseid")
     cohort_by_case = cohort.set_index("caseid", drop=False)
+    # Calculate the summary statistics for the following step.
     ready, retry_heap = deque(), []
     processed, failed, dispatch_order = [], set(), []
     wall_times, first_dispatch = {}, {}
@@ -1094,6 +1131,7 @@ def _run_pipeline_impl(root: Path, mode: str = "PILOT", resume_target: str = "PI
         ready.append(case)
 
     def make_job(case):
+        # Calculate the observed duration for the following step.
         duration = float(cohort_by_case.loc[case, "duration_seconds"])
         original = cohort_by_case.loc[case].drop(labels=["split"], errors="ignore").to_dict()
         return {"root": str(root), "case_id": case, "settings": settings, "tracks": resolved[case],
@@ -1117,6 +1155,7 @@ def _run_pipeline_impl(root: Path, mode: str = "PILOT", resume_target: str = "PI
     signature = processing_signature(settings)
 
     def log_attempt(entry, status, info=None, error=None):
+        # Calculate the summary statistics for the following step.
         job, case = entry["job"], entry["job"]["case_id"]
         info = info or {}
         phases = info.get("phase_seconds", {})
@@ -1155,6 +1194,7 @@ def _run_pipeline_impl(root: Path, mode: str = "PILOT", resume_target: str = "PI
         entry = inflight.pop(future)
         job, case = entry["job"], entry["job"]["case_id"]
         status, info, error_text = "complete", {}, None
+        # Ensure the associated files, locks, or resources are released after this operation.
         try:
             written = future.result()
             info = written.pop("attempt_info", None) or {}
@@ -1197,11 +1237,13 @@ def _run_pipeline_impl(root: Path, mode: str = "PILOT", resume_target: str = "PI
             _clean_case_temps(root, case)
             log_attempt(entry, status, info, error_text)
 
+    # Ensure the associated files, locks, or resources are released after this operation.
     try:
         if ready:
             phase(f"Starting {workers} workers (Windows spawn; math threads1; bounded in-flight RAM {memory_budget / 1e9:.1f}GB)")
             events = mp.get_context("spawn").Queue()
             executor = _create_executor(workers, events, settings)
+        # Repeat this step while the loop's completion condition is unmet.
         while ready or retry_heap or inflight:
             if paused or pool_broken:
                 break
@@ -1254,6 +1296,7 @@ def _run_pipeline_impl(root: Path, mode: str = "PILOT", resume_target: str = "PI
             if paused or pool_broken:
                 break
             if events is not None:
+                # Repeat this step while the loop's completion condition is unmet.
                 while True:
                     try:
                         event = events.get_nowait()
@@ -1295,6 +1338,7 @@ def _run_pipeline_impl(root: Path, mode: str = "PILOT", resume_target: str = "PI
                     except (KeyboardInterrupt, SystemExit):
                         break
                 _stop_executor(executor, force=bool(inflight) or pool_broken)
+                # Process the selected records in order and retain their individual results.
                 for entry in list(inflight.values()):
                     job = entry["job"]
                     written = _recover_case(root, job["case_id"], settings)
@@ -1331,6 +1375,7 @@ def _run_pipeline_impl(root: Path, mode: str = "PILOT", resume_target: str = "PI
     valid = {case for case in (verified | set(processed))
              if final_states.get(case, {}).get("status") == "complete" and final_states[case].get("processing_signature") == signature}
     summary = "PAUSED" if paused else "COMPLETE" if len(valid) == len(all_cases) else "FAILED" if failed and not processed and not valid else "INCOMPLETE"
+    # Calculate the output summary for the following step.
     dispatch_wall = max(time.monotonic() - started - startup_seconds, 1e-9)
     elapsed_total = time.monotonic() - started
     result = {"mode": mode, "target": target, "selected_cases": selected, "processed": sorted(processed),
@@ -1470,6 +1515,7 @@ def run_pipeline(root: Path, mode: str = "PILOT", resume_target: str = "PILOT", 
     """Run a bounded, visible, resumable download; Interrupt always returns PAUSED."""
     started = time.monotonic()
     lock = _acquire_run_lock(Path(root), mode)
+    # Ensure the associated files, locks, or resources are released after this operation.
     try:
         result = _run_pipeline_impl(root, mode, resume_target, max_attempts, backoff_seconds, reserve_bytes,
                                     download_workers, progress, max_cases, case_ids)

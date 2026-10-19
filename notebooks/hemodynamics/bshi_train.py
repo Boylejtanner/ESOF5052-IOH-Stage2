@@ -6,6 +6,7 @@ optional EMA of the weights; checkpoints with the optimizer, the step, the early
 The trainer only sees TRAIN data for fitting and VALIDATION data for selection: the test frames never enter this module.
 """
 from __future__ import annotations
+# Train the multi-task network and retain the best validation checkpoint.
 
 import copy
 import math
@@ -82,6 +83,7 @@ def set_seed(seed, deterministic=False):
 # optimizer, schedule, early stopping, EMA
 def build_optimizer(model, cfg, device):
     """Weight decay only on matrices and kernels (not on biases and GroupNorm parameters)."""
+    # Apply weight decay to learned matrices and kernels, not biases or normalization terms.
     decay = [p for p in model.parameters() if p.ndim > 1]
     plain = [p for p in model.parameters() if p.ndim <= 1]
     groups = [{"params": decay, "weight_decay": cfg.weight_decay}, {"params": plain, "weight_decay": 0.0}]
@@ -94,6 +96,7 @@ def build_optimizer(model, cfg, device):
 
 def lr_at(cfg, step, total, steps_per_epoch):
     """Learning rate of optimizer step ``step`` (0-based) out of ``total``: warmup + cosine, one-cycle, or constant."""
+    # Express the schedule in optimizer steps so warm-up and decay follow the same clock.
     total = max(1, total)
     if cfg.schedule == "constant":
         return cfg.lr
@@ -163,6 +166,7 @@ def masked_mean(values, mask):
 def multitask_loss(out, t, weights, pos_weight=None):
     """Total loss and its parts. ``t`` is the Preprocessor's target dict. Event: every window. Delta MAP: Huber on the train-standardized target where observed. AUT65: BCE for
     AUT65 > 0 where observed + Huber on the standardized log1p magnitude ONLY where AUT65 > 0."""
+    # Mask unavailable regression targets while retaining every valid event label.
     pw = None if pos_weight is None else torch.tensor(float(pos_weight), device=out["event"].device)
     l_event = F.binary_cross_entropy_with_logits(out["event"], t["y_event"], pos_weight=pw)
     l_delta = masked_mean(F.huber_loss(out["delta_map"], t["delta"], delta=1.0, reduction="none"), t["m_delta"])
@@ -184,6 +188,7 @@ def predict(model, pre, loader, cfg, device, weights=None, max_batches=None, on_
     model.eval()
     dev = torch.device(device)
     cols, loss_sum, n = {k: [] for k in ("window_id", "y", "logit", "delta_pred", "delta_true", "m_delta", "aut_pred", "aut_true", "m_aut", "dataset_code", "w")}, 0.0, 0
+    # Process the selected records in order and retain their individual results.
     for i, batch in enumerate(loader):
         if max_batches and i >= max_batches:
             break
@@ -219,6 +224,7 @@ def metrics_from_predictions(df, shift=None):
     w = df.w.to_numpy(dtype=np.float64)
     out = {"n": int(len(df)), "events": int(y.sum()), "loss": float(df.attrs.get("loss", float("nan")))}
     if y.any() and (~y).any():
+        # Calculate prediction metrics from these labels and model scores.
         out["auroc"] = float(roc_auc_score(y, p, sample_weight=w))
         out["auprc"] = float(average_precision_score(y, p, sample_weight=w))
         slope, intercept = L._calibration(y, p)
@@ -249,6 +255,7 @@ def bootstrap_ci(df, patient_key, reps=200, seed=5052, shift=None):
 class Trainer:
     """Train and validate BSHI with checkpointing, early stopping, and epoch metrics."""
     def __init__(self, cfg: TrainConfig, model_cfg: ModelConfig, pre, train_loader, val_loader, out_dir, device="cuda", steps_per_epoch=None, shift=None, log=print):
+        # Create the destination directory before writing any outputs.
         self.cfg, self.model_cfg, self.pre, self.train_loader, self.val_loader = cfg, model_cfg, pre, train_loader, val_loader
         self.out_dir, self.device, self.shift, self.log = Path(out_dir), torch.device(device), shift, log
         self.out_dir.mkdir(parents=True, exist_ok=True)
@@ -271,6 +278,7 @@ class Trainer:
         return {"torch": torch.get_rng_state(), "cuda": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None, "numpy": np.random.get_state(), "python": random.getstate()}
 
     def save_checkpoint(self, name="last.pt"):
+        # Retain optimizer and random-generator state as well as the model weights.
         state = {"model": self.model.state_dict(), "opt": self.opt.state_dict(), "ema": None if self.ema is None else self.ema.shadow, "epoch": self.epoch0, "step": self.step,
                  "stopper": self.stopper.state(), "best_state": self.best_state, "history": self.history, "cfg": self.cfg.to_dict(), "model_cfg": self.model_cfg.to_dict(), "rng": self._rng()}
         tmp = self.out_dir / (name + ".tmp")
@@ -278,6 +286,7 @@ class Trainer:
         tmp.replace(self.out_dir / name)
 
     def load_checkpoint(self, path=None):
+        # Restore the same run state rather than restarting the optimizer from scratch.
         state = torch.load(path or self.out_dir / "last.pt", map_location="cpu", weights_only=False)
         self.model.load_state_dict(state["model"])
         self.opt.load_state_dict(state["opt"])
@@ -297,6 +306,7 @@ class Trainer:
     def _train_epoch(self, epoch):
         cfg, total = self.cfg, self.cfg.epochs * self.steps_per_epoch
         self.model.train()
+        # Reserve output arrays and masks with explicit initial values.
         it = self.train_loader(epoch) if callable(self.train_loader) else self.train_loader
         sums, n_win, steps = {k: torch.zeros((), device=self.device) for k in ("total", "event", "delta_map", "aut_pos", "aut_mag")}, 0, 0
         gnorm = torch.zeros((), device=self.device)
@@ -305,6 +315,7 @@ class Trainer:
         prog = self.progress
         if prog is not None:
             prog.begin_epoch(epoch)
+        # Process the selected records in order and retain their individual results.
         for i, batch in enumerate(it):
             if i >= self.steps_per_epoch:
                 break
@@ -316,6 +327,7 @@ class Trainer:
                 out = self.model(b["x"], b["context"], b["beat_mask"])
             out = {k: v.float() for k, v in out.items()}
             loss, parts = multitask_loss(out, b, cfg.loss_weights, cfg.pos_weight)
+            # Backpropagate the combined loss and limit large gradient updates before stepping.
             loss.backward()
             gnorm += torch.nn.utils.clip_grad_norm_(self.model.parameters(), cfg.grad_clip if cfg.grad_clip > 0 else float("inf"))
             self.opt.step()
@@ -333,11 +345,13 @@ class Trainer:
         if self.device.type == "cuda":
             torch.cuda.synchronize()
         secs = time.perf_counter() - t0
+        # Convert accumulated loss sums into epoch averages and record processing speed.
         row = {k: float(v) / max(1, steps) for k, v in sums.items()}
         row.update(lr=lr, grad_norm=float(gnorm) / max(1, steps), steps=steps, windows=n_win, train_seconds=round(secs, 2), train_windows_per_s=round(n_win / max(secs, 1e-9), 1))
         return row
 
     def validate(self):
+        # Evaluate validation batches, temporarily using averaged weights when EMA is enabled.
         if self.ema is not None:
             self.ema.swap_in(self.model)
         try:
@@ -353,6 +367,7 @@ class Trainer:
 
     def fit(self, resume=True, until_epoch=None):
         """Train until ``cfg.epochs`` (or ``until_epoch``, to stop early without changing the schedule), early stopping, or the end; returns the history and restores the best weights."""
+        # Resume a saved run when requested and select the best epoch using validation AUPRC.
         cfg = self.cfg
         if resume and (self.out_dir / "last.pt").exists():
             self.load_checkpoint()
@@ -361,10 +376,12 @@ class Trainer:
         prog = self.progress
         if prog is not None:
             prog.start_run(cfg.epochs, self.steps_per_epoch, cfg.batch_size, self.epoch0, {"optimizer": cfg.optimizer, "lr": cfg.lr, "batch_size": cfg.batch_size, "variant": cfg.variant})
+        # Repeat training and validation for each epoch until the stopping rule is met.
         for epoch in range(self.epoch0, min(cfg.epochs, until_epoch or cfg.epochs)):
             row = {"epoch": epoch, **self._train_epoch(epoch)}
             val = self.validate()
             row.update({"val_" + k: v for k, v in val.items()})
+            # Choose checkpoints using validation AUPRC, not training loss or test outcomes.
             improved, stop = self.stopper.update(val.get("auprc", float("nan")), epoch)
             if improved:
                 state = self.model.state_dict() if self.ema is None else {**self.model.state_dict(), **self.ema.shadow}
@@ -392,6 +409,7 @@ class Trainer:
 # M1: step throughput and memory on synthetic batches
 def synthetic_batch(n, device, seed=0):
     """Construct a synthetic batch for checking the training interface without patient data."""
+    # Seed the generated values so this check can be repeated.
     g = torch.Generator().manual_seed(seed)
     x = torch.randn((n, 7, 60, 200), generator=g)
     b = {"x": x, "context": torch.randn((n, 25), generator=g), "beat_mask": torch.rand((n, 3, 60), generator=g) > 0.1, "window_id": torch.arange(n),
@@ -401,6 +419,7 @@ def synthetic_batch(n, device, seed=0):
 
 def benchmark_step(model_cfg, batch_size, bf16=True, channels_last=True, device="cuda", iters=12, warmup=4):
     """Training-step windows/s and peak VRAM for one configuration on a synthetic batch; ``{'oom': True}`` when it does not fit."""
+    # Measure a complete forward/backward update after GPU warm-up.
     dev = torch.device(device)
     try:
         torch.cuda.reset_peak_memory_stats()
@@ -414,6 +433,7 @@ def benchmark_step(model_cfg, batch_size, bf16=True, channels_last=True, device=
             x = x.contiguous(memory_format=torch.channels_last)
         ctx = torch.randn((batch_size, 25), device=dev)
         bm = torch.ones((batch_size, 3, 60), dtype=torch.bool, device=dev)
+        # Accumulate the calculation over the required samples or iterations.
         for i in range(warmup + iters):
             if i == warmup:
                 torch.cuda.synchronize()
@@ -421,6 +441,7 @@ def benchmark_step(model_cfg, batch_size, bf16=True, channels_last=True, device=
             with torch.autocast(device_type="cuda", dtype=torch.bfloat16, enabled=bf16):
                 out = model(x, ctx, bm)
             loss = sum(v.float().mean() for v in out.values())
+            # Backpropagate the combined loss and limit large gradient updates before stepping.
             loss.backward()
             opt.step()
             opt.zero_grad(set_to_none=True)

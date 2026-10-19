@@ -3,6 +3,7 @@
 usage: python verify_torch_cuda.py [--json out.json] [--quick]
 Exit code 0 indicates usable CUDA; 1 indicates an unavailable device. Requires PyTorch; NumPy is optional.
 """
+# Check CUDA correctness and speed before using it for model training.
 import argparse
 import importlib.util
 import json
@@ -62,6 +63,7 @@ def compile_check():
 
 
 def main():
+    # Read command-line options instead of hard-coding this run's settings.
     ap = argparse.ArgumentParser()
     ap.add_argument("--json")
     ap.add_argument("--quick", action="store_true", help="skip the torch.compile subprocess")
@@ -76,6 +78,7 @@ def main():
     out.update(device=props.name, capability=f"{props.major}.{props.minor}", vram_total_gb=round(total / 1e9, 2), vram_free_gb_torch=round(free / 1e9, 2),
                bf16_supported=bool(torch.cuda.is_bf16_supported()))
     try:
+        # Run the external command and inspect its completion status.
         used, tot = subprocess.run(["nvidia-smi", "--query-gpu=memory.used,memory.total", "--format=csv,noheader,nounits"], capture_output=True, text=True, timeout=20).stdout.split(",")
         out["vram_used_by_all_programs_gb_nvidia_smi"] = round(float(used) / 1024, 2)
         out["vram_free_gb_plan_with_this"] = round((float(tot) - float(used)) / 1024, 2)     # torch.cuda.mem_get_info can overstate free memory under WDDM

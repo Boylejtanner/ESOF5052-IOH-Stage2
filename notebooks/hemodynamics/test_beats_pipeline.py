@@ -1,3 +1,4 @@
+# Check beats pipeline using controlled inputs and isolated files.
 import json
 from pathlib import Path
 import _thread
@@ -22,9 +23,11 @@ def build_root(base, per_dataset=3, duration=100.0, config_beats=None):
     rows, wins = [], {"mover": [], "vitaldb": []}
     for ds in ("mover", "vitaldb"):
         for i in range(per_dataset):
+            # Write the verified values in the pipeline's Parquet table format.
             cid = f"{ds[0]}{i}"
             t, r, ecg, art, ppg = synth(duration=duration, seed=hash((ds, i)) % 1000)
             d = root / "data/parquet" / ds / f"case_id={cid}"
+            # Write the verified values in the pipeline's Parquet table format.
             d.mkdir(parents=True)
             pd.DataFrame({"time_sec": t, "ART": art.astype("float32"), "ECG": ecg.astype("float32"), "PPG": ppg.astype("float32")}).to_parquet(d / "waveform.parquet", index=False)
             rows.append({"dataset": ds, "case_id": cid, "patient_key": f"{ds}:{i}", "split_within_dataset": "train", "split_pooled": "train",
@@ -43,6 +46,7 @@ def build_root(base, per_dataset=3, duration=100.0, config_beats=None):
 class PipelineTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        # Keep test files in an isolated directory, away from real dataset outputs.
         cls.temp = tempfile.TemporaryDirectory()
         cls.root = build_root(cls.temp.name, per_dataset=6)
         cls.first = P.run(cls.root, workers=3, progress=False)
@@ -52,13 +56,16 @@ class PipelineTests(unittest.TestCase):
         cls.temp.cleanup()
 
     def test_outputs_manifest_and_roundtrip(self):
+        # Verify outputs manifest and roundtrip.
         self.assertEqual(self.first["status"], "COMPLETE", self.first)
         self.assertEqual((self.first["processed"], self.first["failed"]), (12, 0))
         manifest = pd.read_parquet(self.root / "data/manifests/beats_manifest.parquet")
+        # Compare the result with the expected value or tolerance.
         self.assertEqual(len(manifest), 12)
         self.assertTrue((manifest.n_beats > 80).all() and (manifest.valid_frac > 0.9).all())
         df = P.load_beats(self.root, "mover", "m0")
         self.assertEqual(list(df.columns), P.B.BEAT_COLUMNS)
+        # Compare the result with the expected value or tolerance.
         self.assertEqual(df.beat_idx.tolist(), list(range(len(df))))
         self.assertTrue(df.t_r.between(5.0, 95.0).all())
         self.assertAlmostEqual(float(df.ptt_ecg_art.median()), 0.15 + 0.18169 * 0.12, delta=0.02)
@@ -69,9 +76,11 @@ class PipelineTests(unittest.TestCase):
         self.assertTrue(np.isfinite(waves["ecg"].astype(float)).any())
 
     def test_rerun_skips_finished_cases_and_config_change_invalidates(self):
+        # Verify rerun skips finished cases and config change invalidates.
         again = P.run(self.root, workers=2, progress=False)
         self.assertEqual((again["processed"], again["skipped_finished"]), (0, 12))
         self.assertIn("nothing to do", again["reason"])
+        # Check processed against the expected result.
         meta = P.case_dir(self.root, "vitaldb", "v0") / "beats_meta.json"
         meta.unlink()
         self.assertEqual(P.run(self.root, workers=2, progress=False)["processed"], 1)
@@ -79,6 +88,7 @@ class PipelineTests(unittest.TestCase):
         cfg_path = self.root / "configs/hemodynamics.json"
         original = cfg_path.read_text()
         try:
+            # Check processed against the expected result.
             cfg = json.loads(original)
             cfg["beats"]["phase_samples"] = 100
             cfg_path.write_text(json.dumps(cfg))
@@ -91,6 +101,7 @@ class PipelineTests(unittest.TestCase):
             P.run(self.root, workers=3, progress=False, case_ids=[("mover", "m0")])
 
     def test_projection_and_storage_budget(self):
+        # Verify projection and storage budget.
         proj = P.project(self.root)
         self.assertEqual(proj["sample_cases"], 12)
         self.assertGreater(proj["projected_total_gb"], 0)
@@ -99,6 +110,7 @@ class PipelineTests(unittest.TestCase):
         cfg_path = self.root / "configs/hemodynamics.json"
         original = cfg_path.read_text()
         try:
+            # Check changed against the expected result.
             cfg = json.loads(original)
             cfg["beats"]["max_projected_waveform_gb"] = proj["projected_waveform_gb"] / 3
             cfg_path.write_text(json.dumps(cfg))
@@ -111,6 +123,7 @@ class PipelineTests(unittest.TestCase):
 
 class RobustnessTests(unittest.TestCase):
     def test_guard_requires_the_dataset_tag(self):
+        # Verify guard requires the dataset tag.
         with tempfile.TemporaryDirectory() as base:
             root = build_root(base, per_dataset=1)
             (root / "data/manifests/dataset_v1.json").unlink()
@@ -118,6 +131,7 @@ class RobustnessTests(unittest.TestCase):
                 P.run(root, progress=False)
 
     def test_a_broken_case_is_isolated_and_logged(self):
+        # Verify a broken case is isolated and logged.
         with tempfile.TemporaryDirectory() as base:
             root = build_root(base, per_dataset=2)
             (root / "data/parquet/mover/case_id=m1/waveform.parquet").write_bytes(b"not parquet")
@@ -128,6 +142,7 @@ class RobustnessTests(unittest.TestCase):
             self.assertFalse((P.case_dir(root, "mover", "m1") / "beats_meta.json").exists())
 
     def test_interrupt_pauses_cleanly_and_resume_finishes(self):
+        # Verify interrupt pauses cleanly and resume finishes.
         with tempfile.TemporaryDirectory() as base:
             root = build_root(base, per_dataset=4)
             timer = threading.Timer(3.0, _thread.interrupt_main)
@@ -143,6 +158,7 @@ class RobustnessTests(unittest.TestCase):
             self.assertEqual(len(pd.read_parquet(root / "data/manifests/beats_manifest.parquet")), 8)
 
     def test_second_concurrent_run_is_refused(self):
+        # Verify second concurrent run is refused.
         import os, psutil
         with tempfile.TemporaryDirectory() as base:
             root = build_root(base, per_dataset=1)

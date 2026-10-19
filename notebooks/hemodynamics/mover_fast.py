@@ -23,6 +23,7 @@ guarded by ``if __name__ == "__main__":`` (an unguarded script would re-run itse
 in every worker).
 """
 from __future__ import annotations
+# Stream the MOVER archives through bounded decoding and verified case assembly.
 
 import concurrent.futures as cf
 import functools
@@ -179,6 +180,7 @@ def _frame32(frame, columns):
 
 def _write_parquet_atomic(frame, path):
     temp = path.with_name(path.name + ".tmp")
+    # Ensure the associated files, locks, or resources are released after this operation.
     try:
         with temp.open("wb") as handle:
             frame.to_parquet(handle, index=False, compression="zstd")
@@ -223,6 +225,7 @@ def _stage_worthy(sanity, config, fast):
 
 
 def _write_fragment(root, config, archive, member, case_id, patient_id, waveform, numeric, metadata, sanity, source_bytes, signature):
+    # Create the destination directory before writing any outputs.
     digest = hashlib.sha256(f"{archive}\0{member}".encode()).hexdigest()[:24]
     directory = root / "data" / "parquet" / "mover" / "staging" / f"case_id={safe_id(case_id)}"
     directory.mkdir(parents=True, exist_ok=True)
@@ -248,6 +251,7 @@ def _ingest_task(archive, member, payload, cases):
             time.sleep(float(fast["debug_task_delay_sec"]))
         fragments = []
         for case_id, patient_id, start, end in cases:
+            # Decode the measurements while retaining their signal timing.
             waveform, numeric, metadata = decode_xml(payload, float(start), float(end), config["target_waveform_fs"],
                                                      track_map=config.get("mover_track_map"))
             _assert_observed_pressure_schema(metadata)
@@ -275,6 +279,7 @@ def _py(value):
 
 def _assess_task(case, fragments):
     try:
+        # Calculate the output record for the following step.
         row = pd.Series(case)
         wave, numeric, extra = _assemble(_W["root"], row, fragments, _W["config"])
         assessment = quality(row, wave, numeric, _W["config"])
@@ -301,6 +306,7 @@ def _window_assessment(row, wave, numeric, config):
 
 def _assess_window_task(case, fragments):
     try:
+        # Calculate the output record for the following step.
         row = pd.Series(case)
         wave, numeric, extra = _assemble(_W["root"], row, fragments, _W["config"])
         assessment, windows = _window_assessment(row, wave, numeric, _W["config"])
@@ -316,6 +322,7 @@ def _assess_window_task(case, fragments):
 def _assess_stored_task(case, stored):
     """A verified case file already on disk is authoritative: assess it directly, no archive data needed."""
     try:
+        # Read the stored table required for this calculation.
         root = _W["root"]
         wave = pd.read_parquet(root / stored["waveform_output_path"])
         numeric = pd.read_parquet(root / stored["map_output_path"])
@@ -354,6 +361,7 @@ def _write_task(case, fragments):
                           "eligibility_mode": "window_v1"}
         elif not assessment["final_usable"]:
             return {"status": "excluded", "case_id": case["case_id"], "assessment": _py(assessment)}
+        # Calculate the case metadata for the following step.
         fs = config["target_waveform_fs"]
         metadata = {**extra, **assessment, "processing_signature": _W["signature"], "patient_id": case["patient_id"],
                     "split": case["split"], "duration_sec": case["duration_sec"], "start_utc": case["start_utc"],
@@ -376,13 +384,16 @@ def _write_task(case, fragments):
 
 class _State:
     def __init__(self, root):
+        # Read or update the persistent checkpoint records in the active transaction.
         directory = Path(root) / "data" / "checkpoints" / "mover"
         directory.mkdir(parents=True, exist_ok=True)
         self.path = directory / STATE_DB
+        # Read or update the persistent checkpoint records in the active transaction.
         self.db = sqlite3.connect(self.path, timeout=60)
         self.db.execute("PRAGMA journal_mode=WAL")
         self.db.execute("PRAGMA synchronous=FULL")
         self.db.execute("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+        # Read or update the persistent checkpoint records in the active transaction.
         self.db.execute("CREATE TABLE IF NOT EXISTS archives (archive TEXT PRIMARY KEY, payload TEXT NOT NULL)")
         self.db.execute("CREATE TABLE IF NOT EXISTS members (archive TEXT, member TEXT, status TEXT NOT NULL, payload TEXT NOT NULL, PRIMARY KEY(archive, member))")
         self.db.execute("CREATE TABLE IF NOT EXISTS fragments (archive TEXT, member TEXT, case_id TEXT, payload TEXT NOT NULL, PRIMARY KEY(archive, member, case_id))")
@@ -414,6 +425,7 @@ class _State:
         self.db.commit()
 
     def known_members(self):
+        # Read or update the persistent checkpoint records in the active transaction.
         query = ("SELECT archive, member, status, json_extract(payload,'$.processing_signature'), "
                  "COALESCE(json_extract(payload,'$.retry_count'),0) FROM members")
         return {(a, m): (s, sig, int(r)) for a, m, s, sig, r in self.db.execute(query)}
@@ -439,6 +451,7 @@ class _State:
         return [json.loads(p) for (p,) in self.db.execute("SELECT payload FROM members WHERE status='failed'")]
 
     def totals(self):
+        # Read or update the persistent checkpoint records in the active transaction.
         counts = dict(self.db.execute("SELECT status, COUNT(*) FROM members GROUP BY status").fetchall())
         fragments, size = self.db.execute("SELECT COUNT(*), COALESCE(SUM(json_extract(payload,'$.output_bytes')),0) FROM fragments").fetchone()
         return {"members_by_status": counts, "fragments": int(fragments), "staging_bytes": int(size)}
@@ -462,6 +475,7 @@ class _RunLock:
 
     def __enter__(self):
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        # Accumulate the calculation over the required samples or iterations.
         for _ in range(3):
             try:
                 fd = os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
@@ -578,10 +592,12 @@ def _on_done(ctx, meta, size, future):
 
 
 def _reader(ctx, name):
+    # Read each compressed archive in sequence and pass bounded payloads to decoding workers.
     counters = ctx.counters[name]
     source = ctx.root / "data" / "reference" / "mover" / name
     max_member = int(ctx.config["max_member_bytes"])
     max_retries = int(ctx.config["max_retries"])
+    # Ensure the associated files, locks, or resources are released after this operation.
     try:
         with source.open("rb") as raw, gzip.GzipFile(fileobj=raw, mode="rb") as compressed, \
                 tarfile.open(fileobj=compressed, mode="r|", bufsize=int(ctx.fast["tar_buffer_kb"]) * 1024) as archive:
@@ -764,6 +780,7 @@ def _make_pool(root, config, signature, workers, fast):
 
 
 def _plan(root):
+    # Exclude or flag missing values before using these measurements.
     cases = _cases(root)
     usable = cases.loc[cases["linkage_usable"].astype(bool) & cases["patient_id"].notna()]
     by_patient = defaultdict(list)
@@ -781,17 +798,20 @@ def _archive_ok(state, signature, profile=None):
 
 def ingest(root, *, workers=None, progress=True, concurrent_vitaldb=False, _stop_after=None):
     """Single parallel pass over the MOVER archives; returns a status dict (never raises on interrupt)."""
+    # Coordinate archive readers, worker results, stop requests, and resumable checkpoints.
     root = Path(root)
     config = load_config(root)
     fast = _fast(config)
     signature = _processing_signature(config)
     started = time.perf_counter()
     workers = _resolve_workers(fast, workers, concurrent_vitaldb, "decode_workers")
+    # Hold the run lock while shared progress or outputs are updated.
     with _RunLock(root):
         _say(progress, f"PLAN: loading surgery/patient linkage ... (decode workers={workers}, readers={min(len(config['mover_archives']), int(fast['archive_readers']))}, "
                        f"payload queue<= {fast['max_inflight_payload_mb']} MB, keep >= {fast['min_available_ram_gb']} GB RAM free, disk reserve {config['min_free_space_gb']} GB)")
         _, by_patient = _plan(root)
         state = _State(root)
+        # Ensure the associated files, locks, or resources are released after this operation.
         try:
             archives = state.archives()
             todo = []
@@ -825,11 +845,13 @@ def ingest(root, *, workers=None, progress=True, concurrent_vitaldb=False, _stop
             with _ThreadEnv():
                 pool = _make_pool(root, config, signature, workers, fast)
                 ctx.pool = pool
+                # Ensure the associated files, locks, or resources are released after this operation.
                 try:
                     threads = [threading.Thread(target=_reader, args=(ctx, name), name=f"reader-{_short(name)}", daemon=True) for name, _ in todo]
                     for t in threads:
                         t.start()
                     last_ui, interrupts = 0.0, 0
+                    # Repeat this step while the loop's completion condition is unmet.
                     while True:
                         try:
                             try:
@@ -877,6 +899,7 @@ def ingest(root, *, workers=None, progress=True, concurrent_vitaldb=False, _stop
 
 
 def _handle(ctx, state, item, totals, progress):
+    # Record the worker outcome before promoting or retrying the corresponding member.
     kind = item[0]
     if kind == "event":
         _error(ctx.root, "fast_ingest", item[1], item[2], None, item[3])
@@ -931,6 +954,7 @@ def _handle(ctx, state, item, totals, progress):
 
 
 def _close_ingest(ctx, state, todo, signature, totals, progress, started):
+    # Save the final archive state and distinguish completion from a paused or failed run.
     problems, paused = [], False
     for name, fingerprint in todo:
         c = ctx.counters[name]
@@ -969,6 +993,7 @@ def _close_ingest(ctx, state, todo, signature, totals, progress, started):
 
 def select_patients(eligible, config):
     """Deterministic, outcome-blind patient-level selection on measured upper-bound bytes."""
+    # Select whole patients under the measured storage budget, independently of outcome labels.
     max_bytes, target = config["max_mover_size_gb"] * 1e9, config["target_mover_size_gb"] * 1e9
     sizes = eligible.groupby("patient_id").estimated_bytes.sum()
     if float(sizes.sum()) <= max_bytes:
@@ -986,6 +1011,7 @@ def select_patients(eligible, config):
 def _run_jobs(pool, fn, jobs, window, handle, bar):
     pending, iterator, exhausted = {}, iter(jobs), False
     try:
+        # Repeat this step while the loop's completion condition is unmet.
         while True:
             while not exhausted and len(pending) < window:
                 try:
@@ -1012,18 +1038,21 @@ def _run_jobs(pool, fn, jobs, window, handle, bar):
 
 
 def finalize(root, *, workers=None, progress=True, concurrent_vitaldb=False):
+    # Promote a cohort only after archive verification, linkage checks, and case assessment.
     root = Path(root)
     config = load_config(root)
     fast = _fast(config)
     signature = _processing_signature(config)
     started = time.perf_counter()
     workers = _resolve_workers(fast, workers, concurrent_vitaldb, "finalize_workers")
+    # Hold the run lock while shared progress or outputs are updated.
     with _RunLock(root):
         state = _State(root)
         try:
             archives = state.archives()
             profile = _profile(config)
             window = _window_mode(config)
+            # Require every archive to be complete and verified before promoting a final cohort.
             missing = [n for n in config["mover_archives"] if not _archive_ok(archives.get(n), signature, profile)]
             if missing:
                 _banner("INCOMPLETE", "Cannot finalize: archive pass not complete/verified for " + ", ".join(missing) +
@@ -1040,6 +1069,7 @@ def finalize(root, *, workers=None, progress=True, concurrent_vitaldb=False):
             for member in failed_members:
                 for case_id in member["case_ids"]:
                     quarantined[case_id].append(f"{member['archive']}:{member['member']}: {member.get('error')}")
+            # Exclude or flag missing values before using these measurements.
             cases = _cases(root)
             usable = cases.loc[cases["linkage_usable"].astype(bool) & cases["patient_id"].notna()].copy()
             usable["case_id"] = usable["case_id"].astype(str)
@@ -1059,11 +1089,13 @@ def finalize(root, *, workers=None, progress=True, concurrent_vitaldb=False):
                     if (prior and prior.get("status") == "completed" and prior.get("processing_signature") == signature
                             and prior.get("ingest_mode") == "fast_one_pass" and verify_case(root, prior)):
                         reusable[cid] = prior
+            # Prepare one assessment per candidate surgery rather than treating fragments as complete cases.
             assess_jobs = [(cid, (_case_args(case_rows[cid]), reusable[cid] if cid in reusable else fragments[cid]))
                            for cid in sorted(set(fragments) | set(reusable)) if cid in case_rows and cid not in quarantined]
             _say(progress, f"FINALIZE: {len(assess_jobs):,} surgeries have candidate fragments or verified case files ({len(reusable):,} reused as-is); "
                            f"assessing {'window-level' if window else 'case-level'} quality with {workers} processes ...")
             assessed = {}
+            # Limit worker lifetime to this block and collect their processing results.
             with _ThreadEnv(), _make_pool(root, config, signature, workers, fast) as pool:
                 try:
                     bar = tqdm(total=len(assess_jobs), desc="assess surgeries", unit="case", disable=not progress)
@@ -1078,6 +1110,7 @@ def finalize(root, *, workers=None, progress=True, concurrent_vitaldb=False):
                 except cf.process.BrokenProcessPool as exc:
                     _banner("FAILED", f"A worker crashed during assessment: {exc}", progress)
                     return {"status": "FAILED", "reason": str(exc)}
+                # Handle each completed result before updating the summary or saved state.
                 for cid, result in assessed.items():
                     if result["status"] == "assessed":
                         updates[cid].update(result["assessment"])
@@ -1096,6 +1129,7 @@ def finalize(root, *, workers=None, progress=True, concurrent_vitaldb=False):
                         _error(root, "fast_assess", None, None, cid, result.get("error"))
                 window_info = None
                 if window:
+                    # Choose eligibility from observed valid windows without using future outcome labels.
                     window_info = _apply_ladder(config, assessed, updates, case_rows, reusable)
                     if window_info["rung"] is None:
                         return _finish_without_cohort(root, cases, updates, state, fragments, window_info["reason"], progress, signature, started,
@@ -1112,6 +1146,7 @@ def finalize(root, *, workers=None, progress=True, concurrent_vitaldb=False):
                 splits = patient_splits(sorted(chosen), config["patient_split_seed"])
                 split_of = dict(zip(splits.patient_id.astype(str), splits.split))
                 write_jobs, results = [], {}
+                # Process the selected records in order and retain their individual results.
                 for cid in sorted(updates):
                     u = updates[cid]
                     if not u.get("final_usable"):
@@ -1134,6 +1169,7 @@ def finalize(root, *, workers=None, progress=True, concurrent_vitaldb=False):
                 _say(progress, f"SELECT: {len(chosen):,} patients ({selection_mode}); writing {len(write_jobs):,} verified case files "
                                f"({len(results):,} already valid) with {workers} processes ...")
                 bar = tqdm(total=len(write_jobs), desc="write cases", unit="case", disable=not progress)
+                # Ensure the associated files, locks, or resources are released after this operation.
                 try:
                     _run_jobs(pool, _write_task, write_jobs, workers * 2, lambda k, r: results.__setitem__(k, r), bar)
                 except KeyboardInterrupt:
@@ -1147,6 +1183,7 @@ def finalize(root, *, workers=None, progress=True, concurrent_vitaldb=False):
                     bar.close()
                     pool.shutdown(wait=True, cancel_futures=True)
             write_failures, disk_stops = [], []
+            # Handle each completed result before updating the summary or saved state.
             for cid, result in sorted(results.items()):
                 if result["status"] == "completed":
                     committed = _py(result["committed"])
@@ -1171,6 +1208,7 @@ def finalize(root, *, workers=None, progress=True, concurrent_vitaldb=False):
 
 def _resplit_case(root, store, cid, prior, split):
     """A patient-level split change is a metadata-only edit: waveform/map files and their hashes stay untouched."""
+    # Load the recorded settings or metadata for this processing step.
     path = Path(root) / "data" / "parquet" / "mover" / f"case_id={safe_id(cid)}" / "metadata.json"
     metadata = json.loads(path.read_text(encoding="utf-8"))
     metadata["split"] = split
@@ -1181,6 +1219,7 @@ def _resplit_case(root, store, cid, prior, split):
 
 def _apply_ladder(config, assessed, updates, case_rows, reusable):
     """Outcome-blind rung selection on window-level readiness; sets final_usable/exclusion_reason per assessed case."""
+    # Apply the strictest eligible coverage rule without using forecast outcomes.
     ladder, targets = load_ladder(config)
     rows = []
     for cid, result in assessed.items():
@@ -1192,6 +1231,7 @@ def _apply_ladder(config, assessed, updates, case_rows, reusable):
                 "ladder": ladder, "targets": targets, "existing_failing": []}
     rung, funnel, reason = choose_rung(stats, ladder, targets)
     passed_rung = []
+    # Apply this calculation to each row in the selected table.
     for _, row in stats.iterrows():
         first = next((r["name"] for r in ladder if rung_passes(row, r)), "none")
         passed_rung.append(first)
@@ -1207,6 +1247,7 @@ def _apply_ladder(config, assessed, updates, case_rows, reusable):
             u["exclusion_reason"] = "no_arterial_map_numerics"
         else:
             u["exclusion_reason"] = "ready_span_below_chosen_rung"
+    # Calculate the summary statistics for the following step.
     stats["rung_passed"] = passed_rung
     stats["final_usable"] = [updates[c]["final_usable"] for c in stats.case_id]
     stats["exclusion_reason"] = [updates[c]["exclusion_reason"] for c in stats.case_id]
@@ -1278,17 +1319,21 @@ def _finish_without_cohort(root, cases, updates, state, fragments, reason, progr
 
 def _publish(root, config, cases, updates, case_rows, selection_mode, splits, write_failures, state, fragments, failed_members,
              signature, progress, started, fast, window_info=None, reused=0):
+    # Write the selected cohort and its processing evidence after final case outcomes are known.
     records = []
     for record in cases.to_dict("records"):
         record.update(updates.get(str(record["case_id"]), {}))
         records.append(record)
+    # Join related tables by patient id to keep measurements aligned.
     frame = pd.DataFrame(records)
     frame["final_usable"] = frame["final_usable"].fillna(False).astype(bool)
     eligible = frame.loc[frame["final_usable"] & frame["linkage_usable"].astype(bool)].copy()
     selected = eligible.loc[eligible["selected"].fillna(False).astype(bool)].copy()
+    # Join related tables by patient id to keep measurements aligned.
     selected_split = selected.drop(columns=["split"]).merge(splits, on="patient_id", how="left", validate="many_to_one")
     overlaps = assert_patient_independence(selected_split)
     write_manifest(root, "mover_all_cases", frame)
+    # Collect the per-record values into a table for comparison.
     write_manifest(root, "mover_eligible_cohort", eligible)
     write_manifest(root, "mover_selected_cohort", selected_split)
     write_manifest(root, "mover_patient_splits", splits)
@@ -1299,11 +1344,13 @@ def _publish(root, config, cases, updates, case_rows, selection_mode, splits, wr
         window_rows = _write_window_manifests(root, window_info, list(selected_split.case_id.astype(str)))
         rung = window_info["rung"]
         key = theta_key(rung["theta"])
+        # Store the settings and results as JSON for later inspection.
         ready_hours = float(selected_split.get(f"ready_span_min_theta_{key}", pd.Series(dtype=float)).fillna(0).sum() / 60)
         window_summary = {"rung": rung["name"], "rung_theta": rung["theta"], "rung_min_ready_span_min": rung["min_ready_span_min"],
                           "reason": window_info["reason"], "funnel": window_info["funnel"].to_dict("records"),
                           "ready_hours_selected": round(ready_hours, 1), "ready_window_rows": window_rows,
                           "existing_cases_reused": reused, "existing_cases_failing_rung": window_info.get("existing_failing", [])}
+        # Store the settings and results as JSON for later inspection.
         rule_blob = json.dumps({"window_rule": load_rule(config), "ladder": window_info["ladder"], "targets": window_info["targets"]}, sort_keys=True)
         atomic_json(root / "data" / "manifests" / "mover_cohort_frozen.json", {
             "frozen_at": utc_now(), "note": "Patient-level split frozen for this cohort; do not re-split without recording a new freeze.",
@@ -1313,6 +1360,7 @@ def _publish(root, config, cases, updates, case_rows, selection_mode, splits, wr
             "rule_sha256": hashlib.sha256(rule_blob.encode()).hexdigest()})
         window_text = (_funnel_text(window_info) + f"\nReady hours at the chosen rung (selected cases): {ready_hours:.1f} h; ready-window rows: {window_rows:,}; "
                        f"{reused} already-written case files reused without rewriting.\n")
+    # Calculate the acceptance flags for the following step.
     summary = fast_eda(root)
     readiness = fast_deletion_readiness(root)
     ok = not write_failures and not failed_members
@@ -1349,6 +1397,7 @@ def fast_eda(root):
     rows = pd.DataFrame(CheckpointStore(root, "mover").rows())
     if rows.empty or "status" not in rows:
         return {"completed_cases": 0}
+    # Read the stored table required for this calculation.
     done = rows.loc[(rows["status"] == "completed") & (rows.get("ingest_mode") == "fast_one_pass")].copy()
     all_cases = pd.read_parquet(root / "data" / "manifests" / "mover_all_cases.parquet")
     summary = {"completed_cases": int(len(done)), "completed_patients": int(done.patient_id.nunique()) if len(done) else 0,
@@ -1356,9 +1405,11 @@ def fast_eda(root):
                "processed_gb": float(done.processed_bytes.sum() / 1e9) if len(done) else 0.0,
                "source_member_gb": float(done.source_bytes.sum() / 1e9) if len(done) else 0.0}
     if len(done):
+        # Summarize the records separately within each requested group.
         summary["compression_source_to_output"] = float(done.source_bytes.sum() / max(done.processed_bytes.sum(), 1))
         summary["bytes_per_waveform_hour"] = float(done.processed_bytes.sum() / max(done.duration_sec.sum() / 3600, 1e-9))
         summary["patients_per_split"] = done.groupby("split").patient_id.nunique().to_dict()
+        # Summarize the records separately within each requested group.
         summary["surgeries_per_split"] = done.split.value_counts().to_dict()
         summary["max_surgeries_per_patient"] = int(done.groupby("patient_id").size().max())
         columns = [c for c in ("duration_sec", "art_missingness", "ecg_missingness", "ppg_missingness", "map_valid_points",
@@ -1369,9 +1420,11 @@ def fast_eda(root):
         if done.split.isin(["train", "validation", "test"]).all():
             summary["patient_intersections"] = assert_patient_independence(done[["patient_id", "split"]].drop_duplicates())
         try:
+            # Create the destination directory before writing any outputs.
             import matplotlib
             matplotlib.use("Agg")
             import matplotlib.pyplot as plt
+            # Create the destination directory before writing any outputs.
             plot_columns = [c for c in ("duration_sec", "art_missingness", "ecg_missingness", "ppg_missingness", "map_coverage", "map_median_gap") if c in done]
             done[plot_columns].hist(figsize=(12, 8), bins=30)
             plt.tight_layout()
@@ -1389,6 +1442,7 @@ def fast_eda(root):
 
 
 def fast_deletion_readiness(root):
+    # Require complete verified case outputs before marking any source archive as replaceable.
     root = Path(root)
     config = load_config(root)
     signature = _processing_signature(config)
@@ -1408,6 +1462,7 @@ def fast_deletion_readiness(root):
         except Exception:
             split_ok = False
     rows = []
+    # Inspect each source archive while preserving its individual processing state.
     for name in config["mover_archives"]:
         state_row = archives.get(name)
         scan_ok = bool(_archive_ok(state_row, signature, _profile(config)))

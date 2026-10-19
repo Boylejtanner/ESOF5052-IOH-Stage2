@@ -1,5 +1,6 @@
 """Benchmark BSHI loading and build a bounded development subset."""
 from __future__ import annotations
+# Measure loading speed and build a bounded set of development windows.
 
 import concurrent.futures as cf
 import multiprocessing
@@ -42,11 +43,13 @@ def _bench_worker(root, rows, variant, batch_size, shard):
 
 
 def benchmark_throughput(root, n_windows=20000, workers=(1, 8, 16), variant="eap", batch_size=256, seed=5052, torch_workers=16, write=True):
+    # Summarize the records separately within each requested group.
     root = Path(root)
     idx = S.load_window_index(root, columns=["window_id", "dataset", "case_id", "beat_lo", "beat_hi", "primary_eligible", "in_full", "has60"] + S.LABEL_CONTEXT + S.LABEL_OUT)
     rows = _bench_rows(idx, n_windows, seed)
     out = {"windows": int(len(rows)), "cases": int(rows.groupby(["dataset", "case_id"]).ngroups), "variant": variant, "batch_size": batch_size, "target_windows_per_s": 3000,
            "cpu_count": os.cpu_count(), "assemble_only": {}, "at": utc_now()}
+    # Process the selected records in order and retain their individual results.
     for w in workers:
         if w == 1:
             n, sec = _bench_worker(str(root), rows, variant, batch_size, None)
@@ -107,12 +110,14 @@ def _cap_take(frame, k, cap, rng, used):
 def select_dev_windows(idx, cfg):
     """Deterministic stratified selection of full-set windows. Per split the MOVER supply (at most ``max_per_case`` per case) fixes the size so that the MOVER share stays
     >= min_mover_share; events are over-sampled to >= min_event_share when availability allows. The per-case cap holds across events and non-events."""
+    # Seed the generated values so this check can be repeated.
     d = cfg["dev_subset"]
     rng = np.random.default_rng(int(d["seed"]))
     cap, big = int(d["max_per_case"]), 10 ** 9
     pool = idx[idx.primary_eligible & idx.in_full & idx.has60].copy()
     pool["y"] = pool.y_event.astype(bool)
     parts, notes = [], {}
+    # Apply the same operation to each named field in this group.
     for split, n in d["per_split_max"].items():
         p = pool[pool.split_pooled == split]
         m, v = p[p.dataset == "mover"], p[p.dataset == "vitaldb"]
@@ -121,16 +126,20 @@ def select_dev_windows(idx, cfg):
         m_avail = m_ev_all + len(_cap_take(m[~m.y], big, cap, rng, probe))
         n_mover = min(m_avail, int(np.ceil((d["min_mover_share"] + 0.05) * n)))
         n_eff = min(int(n), int(n_mover / (d["min_mover_share"] + 0.02)))
+        # Collect the per-record values into a table for comparison.
         ev_target = int(np.ceil((d["min_event_share"] + 0.02) * n_eff))
         used = {}
         m_ev = _cap_take(m[m.y], min(m_ev_all, int(round(0.3 * n_mover))), cap, rng, used)
+        # Summarize the records separately within each requested group.
         m_ne = _cap_take(m[~m.y], n_mover - len(m_ev), cap, rng, used)
         v_ev = _cap_take(v[v.y], max(0, ev_target - len(m_ev)), cap, rng, used)
         v_ne = _cap_take(v[~v.y], (n_eff - len(m_ev) - len(m_ne)) - len(v_ev), cap, rng, used)
         sel = pd.concat([m_ev, m_ne, v_ev, v_ne])
+        # Summarize the records separately within each requested group.
         pop = p.groupby(["dataset", "y"]).size()
         cnt = sel.groupby(["dataset", "y"]).size()
         w = {k: float(pop[k] / cnt[k]) for k in cnt.index}
+        # Summarize the records separately within each requested group.
         sel = sel.assign(sampling_weight=[w[(a, b)] for a, b in zip(sel.dataset, sel.y)], split=split)
         parts.append(sel)
         notes[split] = {"requested": int(n), "selected": int(len(sel)), "mover": int((sel.dataset == "mover").sum()), "events": int(sel.y.sum()),
@@ -144,6 +153,7 @@ def _dev_worker(root, rows, out_path, variant):
     parts = []
     for _, g in rows.groupby(["dataset", "case_id"], sort=False):
         for j in range(0, len(g), 128):
+            # Collect the per-record values into a table for comparison.
             sub = g.iloc[j:j + 128]
             b = S.assemble(root, sub, variant, cache=S.CaseCache(2))
             enc = S.encode_compact(b)
@@ -151,6 +161,7 @@ def _dev_worker(root, rows, out_path, variant):
                        t_end_sec=sub.t_end_sec.to_numpy(), time_to_event_sec=sub.time_to_event_sec.to_numpy(dtype=np.float32),
                        sampling_weight=sub.sampling_weight.to_numpy(dtype=np.float32))
             parts.append(pd.DataFrame(enc))
+    # Write the verified values in the pipeline's Parquet table format.
     frame = pd.concat(parts, ignore_index=True)
     Path(out_path).parent.mkdir(parents=True, exist_ok=True)
     tmp = Path(str(out_path) + ".tmp")
@@ -161,6 +172,7 @@ def _dev_worker(root, rows, out_path, variant):
 
 def build_dev_subset(root, workers=None, force=False, write=True):
     """data/derived/bshi/dev_subset/split=<s>/part-*.parquet (EAP, compact binary) + results/bshi_dev_subset.json."""
+    # Select a bounded patient-separated development set and write its compact batches.
     import shutil
     root = Path(root)
     cfg = S.bshi_config(root)
@@ -191,6 +203,7 @@ def build_dev_subset(root, workers=None, force=False, write=True):
     total_bytes = sum(r[2][1] for r in results)
     if total_bytes > cfg["dev_subset"]["max_gb"] * 1e9:
         raise RuntimeError(f"dev subset is {total_bytes / 1e9:.2f} GB, above max_gb={cfg['dev_subset']['max_gb']}: lower per_split_max in configs/hemodynamics.json")
+    # Summarize the records separately within each requested group.
     by = sel.groupby(["split", "dataset", "y"]).agg(windows=("window_id", "size"), weight_mean=("sampling_weight", "mean"), patients=("patient_key", "nunique")).reset_index()
     summary = {"index_signature": sig, "config": cfg["dev_subset"], "bytes": int(total_bytes), "gb": round(total_bytes / 1e9, 3), "windows": int(len(sel)), "parts": len(results),
                "seconds": round(time.perf_counter() - started, 1), "per_split": notes, "strata": by.to_dict("records"),
@@ -207,13 +220,16 @@ def build_dev_subset(root, workers=None, force=False, write=True):
 
 def verify_dev_subset(root, n=64, seed=5052):
     """Decode some stored windows and compare with a fresh assembly of the same windows."""
+    # Read the stored table required for this calculation.
     root = Path(root)
     files = sorted((root / S.OUT_DIR / "dev_subset").rglob("part-*.parquet"))
     rng = np.random.default_rng(seed)
+    # Read the stored table required for this calculation.
     f = files[int(rng.integers(len(files)))]
     t = pq.read_table(f).to_pandas()
     t = t.iloc[rng.choice(len(t), min(n, len(t)), replace=False)].reset_index(drop=True)
     back = S.decode_compact(t.to_dict("list"))
+    # Build the requested beat images, numerical context, and beat masks.
     idx = S.load_window_index(root).set_index("window_id").loc[t.window_id.to_numpy()].reset_index()
     fresh = S.assemble(root, idx, "eap", cache=S.CaseCache(4))
     return {"windows_checked": int(len(t)), "file": str(f.relative_to(root)), "planes_0_2_max_abs_diff": float(np.abs(back["x"][:, :3] - fresh["x"][:, :3]).max()),

@@ -1,4 +1,5 @@
 """Tests for independent_features (synthetic signals only, no real data)."""
+# Check independent features using controlled inputs and isolated files.
 import unittest
 from unittest import mock
 
@@ -13,6 +14,7 @@ FS = 100
 
 def synth_art(n_beats=80, T=0.8, tau=1.5, S=120.0, N=95.0, seed=0, noise=0.05):
     """ART beats: sin^2 upstroke to S at 0.1 s, cos^2 fall to the notch N at 0.3 s, then N exp(-(t-0.3)/tau) plus a small dicrotic wave."""
+    # Calculate the target or processed signal for the following step.
     t = np.arange(int(round(T * FS))) / FS
     D = N * np.exp(-(T - 0.3) / tau)
     y = np.empty_like(t)
@@ -32,6 +34,7 @@ def synth_ppg(n_beats=80, T=0.8, amp=1.0, dc=10.0):
 
 
 def synth_ecg(rr, seed=0):
+    # Seed the generated values so this check can be repeated.
     r_t = np.concatenate(([1.0], 1.0 + np.cumsum(rr)))
     n = int((r_t[-1] + 1.0) * FS)
     t = np.arange(n) / FS
@@ -52,6 +55,7 @@ class Helpers(unittest.TestCase):
         self.assertAlmostEqual(F.span_variation(50 + 5 * np.sin(2 * np.pi * k / 5)), 0.190, delta=0.01)
 
     def test_sdnn_rmssd(self):
+        # Verify sdnn rmssd.
         iv = np.tile([0.80, 0.85], 50)
         t = np.cumsum(iv)
         sdnn, rmssd, pnn50, _ = F.hrv(t, iv)
@@ -60,6 +64,7 @@ class Helpers(unittest.TestCase):
         self.assertEqual(pnn50, 0.0)
 
     def test_ac1_of_ar1(self):
+        # Verify ac1 of ar1.
         rng = np.random.default_rng(5052)
         for phi in (0.3, 0.8):
             e = rng.normal(size=20000)
@@ -73,6 +78,7 @@ class Helpers(unittest.TestCase):
         self.assertAlmostEqual(F.dfa_alpha1(np.random.default_rng(1).normal(size=3000)), 0.5, delta=0.1)
 
     def test_kendall_and_sampen(self):
+        # Verify kendall and sampen.
         self.assertEqual(F.kendall_trend(np.arange(10.0)), 1.0)
         self.assertEqual(F.kendall_trend(-np.arange(10.0)), -1.0)
         se_noise = F.sample_entropy(np.random.default_rng(2).normal(size=300))
@@ -81,11 +87,13 @@ class Helpers(unittest.TestCase):
         self.assertLess(se_sine, 0.5)
 
     def test_lf_hf_sign(self):
+        # Compare the result with the expected value or tolerance.
         t = np.cumsum(np.full(400, 0.8))
         self.assertGreater(F.lf_hf(t, np.sin(2 * np.pi * 0.1 * t)), 2.0)
         self.assertLess(F.lf_hf(t, np.sin(2 * np.pi * 0.25 * t)), -2.0)
 
     def test_chunk_plan_is_causal(self):
+        # Verify chunk plan is causal.
         s, e = F.chunk_plan([400, 430, 460, 1000])
         np.testing.assert_array_equal(e, [400, 430, 460, 1000])
         np.testing.assert_array_equal(s, [95, 400, 430, 695])
@@ -94,22 +102,27 @@ class Helpers(unittest.TestCase):
 
 class NativeArt(unittest.TestCase):
     def test_decay_tau_and_notch(self):
+        # Verify decay tau and notch.
         x, D = synth_art()
         s, e = one_chunk(len(x))
         df = F.native_pulses(np.arange(len(x)) / FS, x, s, e, kind="art")
+        # Compare the result with the expected value or tolerance.
         ok = df[df.ok]
         self.assertGreater(len(ok), 60)
         self.assertAlmostEqual(ok.tau.median(), 1.5, delta=0.15)
         self.assertAlmostEqual(ok.notch_rel.median(), (95.0 - D) / (120.0 - D), delta=0.05)
+        # Compare the result with the expected value or tolerance.
         self.assertAlmostEqual(ok.interval.median(), 0.8, delta=0.01)
         self.assertAlmostEqual(ok.sbp.median(), 120.0, delta=1.0)
         self.assertAlmostEqual(ok.dbp.median(), D, delta=1.0)
         self.assertGreater(ok.q.dropna().median(), 0.99)
 
     def test_ppg_polarity_recovered(self):
+        # Verify PPG polarity recovered.
         x = synth_ppg()
         self.assertEqual(F.ppg_polarity(x), 1.0)
         self.assertEqual(F.ppg_polarity(-x), -1.0)
+        # Compare the result with the expected value or tolerance.
         s, e = one_chunk(len(x))
         ts = np.arange(len(x)) / FS
         a, b = F.native_pulses(ts, x, s, e, kind="ppg"), F.native_pulses(ts, -x, s, e, kind="ppg")
@@ -118,6 +131,7 @@ class NativeArt(unittest.TestCase):
         self.assertAlmostEqual(b[b.ok].interval.median(), 0.8, delta=0.01)
 
     def test_ecg_rr(self):
+        # Verify ECG RR.
         rr = np.tile([0.80, 0.85], 60)
         t, x = synth_ecg(rr)
         s, e = one_chunk(len(x))
@@ -129,6 +143,7 @@ class NativeArt(unittest.TestCase):
 
 
 def synth_case(seconds=900, seed=0):
+    # Seed the generated values so this check can be repeated.
     n_beats = int(seconds / 0.8)
     art, _ = synth_art(n_beats, seed=seed)
     ppg = synth_ppg(n_beats)
@@ -152,11 +167,13 @@ class Windows(unittest.TestCase):
         cls.base = params_for(cls.ts, cls.ecg, cls.art, cls.ppg, cls.t_end)
 
     def test_columns_match_catalogue(self):
+        # Compare the result with the expected value or tolerance.
         self.assertEqual(list(self.base.columns), ["t_end_sec"] + F.column_names())
         self.assertEqual(len(F.candidate_names()), 147)
         self.assertEqual(len(self.base), len(self.t_end))
 
     def test_values_finite_when_covered(self):
+        # Verify values finite when covered.
         last = self.base.iloc[-1]
         for c in ("a_sbp_l60", "a_tau_l60", "a_ppv_l300", "a_map_ac1_l300", "a_map_dfa_l300", "e_hr_l60", "e_sdnn_l300", "e_rr_sampen_l300",
                   "p_hr_l60", "p_pvi_l60", "a_sbp_l60_sn", "x_hr_map_corr_l60"):
@@ -166,19 +183,23 @@ class Windows(unittest.TestCase):
         self.assertAlmostEqual(last.a_sbp_l60_sn, 1.0, delta=0.02)
 
     def test_causality(self):
+        # Verify causality.
         cut = 600.0
         k = int(cut * FS) + 1
         ecg, art, ppg = self.ecg.copy(), self.art.copy(), self.ppg.copy()
+        # Seed the generated values so this check can be repeated.
         rng = np.random.default_rng(9)
         art[k:] = art[k:] * 0.6 + rng.normal(0, 3, len(art) - k)
         ecg[k:] = -ecg[k:] * 3 + rng.normal(0, 0.2, len(ecg) - k)
         ppg[k:] = -ppg[k:] * 2
+        # Compare the result with the expected value or tolerance.
         pert = params_for(self.ts, ecg, art, ppg, self.t_end)
         early = self.base.t_end_sec <= cut
         pd.testing.assert_frame_equal(self.base[early], pert[early])
         self.assertFalse(self.base[~early].equals(pert[~early]))
 
     def test_self_normalization_is_causal(self):
+        # Verify self normalization is causal.
         df = self.base.copy()
         df.loc[df.t_end_sec > 700, "a_sbp_l60"] = 500.0
         a, b = F.self_normalize(self.base.copy()), F.self_normalize(df)
@@ -187,6 +208,7 @@ class Windows(unittest.TestCase):
         self.assertTrue(a.a_sbp_l60_sn.iloc[:F.SN_MIN_HISTORY - 1].isna().all())
 
     def test_insufficient_coverage_is_nan(self):
+        # Verify insufficient coverage is nan.
         ts, ecg, art, ppg = self.ts, self.ecg.copy(), self.art.copy(), np.full(len(self.ppg), np.nan)
         art[int(500 * FS):int(560 * FS)] = np.nan                       # window ending at 570: only ~9 s of ART in the last 60 s
         p = params_for(ts, ecg, art, ppg, self.t_end)
@@ -199,6 +221,7 @@ class Windows(unittest.TestCase):
 
 class ColumnIsolation(unittest.TestCase):
     def test_read_signal_requests_one_column(self):
+        # Verify read signal requests one column.
         seen = []
 
         def reader(path, columns=None, filters=None):
@@ -210,6 +233,7 @@ class ColumnIsolation(unittest.TestCase):
             self.assertEqual(seen[-1], ["time_sec", col])
 
     def test_case_job_reads_each_signal_alone(self):
+        # Verify case job reads each signal alone.
         ts, ecg, art, ppg = synth_case(seconds=420)
         full = {"time_sec": ts, "ECG": ecg, "ART": art, "PPG": ppg}
         seen = []

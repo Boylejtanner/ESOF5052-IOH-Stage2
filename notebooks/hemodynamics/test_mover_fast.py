@@ -1,3 +1,4 @@
+# Check mover fast using controlled inputs and isolated files.
 import _thread
 import base64
 from datetime import datetime, timedelta, timezone
@@ -27,6 +28,7 @@ def make_xml(start=SURGERY_START, kind="s5", seconds=60, pulsatile=False):
              else (("GE_ART", 180, .25), ("GE_ECG", 180, 1.)))
     device = ('<device make="GE_S5" model="GE_S5">' if kind == "s5"
               else '<device make="AnalogWaves" model="GE_Solar_8000i">')
+    # Build or exercise each repeated case using the same controlled setup.
     for second in range(seconds):
         groups = []
         for name, fs, gain in specs:
@@ -63,12 +65,14 @@ def pid(index):
 def build_fixture(root, patients=4, extras=True, fast_overrides=None, corrupt_patient=None, single_archive=False, corrupt_all=False,
                   config_overrides=None, seconds=60, surgery_minutes=1, pulsatile=False):
     """patients are spread over the 3 archives; every patient has one surgery of ``seconds`` seconds."""
+    # Create the destination directory before writing any outputs.
     root = Path(root)
     (root / "configs").mkdir(parents=True)
     source = root / "data" / "reference" / "mover"
     source.mkdir(parents=True)
     for folder in ("data/manifests", "results", "figures"):
         (root / folder).mkdir(parents=True, exist_ok=True)
+    # Load the recorded settings or metadata for this processing step.
     config = json.loads((Path(__file__).resolve().parents[2] / "configs" / "hemodynamics.json").read_text())
     config.update(min_free_space_gb=0, minimum_duration_sec=1, map_min_valid_points=10, discovery_members_per_archive=2,
                   pilot_cases=3, allow_full_archive_scan=True, allow_full_process=True, eligibility_mode="legacy_case")
@@ -78,6 +82,7 @@ def build_fixture(root, patients=4, extras=True, fast_overrides=None, corrupt_pa
     (root / "configs" / "hemodynamics.json").write_text(json.dumps(config))
     members = {name: [] for name in config["mover_archives"]}
     crosswalk, clinical = [], []
+    # Build or exercise each repeated case using the same controlled setup.
     for i in range(1, patients + 1):
         archive = config["mover_archives"][0 if single_archive else (i - 1) % 3]
         crosswalk.append({"LOG_ID": f"{i + 100:016x}", "PAT_ID": pid(i), "MRN": f"{i + 500:016x}"})
@@ -108,18 +113,22 @@ class FastIngestTests(unittest.TestCase):
         self.temp.cleanup()
 
     def second_root(self):
+        # Keep test files in an isolated directory, away from real dataset outputs.
         other = tempfile.TemporaryDirectory()
         self.addCleanup(other.cleanup)
         return Path(other.name)
 
     def test_full_run_is_complete_verified_and_skips_irrelevant_members(self):
+        # Verify full run is complete verified and skips irrelevant members.
         build_fixture(self.root)
         result = mover_fast.run(self.root, workers=2, progress=False)
         self.assertEqual(result["status"], "COMPLETE", result.get("reason"))
+        # Compare the result with the expected value or tolerance.
         counters = result["ingest"]["counters"]
         self.assertEqual(sum(c.get("skipped_patient", 0) for c in counters.values()), 1)
         self.assertEqual(sum(c.get("skipped_no_pleth", 0) for c in counters.values()), 4)
         self.assertEqual(sum(c.get("skipped_no_overlap", 0) for c in counters.values()), 4)
+        # Compare the result with the expected value or tolerance.
         self.assertEqual(sum(c.get("decoded", 0) for c in counters.values()), 4)
         selected = pd.read_parquet(self.root / "data/manifests/mover_selected_cohort.parquet")
         self.assertEqual(len(selected), 4)
@@ -130,13 +139,16 @@ class FastIngestTests(unittest.TestCase):
             for stream in ("ART", "ECG", "PPG", "MAP"):
                 self.assertTrue(np.isfinite(case[stream]).any())
             self.assertEqual(case["split"], selected.loc[selected.case_id == case_id, "split"].iloc[0])
+        # Compare the result with the expected value or tolerance.
         self.assertFalse((self.root / "data/parquet/mover/staging").exists())
         readiness = pd.read_csv(self.root / "data/manifests/mover_raw_archive_deletion_readiness.csv")
         self.assertTrue(readiness.safe_to_delete.all(), readiness.reason.tolist())
         self.assertTrue(all((self.root / "data/reference/mover" / a).is_file() for a in ("epic_wave_1_v2.tar.gz", "epic_wave_2_v2.tar.gz", "epic_wave_3_v2.tar.gz")))
+        # Check completed cases against the expected result.
         eda = json.loads((self.root / "results/mover_fast_eda.json").read_text())
         self.assertEqual(eda["completed_cases"], 4)
         from hemodynamics.validate_data import validate_outputs
+        # Check ready for ml bshi and validation against the expected result.
         validation = validate_outputs(self.root)["datasets"]["mover"]
         self.assertTrue(validation["ready_for_ml_bshi"], validation)
         self.assertEqual(validation["valid_completed_cases"], 4)
@@ -146,13 +158,16 @@ class FastIngestTests(unittest.TestCase):
         self.assertEqual(again.get("reason"), "already finalized")
 
     def test_outputs_equal_the_trusted_legacy_pipeline(self):
+        # Verify outputs equal the trusted legacy pipeline.
         build_fixture(self.root, patients=3, extras=False)
         legacy = self.second_root()
         shutil.copytree(self.root, legacy, dirs_exist_ok=True)
+        # Check status against the expected result.
         fast = mover_fast.run(self.root, workers=2, progress=False)
         self.assertEqual(fast["status"], "COMPLETE", fast.get("reason"))
         audit_linkage(legacy)
         discover(legacy, complete_scan=True)
+        # Compare the result with the expected value or tolerance.
         pilot(legacy, limit=3)
         select_cohort(legacy)
         process_selected(legacy)
@@ -164,6 +179,7 @@ class FastIngestTests(unittest.TestCase):
                 np.testing.assert_array_equal(a[key], b[key], err_msg=key)
 
     def test_results_do_not_depend_on_worker_count(self):
+        # Verify results do not depend on worker count.
         build_fixture(self.root)
         other = self.second_root()
         shutil.copytree(self.root, other, dirs_exist_ok=True)
@@ -176,16 +192,20 @@ class FastIngestTests(unittest.TestCase):
             np.testing.assert_array_equal(load_case(self.root, "mover", case_id)["ART"], load_case(other, "mover", case_id)["ART"])
 
     def test_stop_hook_pauses_then_resume_matches_uninterrupted(self):
+        # Verify stop hook pauses then resume matches uninterrupted.
         build_fixture(self.root, single_archive=True)
         control = self.second_root()
         shutil.copytree(self.root, control, dirs_exist_ok=True)
+        # Check status against the expected result.
         paused = mover_fast.run(self.root, workers=2, progress=False, _stop_after=2)
         self.assertEqual(paused["status"], "PAUSED", paused.get("reason"))
         self.assertFalse((self.root / "data/manifests/mover_selected_cohort.parquet").exists())
         refused = mover_fast.finalize(self.root, workers=2, progress=False)
+        # Check status against the expected result.
         self.assertEqual(refused["status"], "INCOMPLETE")
         self.assertFalse((self.root / "data/manifests/mover_selected_cohort.parquet").exists())
         resumed = mover_fast.run(self.root, workers=2, progress=False)
+        # Check status against the expected result.
         self.assertEqual(resumed["status"], "COMPLETE", resumed.get("reason"))
         self.assertGreater(sum(c.get("resume_skipped", 0) for c in resumed["ingest"]["counters"].values()), 0)
         self.assertEqual(mover_fast.run(control, workers=2, progress=False)["status"], "COMPLETE")
@@ -196,6 +216,7 @@ class FastIngestTests(unittest.TestCase):
             np.testing.assert_array_equal(load_case(self.root, "mover", case_id)["PPG"], load_case(control, "mover", case_id)["PPG"])
 
     def test_keyboard_interrupt_is_a_clean_pause_and_releases_the_lock(self):
+        # Verify keyboard interrupt is a clean pause and releases the lock.
         build_fixture(self.root, fast_overrides={"debug_task_delay_sec": 0.6})
         timer = threading.Timer(2.0, _thread.interrupt_main)
         timer.start()
@@ -203,6 +224,7 @@ class FastIngestTests(unittest.TestCase):
             paused = mover_fast.ingest(self.root, workers=2, progress=False)
         finally:
             timer.cancel()
+        # Check status against the expected result.
         self.assertEqual(paused["status"], "PAUSED", paused.get("reason"))
         self.assertFalse((self.root / "data/checkpoints/mover/fast_ingest.lock").exists())
         config = json.loads((self.root / "configs/hemodynamics.json").read_text())
@@ -211,13 +233,16 @@ class FastIngestTests(unittest.TestCase):
         self.assertEqual(mover_fast.run(self.root, workers=2, progress=False)["status"], "COMPLETE")
 
     def test_unreadable_pleth_member_quarantines_only_its_surgery(self):
+        # Verify unreadable pleth member quarantines only its surgery.
         build_fixture(self.root, patients=4, corrupt_patient=1)
         result = mover_fast.run(self.root, workers=2, progress=False)
         self.assertEqual(result["status"], "INCOMPLETE", result.get("reason"))
+        # Check final usable against the expected result.
         cases = pd.read_parquet(self.root / "data/manifests/mover_all_cases.parquet")
         bad = cases.loc[cases.patient_id == pid(1)].iloc[0]
         self.assertFalse(bad.final_usable)
         self.assertIn("quarantined_unreadable_pleth_member", bad.exclusion_reason)
+        # Compare the result with the expected value or tolerance.
         selected = pd.read_parquet(self.root / "data/manifests/mover_selected_cohort.parquet")
         self.assertEqual(len(selected), 3)
         self.assertTrue((self.root / "data/manifests/mover_processing_errors.csv").read_text().strip())
@@ -226,6 +251,7 @@ class FastIngestTests(unittest.TestCase):
         self.assertIn("unreadable PLETH", readiness.loc["epic_wave_1_v2.tar.gz", "reason"])
 
     def test_gzip_checksum_failure_never_certifies_an_archive(self):
+        # Verify gzip checksum failure never certifies an archive.
         build_fixture(self.root)
         path = self.root / "data/reference/mover/epic_wave_1_v2.tar.gz"
         data = bytearray(path.read_bytes())
@@ -236,6 +262,7 @@ class FastIngestTests(unittest.TestCase):
         self.assertFalse((self.root / "data/manifests/mover_selected_cohort.parquet").exists())
 
     def test_systematic_decode_failures_stop_the_run_early(self):
+        # Verify systematic decode failures stop the run early.
         build_fixture(self.root, patients=30, extras=False, single_archive=True, corrupt_all=True)
         result = mover_fast.ingest(self.root, workers=2, progress=False)
         self.assertEqual(result["status"], "FAILED", result.get("reason"))
@@ -247,6 +274,7 @@ class FastIngestTests(unittest.TestCase):
         self.assertEqual(mover_fast.run(self.root, workers=2, progress=False)["status"], "COMPLETE")
 
     def test_disk_guard_pauses_without_losing_state(self):
+        # Verify disk guard pauses without losing state.
         build_fixture(self.root)
         with patch("hemodynamics.mover_fast.ensure_disk_space", side_effect=DiskSpaceStop("test disk guard")):
             result = mover_fast.ingest(self.root, workers=2, progress=False)
@@ -255,6 +283,7 @@ class FastIngestTests(unittest.TestCase):
         self.assertEqual(mover_fast.run(self.root, workers=2, progress=False)["status"], "COMPLETE")
 
     def test_lock_refuses_a_live_second_run_but_takes_over_a_dead_one(self):
+        # Verify lock refuses a live second run but takes over a dead one.
         import psutil
         lock = self.root / "data/checkpoints/mover/fast_ingest.lock"
         lock.parent.mkdir(parents=True)
@@ -270,9 +299,11 @@ class FastIngestTests(unittest.TestCase):
         self.assertTrue(lock.exists())
 
     def test_canary_stops_a_systematically_wrong_scale(self):
+        # Verify canary stops a systematically wrong scale.
         config = build_fixture(self.root)
         fast = mover_fast._fast(config)
         context = mover_fast._Context(self.root, config, fast, {}, {}, "sig", None)
+        # Check status against the expected result.
         good = {"art_n": 5, "art_median": 90., "ecg_n": 5, "ppg_n": 5, "ppg_std": 3., "map_n": 5, "map_median": 85., "all_four": True}
         mover_fast._canary(context, good, False)
         mover_fast._canary(context, good, False)
@@ -285,6 +316,7 @@ class FastIngestTests(unittest.TestCase):
         self.assertTrue(context.fatal and context.stop.is_set())
 
     def test_canary_tolerates_real_non_arterial_channels_but_catches_scale_faults(self):
+        # Verify canary tolerates real non arterial channels but catches scale faults.
         config = build_fixture(self.root)
         fast = dict(mover_fast._fast(config), canary_min_fragments=20)   # production decision window, not the fixture's 2
         live = {"art_n": 5, "art_median": 75., "ecg_n": 5, "ppg_n": 5, "ppg_std": 3., "map_n": 5, "map_median": 80., "all_four": True}
@@ -318,9 +350,11 @@ class FastIngestTests(unittest.TestCase):
         self.assertEqual(context.canary["status"], "FAILED")
 
     def test_member_span_and_window_matching(self):
+        # Verify member span and window matching.
         payload = make_xml(seconds=30)
         start, end = mover_fast.member_span(payload)
         self.assertAlmostEqual(start, SURGERY_START.timestamp())
+        # Check end against the expected result.
         self.assertAlmostEqual(end, SURGERY_START.timestamp() + 30)
         self.assertIsNone(mover_fast.member_span(b"<cpcArchive></cpcArchive>"))
         entries = [("a", start - 10, start + 5), ("b", end + 500, end + 900), ("c", end - 1, end + 100)]
@@ -329,13 +363,16 @@ class FastIngestTests(unittest.TestCase):
         self.assertEqual([e[0] for e in mover_fast.match_cases(entries, (start, end), 1000)], ["a", "b", "c"])
 
     def test_patient_level_selection_is_deterministic_and_size_bounded(self):
+        # Verify patient level selection is deterministic and size bounded.
         config = {"max_mover_size_gb": 1.0, "target_mover_size_gb": 0.5, "random_seed": 5052}
         rows = [{"patient_id": f"p{i:03d}", "case_id": f"c{i}", "estimated_bytes": 40_000_000} for i in range(60)]
         frame = pd.DataFrame(rows)
+        # Check mode against the expected result.
         chosen, mode = mover_fast.select_patients(frame, config)
         self.assertEqual(mode, "seeded_patient_subset_to_target_size")
         self.assertLessEqual(len(chosen) * 40_000_000, 500_000_000)
         shuffled, _ = mover_fast.select_patients(frame.sample(frac=1, random_state=1), config)
+        # Check chosen and shuffled against the expected result.
         self.assertEqual(chosen, shuffled)
         small, mode = mover_fast.select_patients(frame.head(10), config)
         self.assertEqual((len(small), mode), (10, "all_eligible_patients"))
@@ -362,20 +399,25 @@ class WindowModeTests(unittest.TestCase):
         return build_fixture(self.root, seconds=900, surgery_minutes=15, pulsatile=True, **kwargs)
 
     def test_window_mode_run_writes_cases_stats_windows_and_frozen_cohort(self):
+        # Verify window mode run writes cases stats windows and frozen cohort.
         self.build(config_overrides=window_config())
         result = mover_fast.run(self.root, workers=2, progress=False)
         self.assertEqual(result["status"], "COMPLETE", result.get("reason"))
+        # Check rung against the expected result.
         info = result["window_eligibility"]
         self.assertEqual(info["rung"], "R1")
         manifests = self.root / "data" / "manifests"
         stats = pd.read_parquet(manifests / "mover_case_window_stats.parquet")
+        # Compare the result with the expected value or tolerance.
         self.assertEqual(len(stats), 4)
         self.assertTrue((stats.ready_span_min_theta_75 >= 3).all())
         windows = pd.read_parquet(manifests / "ready_windows_mover.parquet")
+        # Compare the result with the expected value or tolerance.
         self.assertEqual(sorted(windows.case_id.unique()), sorted(stats.case_id))
         self.assertTrue(windows.is_ready.any())
         frozen = json.loads((manifests / "mover_cohort_frozen.json").read_text())
         self.assertEqual((frozen["selected_cases"], frozen["rung"]), (4, "R1"))
+        # Compare the result with the expected value or tolerance.
         self.assertEqual(len(frozen["patient_list_sha256"]), 64)
         selected = pd.read_parquet(manifests / "mover_selected_cohort.parquet")
         self.assertEqual(len(selected), 4)
@@ -390,13 +432,16 @@ class WindowModeTests(unittest.TestCase):
         self.assertEqual(again.get("reason"), "already finalized")
 
     def test_legacy_completed_marker_does_not_short_circuit_and_valid_cases_are_reused(self):
+        # Verify legacy completed marker does not short circuit and valid cases are reused.
         self.build()
         first = mover_fast.run(self.root, workers=2, progress=False)
         self.assertEqual(first["status"], "COMPLETE", first.get("reason"))
+        # Load the recorded settings or metadata for this processing step.
         case_dirs = sorted((self.root / "data" / "parquet" / "mover").glob("case_id=*"))
         before = {d.name: [mover_fast.sha256_file(d / "waveform.parquet"), mover_fast.sha256_file(d / "map.parquet")] for d in case_dirs}
         config_path = self.root / "configs" / "hemodynamics.json"
         config = json.loads(config_path.read_text())
+        # Check status against the expected result.
         config.update(window_config())
         config_path.write_text(json.dumps(config))
         second = mover_fast.run(self.root, workers=2, progress=False)
@@ -407,13 +452,16 @@ class WindowModeTests(unittest.TestCase):
         self.assertEqual(before, after, "verified waveform/map files must not be rewritten")
 
     def test_resplit_is_metadata_only(self):
+        # Verify resplit is metadata only.
         self.build()
         self.assertEqual(mover_fast.run(self.root, workers=2, progress=False)["status"], "COMPLETE")
         store = mover_fast.CheckpointStore(self.root, "mover")
+        # Check split and new split against the expected result.
         prior = store.rows()[0]
         directory = self.root / "data" / "parquet" / "mover" / f"case_id={prior['case_id']}"
         hashes = [mover_fast.sha256_file(directory / "waveform.parquet"), mover_fast.sha256_file(directory / "map.parquet")]
         new_split = "test" if prior["split"] != "test" else "train"
+        # Check split and new split against the expected result.
         updated = mover_fast._resplit_case(self.root, store, prior["case_id"], prior, new_split)
         self.assertEqual(updated["split"], new_split)
         self.assertEqual(load_case(self.root, "mover", prior["case_id"])["split"], new_split)
@@ -421,9 +469,11 @@ class WindowModeTests(unittest.TestCase):
         self.assertTrue(mover_fast.verify_case(self.root, store.get(prior["case_id"])))
 
     def test_below_floor_creates_no_cohort_but_keeps_stats_for_every_case(self):
+        # Verify below floor creates no cohort but keeps stats for every case.
         self.build(config_overrides=window_config(min_cases=100, min_patients=100, floor_cases=10))
         result = mover_fast.run(self.root, workers=2, progress=False)
         self.assertEqual(result["status"], "INCOMPLETE")
+        # Check reason against the expected result.
         self.assertIn("not creating a cohort", result["reason"])
         manifests = self.root / "data" / "manifests"
         self.assertEqual(len(pd.read_parquet(manifests / "mover_case_window_stats.parquet")), 4)
@@ -432,6 +482,7 @@ class WindowModeTests(unittest.TestCase):
         self.assertTrue((self.root / "data" / "parquet" / "mover" / "staging").exists(), "fragments are kept for inspection")
 
     def test_stage_filter_requires_all_three_waveforms_only_in_window_mode(self):
+        # Verify stage filter requires all three waveforms only in window mode.
         sanity = {"art_n": 0, "ecg_n": 10, "ppg_n": 10, "map_n": 5}
         fast = mover_fast._fast({})
         self.assertFalse(mover_fast._stage_worthy(sanity, {"eligibility_mode": "window_v1"}, fast))
@@ -439,6 +490,7 @@ class WindowModeTests(unittest.TestCase):
         self.assertTrue(mover_fast._stage_worthy({**sanity, "art_n": 3}, {"eligibility_mode": "window_v1"}, fast))
 
     def test_speed_settings_are_unchanged(self):
+        # Verify speed settings are unchanged.
         fast = mover_fast._fast(json.loads((Path(__file__).resolve().parents[2] / "configs" / "hemodynamics.json").read_text()))
         for key, value in {"decode_workers": 16, "finalize_workers": 20, "archive_readers": 3, "max_inflight_payload_mb": 6144,
                            "min_available_ram_gb": 16, "tar_buffer_kb": 256}.items():
